@@ -12,14 +12,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v3
       - run: uv python install 3.12
-      - run: uv sync --all-packages --dev
+      - run: uv sync --all-packages --frozen
       # 1. ruff
       - run: uv run ruff check .
       - run: uv run ruff format --check .
-      # 2. pytest + couverture (seuil 80 % sur packages/ à partir de la v0.2.0)
-      - run: uv run pytest --cov=packages --cov-report=term-missing
+      # 2. pytest + couverture (à partir de la v0.2.0 : ajouter --cov-fail-under=80 sur packages/)
+      - run: uv run pytest --cov=packages --cov=apps --cov-report=term-missing
       # 3. validation des fixtures contre les JSON Schema
-      # TODO: script de validation contracts/fixtures -> contracts/schemas
+      # TODO(L3.1): script de validation contracts/fixtures -> contracts/schemas
 
   gitleaks:
     runs-on: ubuntu-latest
@@ -27,14 +27,21 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Binaire gitleaks (gratuit) : l'action officielle exige une licence pour les organisations
+      - name: gitleaks
+        run: |
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz | tar -xz gitleaks
+          ./gitleaks git --redact --verbose .
 
   docker:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       # 5. build de l'API + docker compose + test de santé
-      # TODO: activer quand infra/docker-compose.yml et le Dockerfile de l'API existent
-      - run: echo "docker compose -f infra/docker-compose.yml up -d --build && curl -f http://localhost:8000/health"
+      - run: cp infra/.env.example infra/.env
+      - run: docker compose -f infra/docker-compose.yml up -d --build --wait
+      - run: curl -fsS http://localhost:8000/health
+      - if: failure()
+        run: docker compose -f infra/docker-compose.yml logs
+      - if: always()
+        run: docker compose -f infra/docker-compose.yml down -v

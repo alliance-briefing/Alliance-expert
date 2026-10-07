@@ -2,12 +2,19 @@
 name = "alliance-briefing"
 version = "0.0.0"
 requires-python = ">=3.12"
+dependencies = ["alliance-api"]
+
+[tool.uv]
+package = false
 
 [tool.uv.workspace]
-members = []  # ajouter packages/collect, packages/analyse, apps/api quand ils ont un pyproject.toml
+members = ["apps/api"]  # ajouter packages/collect, packages/analyse quand ils ont un pyproject.toml
+
+[tool.uv.sources]
+alliance-api = { workspace = true }
 
 [dependency-groups]
-dev = ["ruff", "pytest", "pytest-cov", "pre-commit"]
+dev = ["ruff", "pytest", "pytest-cov", "httpx", "pre-commit"]
 
 [tool.ruff]
 line-length = 100
@@ -15,3 +22,4 @@ target-version = "py312"
 
 [tool.pytest.ini_options]
 testpaths = ["packages", "apps", "eval"]
+addopts = "--import-mode=importlib"
