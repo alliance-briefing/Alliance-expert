@@ -53,7 +53,11 @@ def validate_dir(root: Path, schema_path: Path = SCHEMA_PATH) -> Report:
         return report
     checksums: dict[str, str] = json.loads(manifest_path.read_text("utf-8"))["sha256"]
 
-    on_disk = {p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file() and p.name != "manifest.json"}
+    on_disk = {
+        p.relative_to(root).as_posix()
+        for p in root.rglob("*")
+        if p.is_file() and p.name != "manifest.json"
+    }
     for missing in sorted(set(checksums) - on_disk):
         report.add(f"{missing}: listé dans le manifeste mais absent")
     for extra in sorted(on_disk - set(checksums)):
@@ -66,7 +70,9 @@ def validate_dir(root: Path, schema_path: Path = SCHEMA_PATH) -> Report:
         data = path.read_bytes()
         report.files += 1
         if hashlib.sha256(data).hexdigest() != expected:
-            report.add(f"{rel}: empreinte sha256 différente du manifeste (fichier modifié à la main ?)")
+            report.add(
+                f"{rel}: empreinte sha256 différente du manifeste (fichier modifié à la main ?)"
+            )
         if not rel.endswith("items.jsonl"):
             continue
         for number, line in enumerate(data.decode("utf-8").splitlines(), start=1):

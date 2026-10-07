@@ -37,9 +37,11 @@ Chaque journée = ce que le lot 1 a collecté à 08h30 : 60 à 250 mails, 4 à 1
 from pathlib import Path
 from contracts.models import Brief
 
-brief = Brief.model_validate_json(Path("contracts/fixtures/brief/valid/brief-regles.json").read_text("utf-8"))
-for section in brief.sections:          # toujours dans l'ordre actions, meetings, overdue, files
-    for entry in section.entries:       # rang 1 = le plus prioritaire
+brief = Brief.model_validate_json(
+    Path("contracts/fixtures/brief/valid/brief-regles.json").read_text("utf-8")
+)
+for section in brief.sections:  # toujours dans l'ordre actions, meetings, overdue, files
+    for entry in section.entries:  # rang 1 = le plus prioritaire
         print(entry.text, entry.source_item_ids)
 ```
 
