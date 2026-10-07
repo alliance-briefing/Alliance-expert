@@ -6,7 +6,7 @@ import os
 
 from fastapi import FastAPI
 
-from alliance_api import briefs, errors, items
+from alliance_api import briefs, errors, items, ui
 from alliance_api.audit import AuditSink, LogAuditSink
 from alliance_api.auth import CurrentUser
 from alliance_api.briefs import BriefGenerator, BriefStore, MemoryBriefStore
@@ -31,6 +31,7 @@ def create_app(
     errors.install(app)
     app.include_router(briefs.router)
     app.include_router(items.router)
+    app.include_router(ui.router)
 
     @app.get("/health")
     def health() -> dict[str, str]:

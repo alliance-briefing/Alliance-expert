@@ -14,6 +14,7 @@ from typing import Literal, Protocol
 
 from fastapi import APIRouter, Request, Response
 from pydantic import BaseModel
+from starlette.datastructures import State
 
 from alliance_api.audit import api_event
 from alliance_api.auth import CurrentUser
@@ -66,29 +67,38 @@ class BriefStatus(BaseModel):
 def create_brief(
     body: BriefRequest, user: CurrentUser, request: Request, response: Response
 ) -> BriefStatus:
-    state = request.app.state
-    items = state.items.items_for_day(user, body.date)
-    if items is None:
-        # Pas de collecte ce jour-là : un brief « rien à signaler » serait faux.
-        state.audit.write(api_event(user, "generate", [], 0, "no_items"))
-        raise ApiError(404, "no_items", "aucune collecte pour ce jour")
-    try:
-        brief = state.generator(items, user, body.date)
-        _check(brief, user, body.date, items)
-    except Exception:
-        logger.exception("génération en échec (user=%s, date=%s)", user, body.date)
-        state.audit.write(api_event(user, "generate", [], 0, "generation_failed"))
-        raise ApiError(500, "generation_failed", "la génération du brief a échoué") from None
-    state.briefs.put(brief)
-    cited = sorted(brief.cited_item_ids())
-    state.audit.write(api_event(user, "generate", cited, len(cited)))
+    brief = generate(request.app.state, user, body.date)
     response.headers["Location"] = f"/briefs/{body.date.isoformat()}"
     return BriefStatus(status="done", brief_id=brief.brief_id, date=brief.date)
 
 
 @router.get("/briefs/{day}", response_model=Brief)
 def read_brief(day: Date, user: CurrentUser, request: Request) -> Brief:
-    state = request.app.state
+    return view(request.app.state, user, day)
+
+
+def generate(state: State, user: str, day: Date) -> Brief:
+    """Génère, vérifie, met en cache et journalise le brief (partagé par l'API et l'interface)."""
+    items = state.items.items_for_day(user, day)
+    if items is None:
+        # Pas de collecte ce jour-là : un brief « rien à signaler » serait faux.
+        state.audit.write(api_event(user, "generate", [], 0, "no_items"))
+        raise ApiError(404, "no_items", "aucune collecte pour ce jour")
+    try:
+        brief = state.generator(items, user, day)
+        _check(brief, user, day, items)
+    except Exception:
+        logger.exception("génération en échec (user=%s, date=%s)", user, day)
+        state.audit.write(api_event(user, "generate", [], 0, "generation_failed"))
+        raise ApiError(500, "generation_failed", "la génération du brief a échoué") from None
+    state.briefs.put(brief)
+    cited = sorted(brief.cited_item_ids())
+    state.audit.write(api_event(user, "generate", cited, len(cited)))
+    return brief
+
+
+def view(state: State, user: str, day: Date) -> Brief:
+    """Brief en cache de `user` pour `day`, journalisé comme consultation."""
     brief = state.briefs.get(user, day)
     if brief is None:
         state.audit.write(api_event(user, "view", [], 0, "brief_not_found"))
