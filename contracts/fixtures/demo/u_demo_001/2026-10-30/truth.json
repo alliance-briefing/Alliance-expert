@@ -1,0 +1,393 @@
+{
+  "schema": "truth/1.0",
+  "user_id": "u_demo_001",
+  "date": "2026-10-30",
+  "day_type": "normale",
+  "collected_at": "2026-10-30T08:30:02+01:00",
+  "counts": {
+    "mail": 176,
+    "calendar": 6,
+    "task": 9,
+    "file": 21,
+    "overdue_tasks_dropped": 0
+  },
+  "expected_brief": [
+    {
+      "case_id": "AFF-2026-4837",
+      "case_label": "Suspicion de fraude",
+      "section": "actions",
+      "salience": 100,
+      "priority_reasons": [
+        "marqué important par l'expéditeur",
+        "sans réponse depuis 3 jours ouvrés"
+      ],
+      "attendu": "Dossier 2026-4837 : suspendre les conclusions (suspicion de fraude) et préparer le point",
+      "source_item_ids": [
+        "mail:dm1-msg-000124",
+        "task:dm1-tsk-000106"
+      ],
+      "rank": 1
+    },
+    {
+      "case_id": "AFF-2026-9712",
+      "case_label": "Expertise Tesla Model 3",
+      "section": "actions",
+      "salience": 98,
+      "priority_reasons": [
+        "marqué important par l'expéditeur",
+        "sans réponse depuis 3 jours ouvrés"
+      ],
+      "attendu": "Répondre à la relance de Mutuelle Horizon Sud sur le dossier 2026-9712 (sans réponse depuis 3 jours)",
+      "source_item_ids": [
+        "mail:dm1-msg-000103",
+        "file:dm1-fil-000028"
+      ],
+      "rank": 2
+    },
+    {
+      "case_id": "AFF-2026-4339",
+      "case_label": "VEI Hyundai Tucson",
+      "section": "actions",
+      "salience": 81,
+      "priority_reasons": [
+        "sans réponse depuis 3 jours ouvrés"
+      ],
+      "attendu": "Rappeler Aurélie Joly, inquiet de l'avancement du dossier 2026-4339",
+      "source_item_ids": [
+        "mail:dm1-msg-000107"
+      ],
+      "rank": 3
+    },
+    {
+      "case_id": "AFF-2026-3825",
+      "case_label": "Expertise Hyundai Tucson",
+      "section": "actions",
+      "salience": 80,
+      "priority_reasons": [
+        "sans réponse depuis 2 jours ouvrés"
+      ],
+      "attendu": "Dossier 2026-3825 : deux montants de devis différents à vérifier",
+      "source_item_ids": [
+        "mail:dm1-msg-000199",
+        "mail:dm1-msg-000198"
+      ],
+      "rank": 4
+    },
+    {
+      "case_id": "DIR-20261027-005",
+      "case_label": "Reporting octobre",
+      "section": "actions",
+      "salience": 79,
+      "priority_reasons": [
+        "échéance aujourd'hui à 12h"
+      ],
+      "attendu": "Préparer le reporting d'octobre",
+      "source_item_ids": [
+        "task:dm1-tsk-000107",
+        "file:dm1-fil-000034"
+      ],
+      "rank": 5
+    },
+    {
+      "case_id": "AFF-2026-7853",
+      "case_label": "Expertise Dacia Sandero",
+      "section": "actions",
+      "salience": 77,
+      "priority_reasons": [
+        "échéance aujourd'hui à 12h"
+      ],
+      "attendu": "Valider le devis 2026-7853 (7 400 €)",
+      "source_item_ids": [
+        "task:dm1-tsk-000098",
+        "mail:dm1-msg-000117",
+        "mail:dm1-msg-000116"
+      ],
+      "rank": 6
+    },
+    {
+      "case_id": "AFF-2026-3730",
+      "case_label": "Expertise Volkswagen Golf 8",
+      "section": "overdue",
+      "salience": 75,
+      "priority_reasons": [
+        "en retard de 5 jours ouvrés"
+      ],
+      "attendu": "Relire et signer le rapport 2026-3730",
+      "source_item_ids": [
+        "task:dm1-tsk-000058"
+      ],
+      "rank": 7
+    }
+  ],
+  "cases_not_expected": [
+    "AFF-2026-1466",
+    "AFF-2026-2022",
+    "AFF-2026-2745",
+    "AFF-2026-3392",
+    "AFF-2026-3635",
+    "AFF-2026-5308",
+    "AFF-2026-6098",
+    "AFF-2026-6107",
+    "PART-20261028",
+    "RH-20261026-004",
+    "RH-20261028-006"
+  ],
+  "noise_item_ids": [
+    "mail:dm1-msg-003126",
+    "mail:dm1-msg-003078",
+    "mail:dm1-msg-003134",
+    "mail:dm1-msg-003036",
+    "mail:dm1-msg-003249",
+    "mail:dm1-msg-003269",
+    "mail:dm1-msg-003416",
+    "mail:dm1-msg-003352",
+    "mail:dm1-msg-003242",
+    "mail:dm1-msg-003306",
+    "mail:dm1-msg-003266",
+    "mail:dm1-msg-003293",
+    "mail:dm1-msg-003387",
+    "mail:dm1-msg-003258",
+    "mail:dm1-msg-003382",
+    "mail:dm1-msg-003329",
+    "mail:dm1-msg-003311",
+    "mail:dm1-msg-003492",
+    "mail:dm1-msg-003606",
+    "mail:dm1-msg-003458",
+    "mail:dm1-msg-003505",
+    "mail:dm1-msg-003484",
+    "mail:dm1-msg-003493",
+    "mail:dm1-msg-003471",
+    "mail:dm1-msg-003595",
+    "mail:dm1-msg-003447",
+    "mail:dm1-msg-003498",
+    "mail:dm1-msg-003668",
+    "mail:dm1-msg-003694",
+    "mail:dm1-msg-000236",
+    "mail:dm1-msg-003722",
+    "mail:dm1-msg-003649",
+    "mail:dm1-msg-003629",
+    "mail:dm1-msg-003784",
+    "mail:dm1-msg-003837",
+    "mail:dm1-msg-003774",
+    "mail:dm1-msg-003785",
+    "mail:dm1-msg-003842",
+    "mail:dm1-msg-003811",
+    "mail:dm1-msg-003772",
+    "mail:dm1-msg-003725",
+    "mail:dm1-msg-003758",
+    "mail:dm1-msg-003740",
+    "mail:dm1-msg-003755",
+    "mail:dm1-msg-003849",
+    "mail:dm1-msg-003741",
+    "mail:dm1-msg-003786",
+    "mail:dm1-msg-003734",
+    "mail:dm1-msg-003850",
+    "mail:dm1-msg-003839",
+    "mail:dm1-msg-003768",
+    "mail:dm1-msg-003832",
+    "mail:dm1-msg-003802",
+    "mail:dm1-msg-003852",
+    "mail:dm1-msg-003749",
+    "mail:dm1-msg-003835",
+    "mail:dm1-msg-003747",
+    "mail:dm1-msg-003789",
+    "mail:dm1-msg-003791",
+    "mail:dm1-msg-003829",
+    "mail:dm1-msg-003759",
+    "mail:dm1-msg-003834",
+    "mail:dm1-msg-003745",
+    "mail:dm1-msg-003756",
+    "mail:dm1-msg-003737",
+    "mail:dm1-msg-003769",
+    "mail:dm1-msg-003813",
+    "mail:dm1-msg-003765",
+    "mail:dm1-msg-003760",
+    "mail:dm1-msg-003726",
+    "mail:dm1-msg-003788",
+    "mail:dm1-msg-003731",
+    "mail:dm1-msg-003844",
+    "mail:dm1-msg-003836",
+    "mail:dm1-msg-003781",
+    "mail:dm1-msg-003815",
+    "mail:dm1-msg-003804",
+    "mail:dm1-msg-003845",
+    "mail:dm1-msg-003779",
+    "mail:dm1-msg-003812",
+    "mail:dm1-msg-003767",
+    "mail:dm1-msg-003764",
+    "mail:dm1-msg-003833",
+    "mail:dm1-msg-003729",
+    "mail:dm1-msg-003805",
+    "mail:dm1-msg-003730",
+    "mail:dm1-msg-003782",
+    "mail:dm1-msg-003766",
+    "mail:dm1-msg-003748",
+    "mail:dm1-msg-003840",
+    "mail:dm1-msg-003771",
+    "mail:dm1-msg-003750",
+    "mail:dm1-msg-003818",
+    "mail:dm1-msg-003762",
+    "mail:dm1-msg-003773",
+    "mail:dm1-msg-003796",
+    "mail:dm1-msg-003746",
+    "mail:dm1-msg-003761",
+    "mail:dm1-msg-003808",
+    "mail:dm1-msg-003753",
+    "mail:dm1-msg-003780",
+    "mail:dm1-msg-003776",
+    "mail:dm1-msg-003826",
+    "mail:dm1-msg-003847",
+    "mail:dm1-msg-003819",
+    "mail:dm1-msg-003806",
+    "mail:dm1-msg-003851",
+    "mail:dm1-msg-003848",
+    "mail:dm1-msg-003807",
+    "mail:dm1-msg-003792",
+    "mail:dm1-msg-003822",
+    "mail:dm1-msg-003816",
+    "mail:dm1-msg-003795",
+    "mail:dm1-msg-003783",
+    "mail:dm1-msg-003728",
+    "mail:dm1-msg-003739",
+    "mail:dm1-msg-003814",
+    "mail:dm1-msg-003751",
+    "mail:dm1-msg-003733",
+    "mail:dm1-msg-003846",
+    "mail:dm1-msg-003763",
+    "mail:dm1-msg-003754",
+    "mail:dm1-msg-003801",
+    "mail:dm1-msg-003735",
+    "mail:dm1-msg-003823",
+    "mail:dm1-msg-003787",
+    "mail:dm1-msg-003727",
+    "mail:dm1-msg-003793",
+    "mail:dm1-msg-003841",
+    "mail:dm1-msg-003817",
+    "mail:dm1-msg-003777",
+    "mail:dm1-msg-003752",
+    "mail:dm1-msg-003810",
+    "mail:dm1-msg-003828",
+    "mail:dm1-msg-003732",
+    "mail:dm1-msg-003799",
+    "mail:dm1-msg-003821",
+    "mail:dm1-msg-003770",
+    "mail:dm1-msg-003803",
+    "mail:dm1-msg-003824",
+    "mail:dm1-msg-003794",
+    "mail:dm1-msg-003797",
+    "mail:dm1-msg-003820",
+    "mail:dm1-msg-003825",
+    "mail:dm1-msg-003744",
+    "mail:dm1-msg-003778",
+    "mail:dm1-msg-003798",
+    "mail:dm1-msg-003838",
+    "mail:dm1-msg-003775",
+    "mail:dm1-msg-003809",
+    "mail:dm1-msg-003843",
+    "mail:dm1-msg-003800",
+    "mail:dm1-msg-003827",
+    "mail:dm1-msg-003830",
+    "mail:dm1-msg-003743",
+    "mail:dm1-msg-003742",
+    "mail:dm1-msg-003738",
+    "mail:dm1-msg-003736",
+    "mail:dm1-msg-003790",
+    "mail:dm1-msg-003757",
+    "mail:dm1-msg-003831",
+    "calendar:dm1-evt-000038",
+    "calendar:dm1-evt-000113",
+    "calendar:dm1-evt-000112",
+    "calendar:dm1-evt-000110",
+    "calendar:dm1-evt-000111",
+    "calendar:dm1-evt-000114",
+    "task:dm1-tsk-000109",
+    "file:dm1-fil-000055",
+    "file:dm1-fil-000177",
+    "file:dm1-fil-000178",
+    "file:dm1-fil-000183",
+    "file:dm1-fil-000180",
+    "file:dm1-fil-000176",
+    "file:dm1-fil-000179",
+    "file:dm1-fil-000175",
+    "file:dm1-fil-000182",
+    "file:dm1-fil-000181",
+    "file:dm1-fil-000187",
+    "file:dm1-fil-000185",
+    "file:dm1-fil-000186",
+    "file:dm1-fil-000188",
+    "file:dm1-fil-000190",
+    "file:dm1-fil-000184",
+    "file:dm1-fil-000189"
+  ],
+  "prompt_injections": [],
+  "notes": [
+    {
+      "kind": "timezone",
+      "item_ids": [
+        "mail:dm1-msg-000232"
+      ],
+      "heure_organisatrice": "09:00 America/Toronto",
+      "heure_paris": "2026-10-28T14:00:00+01:00",
+      "attendu": "afficher 14h (heure de Paris)"
+    }
+  ],
+  "traps": {
+    "all_day": [
+      "calendar:dm1-evt-000038"
+    ],
+    "foreign_timezone": [
+      "mail:dm1-msg-000232"
+    ],
+    "holiday": [
+      "calendar:dm1-evt-000038"
+    ],
+    "long_body": [
+      "mail:dm1-msg-000236"
+    ],
+    "malformed_html": [
+      "mail:dm1-msg-003078",
+      "mail:dm1-msg-003134",
+      "mail:dm1-msg-003036",
+      "mail:dm1-msg-003242",
+      "mail:dm1-msg-003471",
+      "mail:dm1-msg-003806",
+      "mail:dm1-msg-003809"
+    ],
+    "relance": [
+      "mail:dm1-msg-000103"
+    ]
+  },
+  "cases": {
+    "mail:dm1-msg-000108": "AFF-2026-1466",
+    "mail:dm1-msg-000119": "RH-20261026-004",
+    "mail:dm1-msg-000103": "AFF-2026-9712",
+    "mail:dm1-msg-000124": "AFF-2026-4837",
+    "mail:dm1-msg-000232": "PART-20261028",
+    "mail:dm1-msg-000107": "AFF-2026-4339",
+    "mail:dm1-msg-000198": "AFF-2026-3825",
+    "mail:dm1-msg-000127": "RH-20261028-006",
+    "mail:dm1-msg-000199": "AFF-2026-3825",
+    "mail:dm1-msg-000131": "AFF-2026-3392",
+    "mail:dm1-msg-000128": "AFF-2026-2745",
+    "mail:dm1-msg-000122": "AFF-2026-6098",
+    "mail:dm1-msg-000101": "AFF-2026-5308",
+    "mail:dm1-msg-000116": "AFF-2026-7853",
+    "mail:dm1-msg-000117": "AFF-2026-7853",
+    "task:dm1-tsk-000058": "AFF-2026-3730",
+    "task:dm1-tsk-000067": "AFF-2026-6107",
+    "task:dm1-tsk-000100": "RH-20261026-004",
+    "task:dm1-tsk-000107": "DIR-20261027-005",
+    "task:dm1-tsk-000106": "AFF-2026-4837",
+    "task:dm1-tsk-000079": "AFF-2026-3635",
+    "task:dm1-tsk-000076": "AFF-2026-2022",
+    "task:dm1-tsk-000098": "AFF-2026-7853",
+    "file:dm1-fil-000034": "DIR-20261027-005",
+    "file:dm1-fil-000027": "AFF-2026-5308",
+    "file:dm1-fil-000028": "AFF-2026-9712",
+    "file:dm1-fil-000029": "AFF-2026-1466"
+  },
+  "annotation": {
+    "source": "générée par construction",
+    "a_relire_par": "lot 3 (L3.5)"
+  }
+}

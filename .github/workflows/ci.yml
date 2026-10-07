@@ -18,8 +18,8 @@ jobs:
       - run: uv run ruff format --check .
       # 2. pytest + couverture (à partir de la v0.2.0 : ajouter --cov-fail-under=80 sur packages/)
       - run: uv run pytest --cov=packages --cov=apps --cov-report=term-missing
-      # 3. validation des fixtures contre les JSON Schema
-      # TODO(L3.1): script de validation contracts/fixtures -> contracts/schemas
+      # 3. fixtures de démo validées contre le JSON Schema du contrat A (les fixtures B sont testées par pytest)
+      - run: uv run python -m contracts.validate_fixtures
 
   gitleaks:
     runs-on: ubuntu-latest
