@@ -7,10 +7,21 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
   db:
     image: postgres:16
     environment:
       POSTGRES_USER: briefing
       POSTGRES_PASSWORD: changeme
       POSTGRES_DB: briefing
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U briefing"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
