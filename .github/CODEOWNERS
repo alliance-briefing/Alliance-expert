@@ -1,8 +1,4 @@
 /contracts/          @yacinomar45-dot @theoszpn @guillaume-carrier
 /packages/collect/   @yacinomar45-dot @bloqueur-loyal @Kinghou11 @Ryanchigang
 /packages/analyse/   @theoszpn @pferran07-ship-it @sheilaanasong-commits @yoramaccoh1-cpu
-/apps/               @guillaume-carrier @davy-junior @Therry237 @Ivan505
-/eval/               @guillaume-carrier @davy-junior @Therry237 @Ivan505
-/infra/              @guillaume-carrier @davy-junior @Therry237 @Ivan505
-/docs/               @guillaume-carrier @davy-junior @Therry237 @Ivan505
-/.github/            @guillaume-carrier @davy-junior @Therry237 @Ivan505
+/apps/  /eval/  /infra/  /docs/   @guillaume-carrier @davy-junior @Therry237 @Ivan505
