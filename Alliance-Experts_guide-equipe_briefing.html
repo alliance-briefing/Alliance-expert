@@ -1,0 +1,850 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alliance Experts — Guide d'équipe</title>
+<style>
+:root{
+  --bg:#fbfaf9;--fg:#1d1b20;--muted:#5c5a63;--line:#dcd8e0;--card:#fff;--code:#f3f0f6;
+  --l1:#0f766e;--l1b:#e2f4f1;--l2:#6d28d9;--l2b:#efe8fb;--l3:#c2410c;--l3b:#fdeadf;--ok:#166534;--warn:#92400e;--warnb:#fef3c7;--bad:#991b1b;--badb:#fee2e2;
+}
+@media (prefers-color-scheme:dark){
+:root{--bg:#141318;--fg:#ecebf0;--muted:#a3a0ad;--line:#33303b;--card:#1c1a21;--code:#25222c;
+  --l1:#5eead4;--l1b:#0e2b28;--l2:#c4b5fd;--l2b:#241a3d;--l3:#fdba74;--l3b:#3a2010;--ok:#86efac;--warn:#fcd34d;--warnb:#3a2e0c;--bad:#fca5a5;--badb:#3b1414}
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:16px}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{display:grid;grid-template-columns:260px minmax(0,1fr);gap:0;max-width:1240px;margin:0 auto}
+nav{position:sticky;top:0;align-self:start;height:100vh;overflow:auto;padding:24px 16px;border-right:1px solid var(--line);font-size:14px}
+nav b{display:block;margin:14px 0 4px;color:var(--muted);font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+nav a{display:block;padding:3px 0;color:var(--fg);text-decoration:none}
+nav a:hover{text-decoration:underline}
+nav a.l1{color:var(--l1)}nav a.l2{color:var(--l2)}nav a.l3{color:var(--l3)}
+main{padding:32px 32px 80px;min-width:0}
+h1{font-size:30px;margin:0 0 4px;line-height:1.2}
+h2{font-size:23px;margin:48px 0 10px;padding-top:12px;border-top:2px solid var(--line)}
+h3{font-size:18px;margin:28px 0 8px}
+h4{font-size:15px;margin:18px 0 6px}
+p{margin:8px 0}
+.sub{color:var(--muted);margin:0 0 18px}
+code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px}
+code{background:var(--code);padding:1px 5px;border-radius:4px}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow:auto;line-height:1.45;border:1px solid var(--line)}
+pre code{background:none;padding:0}
+table{border-collapse:collapse;width:100%;margin:10px 0 18px;font-size:14px;background:var(--card)}
+th,td{border:1px solid var(--line);padding:7px 9px;vertical-align:top;text-align:left}
+th{background:var(--code);font-weight:600}
+ul,ol{margin:6px 0 10px 22px;padding:0}
+li{margin:3px 0}
+.box{border:1px solid var(--line);border-left-width:5px;border-radius:8px;padding:10px 14px;margin:14px 0;background:var(--card)}
+.box.todo{border-left-color:var(--l3)}
+.box.warn{border-left-color:var(--warn);background:var(--warnb)}
+.box.rule{border-left-color:var(--l2)}
+.box.ok{border-left-color:var(--ok)}
+.box.en{border-left-color:var(--muted)}
+.box>b:first-child{display:block;margin-bottom:2px}
+.lot{border-radius:10px;padding:14px 16px;margin:18px 0}
+.lot.l1{background:var(--l1b);border:1px solid var(--l1)}
+.lot.l2{background:var(--l2b);border:1px solid var(--l2)}
+.lot.l3{background:var(--l3b);border:1px solid var(--l3)}
+.tag{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:99px;border:1px solid currentColor;margin-right:4px}
+.tag.l1{color:var(--l1)}.tag.l2{color:var(--l2)}.tag.l3{color:var(--l3)}
+.cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.task{border:1px solid var(--line);border-radius:8px;background:var(--card);margin:12px 0;padding:0}
+.task>header{padding:8px 12px;font-weight:600;border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.task>header small{font-weight:400;color:var(--muted)}
+.task dl{margin:0;padding:8px 12px;display:grid;grid-template-columns:130px minmax(0,1fr);gap:4px 10px;font-size:14.5px}
+.task dt{color:var(--muted);font-weight:600}
+.task dd{margin:0}
+.task dd ul{margin:0 0 0 18px}
+.l1 .task>header{background:var(--l1b)}.l2 .task>header{background:var(--l2b)}.l3 .task>header{background:var(--l3b)}
+.big{font-size:14px;color:var(--muted)}
+.diagram{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;overflow:auto}
+.diagram svg{display:block;margin:auto;max-width:100%;height:auto}
+.chk li{list-style:none;margin-left:-18px}
+.chk li:before{content:"☐ ";}
+footer{margin-top:60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:12px}
+@media (max-width:900px){
+ .wrap{display:block}
+ nav{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line)}
+ main{padding:20px 16px 60px}
+ .cols{grid-template-columns:1fr}
+ .task dl{grid-template-columns:1fr}
+}
+@media print{
+ :root{--bg:#fff;--fg:#000;--card:#fff;--code:#f2f2f2;--line:#bbb}
+ nav{display:none}.wrap{display:block}main{padding:0}
+ .task,.box,table,pre{break-inside:avoid}
+ body{font-size:11.5px}
+ h2{break-before:page}
+ *{print-color-adjust:exact;-webkit-print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav>
+  <strong>Alliance Experts<br>Briefing quotidien</strong>
+  <b>Commencer</b>
+  <a href="#a-faire">0. À faire dans les 48 h</a>
+  <a href="#projet">1. Le projet</a>
+  <a href="#archi">2. Architecture et contrats</a>
+  <b>Organisation</b>
+  <a href="#equipe">3. Équipe, référents, Teams</a>
+  <a href="#git">4. Git : règles et commandes</a>
+  <a href="#planning">5. Planning proposé</a>
+  <b>Les 3 lots</b>
+  <a class="l1" href="#lot1">Lot 1 — Collecte</a>
+  <a class="l2" href="#lot2">Lot 2 — Analyse</a>
+  <a class="l3" href="#lot3">Lot 3 — Interface, évaluation, livraison</a>
+  <b>Référence</b>
+  <a href="#qualite">6. Exigences transverses</a>
+  <a href="#risques">7. Risques</a>
+  <a href="#annexes">8. Annexes (gabarits)</a>
+  <a href="#en">English summary</a>
+</nav>
+<main>
+
+<h1>Agent IA de briefing quotidien pour managers</h1>
+<p class="sub">Client : Alliance Experts · Clinique de l'IA 2026-2027, semestre 1 · Groupe PGE2 · Référent école : David Appadourai · Version 1.0 du 30/09/2026</p>
+
+<div class="box warn">
+<b>Comment lire ce document</b>
+<p>Lis les sections 0 à 5 en entier (15 min) : elles concernent les 12 personnes. Puis lis en détail <b>ton lot</b> et survole les deux autres : ce que tu produis est consommé par un autre lot, ce que tu consommes est produit par un autre lot. Les valeurs chiffrées (seuils, tailles, délais) sont des <b>propositions de départ</b> : on les change par une décision écrite (§3.6), jamais en silence.</p>
+</div>
+
+<!-- ============ 0 ============ -->
+<h2 id="a-faire">0. À faire dans les 48 h</h2>
+<p>Échéance : <b>vendredi 02/10/2026, 18h00 (heure de Paris)</b>.</p>
+<ol>
+<li><b>Choisir un référent et un suppléant par lot</b> (procédure §3.2). Chaque lot poste un seul message dans le chat Teams du lot, puis le référent me l'envoie en message privé Teams : <code>Lot X — référent : Prénom NOM — suppléant : Prénom NOM — pseudo GitHub de chacun des 4</code>.</li>
+<li><b>Créer votre compte GitHub</b> si vous n'en avez pas, activer la double authentification, me donner le pseudo.</li>
+<li><b>Installer l'environnement local</b> : Git ≥ 2.40, Python 3.12, <code>uv</code>, Docker Desktop, Node 20 (seulement lot 3 s'il fait une SPA), un éditeur. Vérifier avec les commandes de l'annexe 8.1.</li>
+<li><b>Lot 3 uniquement</b> : ce lot ne débloque le reste que s'il démarre en premier (dépôt, CI, contrats). Il doit avoir 4 personnes, dont quelqu'un pour la CI et l'API, avant lundi 05/10 (voir l'ajustement ci-dessous).</li>
+<li><b>Lire les 3 lots</b> et noter dans le chat du lot toute question bloquante avant vendredi 18h00.</li>
+</ol>
+
+<h3>Répartition déclarée sur Teams le 30/09/2026 entre 12h31 et 12h43 (heure de Paris)</h3>
+<table>
+<tr><th>Lot</th><th>Déclarés à ce jour</th><th>Cible</th><th>Écart</th></tr>
+<tr><td><span class="tag l1">Lot 1</span> Collecte</td><td>Yacin OMAR · Tiornan KONE · Dieuveil KOUMOU · Guillaume CARRIER · Ryan CHIGANG</td><td>4</td><td>+1</td></tr>
+<tr><td><span class="tag l2">Lot 2</span> Analyse</td><td>Paul FERRAN · Théo SZAPPANYOS · Sheila SONG KANA · Marie-Yoram ACCOH</td><td>4</td><td>0</td></tr>
+<tr><td><span class="tag l3">Lot 3</span> Interface, évaluation, livraison</td><td>Davy ELENGUE (interface) · Ivan KOUASSI (présentation) · Therry BALOG (présentation)</td><td>4</td><td>−1</td></tr>
+</table>
+<div class="box warn"><b>Ajustement nécessaire avant le 02/10</b>
+<p>Le lot 3 porte le socle de l'équipe (dépôt, CI, Docker, API) et l'évaluation. Aucun des trois volontaires ne s'est positionné sur ces deux rôles. <b>Une personne du lot 1 passe au lot 3</b> pour tenir le rôle A (dépôt, CI, API, Docker) ; les lots se mettent d'accord dans leurs chats, sinon David tranche. Le lot 3 se répartit alors : A dépôt-CI-API · B interface (Davy) · C évaluation (à désigner, un des deux « présentation » doit l'accepter) · D documentation et démonstration (l'autre « présentation »).</p>
+<p>La « présentation » ne se limite pas à la soutenance : elle recouvre la documentation technique, la recette et la démonstration finale (L3.9 et L3.10), qui exigent de comprendre le code des deux autres lots.</p></div>
+<p class="big">Les déclarations sont issues des messages reçus sur Teams et seront corrigées si une personne a été mal comprise.</p>
+
+<!-- ============ 1 ============ -->
+<h2 id="projet">1. Le projet</h2>
+<h3>1.1 Ce que le client demande</h3>
+<p>Alliance Experts, groupement national d'expertise automobile, a déjà un assistant pour managers construit avec <b>Microsoft Copilot Studio</b>. Le sujet : <b>sortir de l'écosystème Microsoft</b> et construire un agent sur une architecture plus indépendante et contrôlable. Chaque jour l'agent analyse les e-mails, les événements de calendrier à venir, les tâches en retard et les fichiers récemment créés ou modifiés, puis produit un <b>brief quotidien clair, court et actionnable</b> : éléments retenus, résumés, priorisés, avec accès à la source.</p>
+<h3>1.2 Livrables attendus par le client (16)</h3>
+<table>
+<tr><th>#</th><th>Livrable</th><th>Lot</th></tr>
+<tr><td>1</td><td>Prototype fonctionnel d'agent de briefing quotidien</td><td>1+2+3</td></tr>
+<tr><td>2</td><td>Architecture indépendante de Copilot Studio</td><td>1+2+3</td></tr>
+<tr><td>3</td><td>Connecteurs vers les sources retenues</td><td><span class="tag l1">1</span></td></tr>
+<tr><td>4</td><td>Module d'analyse et de priorisation des e-mails</td><td><span class="tag l2">2</span></td></tr>
+<tr><td>5</td><td>Module d'identification des événements importants du calendrier</td><td><span class="tag l2">2</span></td></tr>
+<tr><td>6</td><td>Module de détection des tâches en retard</td><td><span class="tag l2">2</span></td></tr>
+<tr><td>7</td><td>Module d'identification des fichiers récemment créés ou modifiés</td><td><span class="tag l2">2</span> (la récupération est au lot 1)</td></tr>
+<tr><td>8</td><td>Système d'agrégation multi-sources</td><td><span class="tag l2">2</span></td></tr>
+<tr><td>9</td><td>Moteur LLM de résumé et de hiérarchisation</td><td><span class="tag l2">2</span></td></tr>
+<tr><td>10</td><td>Brief quotidien : informations prioritaires et actions recommandées</td><td><span class="tag l2">2</span></td></tr>
+<tr><td>11</td><td>Interface de consultation du brief</td><td><span class="tag l3">3</span></td></tr>
+<tr><td>12</td><td>Liens vers les sources utilisées dans chaque brief</td><td><span class="tag l1">1</span> fournit l'URL, <span class="tag l2">2</span> propage, <span class="tag l3">3</span> affiche</td></tr>
+<tr><td>13</td><td>Authentification sécurisée et gestion des droits d'accès</td><td><span class="tag l1">1</span> (accès aux sources) + <span class="tag l3">3</span> (accès à l'application)</td></tr>
+<tr><td>14</td><td>Journalisation pour la traçabilité de ce que l'agent a traité</td><td><span class="tag l1">1</span> (collecte) + <span class="tag l2">2</span> (génération) + <span class="tag l3">3</span> (consultation)</td></tr>
+<tr><td>15</td><td>Protocole d'évaluation : pertinence, qualité des résumés, priorisation</td><td><span class="tag l3">3</span></td></tr>
+<tr><td>16</td><td>Documentation technique et démonstration finale sur plusieurs scénarios de la journée d'un manager</td><td><span class="tag l3">3</span> coordonne, tous contribuent</td></tr>
+</table>
+<h3>1.3 Contraintes de cadrage</h3>
+<ul>
+<li><b>Aucune donnée réelle d'Alliance Experts ou de personnes réelles</b> dans le dépôt, les tests ou les prompts. Comptes de démonstration et jeux de données synthétiques uniquement, sauf accord écrit préalable de David.</li>
+<li><b>Aucune dépendance à Copilot Studio ni à un service propriétaire non remplaçable.</b> Toute sortie vers un service externe passe par une interface (« adapter ») dont l'implémentation peut être remplacée.</li>
+<li><b>Un seul canal vers le client.</b> Aucun étudiant n'écrit à Alliance Experts directement : les questions au client sont regroupées par les référents et passent par David.</li>
+<li>Le rendu vise la <b>reproductibilité</b> : un correcteur doit pouvoir lancer <code>docker compose up</code> et voir un brief généré à partir des données de démonstration.</li>
+</ul>
+
+<!-- ============ 2 ============ -->
+<h2 id="archi">2. Architecture et contrats entre lots</h2>
+<div class="diagram">
+<svg viewBox="0 0 980 300" role="img" aria-label="Pipeline : sources vers lot 1, contrat Item, lot 2, contrat Brief, lot 3">
+<defs><marker id="ar" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="currentColor"/></marker></defs>
+<g font-family="system-ui,sans-serif" font-size="13" fill="currentColor" stroke="currentColor">
+<rect x="10" y="40" width="150" height="220" rx="8" fill="none" stroke-dasharray="5 4"/>
+<text x="85" y="62" text-anchor="middle" stroke="none" font-weight="600">Sources</text>
+<text x="85" y="100" text-anchor="middle" stroke="none">E-mails</text>
+<text x="85" y="135" text-anchor="middle" stroke="none">Calendrier</text>
+<text x="85" y="170" text-anchor="middle" stroke="none">Tâches</text>
+<text x="85" y="205" text-anchor="middle" stroke="none">Fichiers</text>
+<text x="85" y="240" text-anchor="middle" stroke="none" font-size="11">(+ sources futures)</text>
+<rect x="210" y="90" width="180" height="120" rx="8" fill="#0f766e" fill-opacity=".18" stroke="#0f766e"/>
+<text x="300" y="120" text-anchor="middle" stroke="none" font-weight="600">LOT 1 · Collecte</text>
+<text x="300" y="142" text-anchor="middle" stroke="none" font-size="12">connecteurs, OAuth,</text>
+<text x="300" y="158" text-anchor="middle" stroke="none" font-size="12">normalisation, droits,</text>
+<text x="300" y="174" text-anchor="middle" stroke="none" font-size="12">journal d'audit</text>
+<rect x="430" y="115" width="90" height="70" rx="35" fill="none" stroke-width="2"/>
+<text x="475" y="146" text-anchor="middle" stroke="none" font-weight="600">Item</text>
+<text x="475" y="163" text-anchor="middle" stroke="none" font-size="11">contrat A</text>
+<rect x="560" y="90" width="180" height="120" rx="8" fill="#6d28d9" fill-opacity=".18" stroke="#6d28d9"/>
+<text x="650" y="120" text-anchor="middle" stroke="none" font-weight="600">LOT 2 · Analyse</text>
+<text x="650" y="142" text-anchor="middle" stroke="none" font-size="12">agrégation, scoring,</text>
+<text x="650" y="158" text-anchor="middle" stroke="none" font-size="12">LLM, citations,</text>
+<text x="650" y="174" text-anchor="middle" stroke="none" font-size="12">garde anti-hallucination</text>
+<rect x="780" y="115" width="80" height="70" rx="35" fill="none" stroke-width="2"/>
+<text x="820" y="146" text-anchor="middle" stroke="none" font-weight="600">Brief</text>
+<text x="820" y="163" text-anchor="middle" stroke="none" font-size="11">contrat B</text>
+<rect x="760" y="215" width="210" height="70" rx="8" fill="#c2410c" fill-opacity=".18" stroke="#c2410c"/>
+<text x="865" y="240" text-anchor="middle" stroke="none" font-weight="600">LOT 3 · Interface, éval,</text>
+<text x="865" y="258" text-anchor="middle" stroke="none" font-weight="600">livraison, CI, docs</text>
+<line x1="160" y1="150" x2="208" y2="150" marker-end="url(#ar)"/>
+<line x1="390" y1="150" x2="428" y2="150" marker-end="url(#ar)"/>
+<line x1="520" y1="150" x2="558" y2="150" marker-end="url(#ar)"/>
+<line x1="740" y1="150" x2="778" y2="150" marker-end="url(#ar)"/>
+<line x1="820" y1="185" x2="820" y2="213" marker-end="url(#ar)"/>
+<rect x="560" y="10" width="410" height="60" rx="8" fill="none" stroke-dasharray="4 3"/>
+<text x="765" y="34" text-anchor="middle" stroke="none" font-size="12">Le lot 3 construit aussi le jeu d'évaluation et note</text>
+<text x="765" y="52" text-anchor="middle" stroke="none" font-size="12">les sorties du lot 2 sans que le lot 2 voie les réponses</text>
+</g>
+</svg>
+</div>
+
+<h3>2.1 Principe : les lots ne se bloquent jamais</h3>
+<p>Chaque lot livre dès la <b>semaine 1</b> des <b>fixtures</b> (données factices conformes au contrat) et un <b>stub</b> (implémentation minimale qui renvoie ces fixtures). Le lot 2 travaille sur les fixtures du lot 1 avant que les connecteurs réels existent. Le lot 3 affiche les fixtures du lot 2 avant que le LLM soit branché. Le premier jalon est un <b>walking skeleton</b> : le pipeline complet tourne de bout en bout sur des données factices, avant toute fonctionnalité réelle.</p>
+
+<h3>2.2 Contrat A — <code>Item</code> (sortie du lot 1, entrée du lot 2)</h3>
+<pre><code>{
+  "schema_version": "1.0",
+  "item_id": "mail:AAMkAD...",            // stable = source + identifiant natif ; jamais un hash de contenu
+  "source": "mail | calendar | task | file",
+  "provider": "microsoft | google | demo",
+  "owner_user_id": "u_123",                // à qui appartient l'item ; base de l'isolation entre utilisateurs
+  "title": "Re: Devis sinistre 2026-0412",
+  "snippet": "≤ 500 caractères, texte brut, sans HTML, sans signature",
+  "content_text": null,                    // corps complet, présent seulement si la politique de rétention l'autorise
+  "created_at": "2026-09-29T14:03:00+02:00",   // ISO 8601 AVEC décalage ; Europe/Paris pour l'affichage
+  "updated_at": "2026-09-30T08:12:00+02:00",
+  "start_at": null, "end_at": null,        // calendrier
+  "due_at": null, "completed": null,       // tâches
+  "participants": [{"name": "…", "email": "…", "role": "from|to|cc|organizer|attendee|assignee|modifier"}],
+  "thread_id": "conv:…",                   // regroupe les messages d'un même fil
+  "native_importance": "low | normal | high | null",
+  "is_read": false,
+  "url": "https://…",                      // lien profond vers l'original ; OBLIGATOIRE (livrable 12)
+  "acl": {"visible_to": ["u_123"]},
+  "collected_at": "2026-09-30T08:30:02+02:00",
+  "connector": {"name": "mail-graph", "version": "0.3.1"}
+}</code></pre>
+<h3>2.3 Contrat B — <code>Brief</code> (sortie du lot 2, entrée du lot 3)</h3>
+<pre><code>{
+  "schema_version": "1.0",
+  "brief_id": "b_2026-09-30_u_123",
+  "owner_user_id": "u_123",
+  "date": "2026-09-30",
+  "generated_at": "2026-09-30T08:31:10+02:00",
+  "generator": {"llm": "nom-du-modèle", "llm_version": "…", "prompt_version": "p7", "temperature": 0},
+  "sections": [
+    {"kind": "actions | meetings | overdue | files",
+     "entries": [
+       {"rank": 1,
+        "priority_score": 87,                                   // 0-100
+        "priority_reasons": ["question directe sans réponse depuis 3 j", "échéance demain"],
+        "text": "Valider le devis 2026-0412 avant demain 12h.",
+        "claims": [{"text": "échéance demain 12h", "source_item_ids": ["mail:AAMkAD..."]}],
+        "recommended_action": "Répondre au fil",
+        "source_item_ids": ["mail:AAMkAD..."]}
+     ]}
+  ],
+  "stats": {"items_in": 214, "items_out": 9, "tokens_in": 18400, "tokens_out": 620, "latency_ms": 21400, "cost_eur": 0.0},
+  "warnings": ["2 items ignorés : source indisponible"]
+}</code></pre>
+<h3>2.4 Contrat C — <code>AuditEvent</code> (journal, écrit par les lots 1, 2, 3)</h3>
+<pre><code>{"ts": "2026-09-30T08:30:02+02:00", "actor": "connector:mail-graph | analyse | api",
+ "user_id": "u_123", "action": "collect | generate | view",
+ "source": "mail", "item_ids": ["mail:AAMkAD..."], "count": 42, "status": "ok | error", "error_code": null}</code></pre>
+<p><b>Interdit dans le journal :</b> corps de message, jetons, mots de passe, adresses e-mail complètes. On journalise des identifiants et des compteurs, pas du contenu.</p>
+
+<h3>2.5 Où vivent les contrats</h3>
+<ul>
+<li>Dossier <code>contracts/</code> : modèles <b>pydantic v2</b> (source de vérité) + JSON Schema exporté + <code>fixtures/</code> + <code>CHANGELOG.md</code>.</li>
+<li>Versionnement <b>semver</b> : ajout d'un champ optionnel = mineur (<code>1.1</code>) ; renommage, suppression, changement de type ou de sens = majeur (<code>2.0</code>).</li>
+<li>Un changement de <code>contracts/</code> exige l'approbation d'<b>un référent de chacun des 3 lots</b> et l'étiquette <code>contract-change</code>. Les fixtures sont mises à jour dans la même PR.</li>
+<li>Un test en CI valide que toutes les fixtures respectent le schéma, et que le stub de chaque lot produit un objet valide.</li>
+</ul>
+
+<!-- ============ 3 ============ -->
+<h2 id="equipe">3. Équipe, référents, communication</h2>
+<h3>3.1 Structure</h3>
+<table>
+<tr><th>Instance</th><th>Membres</th><th>Rôle</th></tr>
+<tr><td>Lot (×3)</td><td>4 personnes</td><td>Tient sa partie du pipeline, de bout en bout : code, tests, documentation, démo.</td></tr>
+<tr><td>Comité technique</td><td>3 référents + 3 suppléants</td><td>Décide des contrats, de l'intégration, des arbitrages entre lots. Réunion hebdomadaire de 30 min.</td></tr>
+<tr><td>Référent école</td><td>David Appadourai</td><td>Point d'entrée unique vers Alliance Experts, valide les décisions qui touchent le périmètre, évalue.</td></tr>
+</table>
+
+<h3>3.2 Choisir le référent de lot</h3>
+<ol>
+<li>Chaque lot désigne <b>1 référent + 1 suppléant</b> avant vendredi 02/10, 18h00. Méthode : chacun propose un nom en 24 h dans le chat du lot ; en cas d'égalité, le lot tire au sort. Aucun débat prolongé.</li>
+<li>Le référent est <b>disponible en continu</b> (réponse sous 24 h ouvrées) et <b>a déjà utilisé Git en équipe</b> si possible. Ce n'est pas le meilleur développeur par défaut : c'est celui qui coordonne le mieux.</li>
+<li>Le suppléant tient le rôle si le référent est absent plus de 48 h. Il assiste aux réunions du comité technique.</li>
+<li>Le référent peut être remplacé par décision du lot (3 voix sur 4), annoncée dans le chat des référents.</li>
+</ol>
+<h3>3.3 Ce que fait le référent de lot — et ce qu'il ne fait pas</h3>
+<table>
+<tr><th>Il fait</th><th>Il ne fait pas</th></tr>
+<tr><td><ul>
+<li>Tient le tableau de tâches du lot (issues GitHub, étiquette <code>lot::N</code>) à jour.</li>
+<li>Est <b>propriétaire de l'interface</b> du lot (contrat A pour le lot 1, contrat B pour le lot 2, l'API pour le lot 3).</li>
+<li>Relit et approuve les PR du lot qui touchent l'interface.</li>
+<li>Représente le lot au comité technique et y rapporte l'avancement.</li>
+<li>Envoie le <b>statut hebdomadaire</b> à David : ≤ 10 lignes (fait, prévu, bloqué, risques), le vendredi avant 17h00.</li>
+<li>Remonte tôt un membre en difficulté ou absent.</li>
+</ul></td>
+<td><ul>
+<li>Ne code pas toute la partie difficile à la place des autres.</li>
+<li>N'approuve pas ses propres PR.</li>
+<li>Ne modifie pas un contrat seul.</li>
+<li>Ne décide pas en message privé : toute décision est écrite dans une issue ou un ADR.</li>
+<li>N'écrit pas au client.</li>
+</ul></td></tr>
+</table>
+<p>Un rôle transverse est attribué à des référents précis : <b>référent lot 3 = intégrateur</b> (responsable de <code>main</code> vert et des releases), <b>référent lot 1 = sécurité et données</b> (jetons, droits, données factices), <b>référent lot 2 = qualité de la génération</b> (modèles, prompts, coûts).</p>
+
+<h3>3.4 Canaux Teams</h3>
+<table>
+<tr><th>Canal</th><th>Usage</th><th>Règle</th></tr>
+<tr><td><code>AE · Lot 1 Collecte</code>, <code>AE · Lot 2 Analyse</code>, <code>AE · Lot 3 Interface-Éval</code> (chats de groupe)</td><td>Vie quotidienne du lot</td><td>Point du matin asynchrone (3 lignes) avant 10h00, heure de Paris.</td></tr>
+<tr><td><code>AE · Référents</code> (6 référents et suppléants + David)</td><td>Décisions d'interface, blocages entre lots, contrats</td><td>Toute décision qui engage un autre lot est confirmée par écrit dans une issue avec l'étiquette <code>decision</code>.</td></tr>
+<tr><td><code>AE · Annonces</code> (12 personnes + David)</td><td>Releases, changements de calendrier</td><td>Publié par le référent du lot 3 ou David uniquement.</td></tr>
+</table>
+<div class="box rule"><b>Règles de communication</b>
+<ul>
+<li>Réponse à une question adressée à toi : <b>24 h ouvrées</b>.</li>
+<li>Un blocage se signale <b>le jour même</b>, pas au prochain point.</li>
+<li>Question technique : pose-la dans le chat du lot ou une issue, pas en privé. La réponse profite aux autres et reste retrouvable.</li>
+<li>Pas de décision dans un message privé. Pas de fichier de code envoyé sur Teams : tout passe par Git.</li>
+</ul></div>
+<h3>3.5 Rituels</h3>
+<table>
+<tr><th>Rituel</th><th>Fréquence</th><th>Durée</th><th>Contenu</th></tr>
+<tr><td>Point du matin (écrit)</td><td>Chaque jour ouvré, avant 10h00</td><td>—</td><td>3 lignes : fait hier · prévu aujourd'hui · bloqué par (nom)</td></tr>
+<tr><td>Comité technique</td><td>Hebdomadaire, jour fixé par les référents</td><td>30 min</td><td>Ordre du jour fixe : contrats, intégration, blocages, risques, demandes de décision</td></tr>
+<tr><td>Démo intégrée</td><td>Hebdomadaire, après le comité</td><td>20 min</td><td>Le pipeline complet tourne devant tous, sur la version <code>main</code>. Pas de diapositives.</td></tr>
+<tr><td>Statut à David</td><td>Vendredi 17h00</td><td>—</td><td>≤ 10 lignes par lot, envoyé par le référent</td></tr>
+</table>
+<h3>3.6 Décisions : le format ADR</h3>
+<p>Toute décision qui coûte cher à défaire (choix de bibliothèque, de modèle, de base de données, changement de contrat, seuil d'évaluation) s'écrit dans <code>docs/adr/NNNN-titre.md</code> (gabarit annexe 8.3), en 10 lignes, et passe par une PR. Un ADR accepté n'est modifié que par un ADR qui le remplace.</p>
+
+<h3>3.7 Absences, désaccords, blocages</h3>
+<ul>
+<li><b>Absence prévue</b> : annoncée dans le chat du lot, avec ce qui reste en cours et qui le reprend.</li>
+<li><b>Aucune activité (commits, messages) pendant 5 jours ouvrés sans annonce</b> : le référent le signale à David.</li>
+<li><b>Désaccord technique entre lots</b> : le comité tranche à la majorité des 3 référents ; en cas de doute, on choisit l'option réversible et on écrit l'ADR.</li>
+<li><b>Conflit ou problème de participation</b> : à David, en privé, avec des faits (dates, PR, messages).</li>
+</ul>
+<div class="box warn"><b>Contribution individuelle</b> Chacun doit pouvoir expliquer à l'oral n'importe quelle ligne qu'il a soumise, y compris si un assistant de code l'a produite. L'historique Git est lu individuellement : les commits et les revues de chaque membre sont visibles.</div>
+
+<!-- ============ 4 ============ -->
+<h2 id="git">4. Git : règles et commandes</h2>
+<p>12 personnes, 3 lots, un dépôt. Les conflits de fusion et les régressions viennent d'un manque de règles, pas de la malchance. Les règles ci-dessous sont obligatoires.</p>
+
+<h3>4.1 Dépôt</h3>
+<ul>
+<li>Un <b>dépôt privé unique</b> (monorepo) : <code>alliance-briefing</code>, hébergeur GitHub sauf indication contraire de David. Créé par le référent du lot 3 avant lundi 05/10. Les 12 membres y sont <b>Write</b>, David <b>Admin</b>.</li>
+<li>Branche par défaut : <code>main</code>. <b>Protégée</b> : pas de push direct, PR obligatoire, 1 approbation minimum, CI verte obligatoire, branche à jour avant fusion, historique linéaire (squash merge), pas de force-push.</li>
+</ul>
+<h3>4.2 Arborescence</h3>
+<pre><code>alliance-briefing/
+├── contracts/                  # contrats A, B, C  ← propriétaires : 3 référents
+│   ├── models/  schemas/  fixtures/  CHANGELOG.md
+├── packages/
+│   ├── collect/                # LOT 1
+│   │   ├── core/ (interface Connector, registre, normalisation, audit)
+│   │   ├── connectors/ (mail_*, calendar_*, tasks_*, files_*, demo_*)
+│   │   └── tests/
+│   └── analyse/                # LOT 2
+│       ├── aggregate/  scoring/  summarize/  guard/  llm/  rag/
+│       └── tests/
+├── apps/
+│   ├── api/                    # LOT 3 (FastAPI)
+│   └── web/                    # LOT 3
+├── eval/                       # LOT 3 : jeu de données, annotateur, métriques, rapports
+├── infra/                      # docker-compose.yml, Dockerfiles, .env.example
+├── docs/                       # architecture, adr/, guides, threat-model.md
+├── .github/                    # CODEOWNERS, PULL_REQUEST_TEMPLATE.md, workflows/ci.yml
+└── README.md  pyproject.toml  .pre-commit-config.yaml</code></pre>
+<p><b>CODEOWNERS</b> attribue chaque dossier à son lot. Une PR qui touche un dossier d'un autre lot doit être approuvée par un de ses propriétaires.</p>
+<pre><code>/contracts/          @ref-lot1 @ref-lot2 @ref-lot3
+/packages/collect/   @equipe-lot1
+/packages/analyse/   @equipe-lot2
+/apps/  /eval/  /infra/  /docs/   @equipe-lot3</code></pre>
+
+<h3>4.3 Workflow : trunk-based, branches courtes</h3>
+<ol>
+<li>Chaque tâche a une <b>issue</b> (identifiant du guide : <code>L1.3</code>, <code>L2.4</code>…). Pas de code sans issue.</li>
+<li>Une branche par issue, nommée <code>&lt;lot&gt;/&lt;type&gt;/&lt;slug&gt;</code>, ex. <code>l1/feat/mail-connector</code>, <code>l2/fix/dedup-thread</code>, <code>l3/docs/adr-ui</code>. Types : <code>feat fix docs test refactor chore</code>.</li>
+<li><b>Durée de vie d'une branche : 2 jours ouvrés maximum.</b> Une branche plus vieille se découpe en deux.</li>
+<li>Tu te <b>rebases sur <code>main</code> au moins une fois par jour</b> de travail.</li>
+<li>PR <b>≤ 400 lignes modifiées</b> (hors fichiers générés et fixtures). Au-delà, on découpe.</li>
+<li>Revue : approbation d'une <b>personne du même lot</b> ; deux approbations si la PR touche <code>contracts/</code> (un référent de chacun des 3 lots). Personne n'approuve sa propre PR. Réponse à une demande de revue sous 24 h ouvrées.</li>
+<li>Merge en <b>squash</b> ; titre de la PR au format Conventional Commits.</li>
+<li>Après le merge, on supprime la branche.</li>
+</ol>
+<h3>4.4 Commits et PR</h3>
+<ul>
+<li><b>Conventional Commits</b> avec le paquet en portée : <code>feat(collect): ajoute le connecteur calendrier Graph</code>, <code>fix(analyse): corrige la dédup des fils</code>, <code>docs(adr): ADR-0004 choix du modèle</code>, <code>chore(ci): active gitleaks</code>.</li>
+<li>Un commit = une intention. Pas de « wip », « fix », « update ».</li>
+<li>La PR suit le gabarit annexe 8.2 : issue liée, ce qui change, comment vérifier, captures si UI, risques, cases à cocher (tests, doc, contrat).</li>
+</ul>
+<h3>4.5 Jalons et versions</h3>
+<p>Étiquettes annotées, posées uniquement par l'intégrateur sur <code>main</code> vert : <code>v0.1.0</code> (walking skeleton), <code>v0.2.0</code>, <code>v0.3.0</code>, <code>v0.9.0</code> (gel des fonctionnalités), <code>v1.0.0</code> (rendu). Chaque tag a des notes de version : ce qui marche, ce qui manque.</p>
+
+<h3>4.6 Secrets et données</h3>
+<ul>
+<li><b>Aucun secret dans Git</b> : clés API, jetons, identifiants OAuth, mots de passe. Un fichier <code>.env</code> local, non versionné ; le dépôt contient <code>infra/.env.example</code> avec des valeurs factices.</li>
+<li><b><code>gitleaks</code> en pre-commit et en CI.</b> La CI échoue si un secret est détecté.</li>
+<li><b>Si un secret a été poussé</b> : <b>1)</b> le révoquer et en créer un nouveau immédiatement, <b>2)</b> prévenir le référent sécurité (lot 1), <b>3)</b> seulement ensuite nettoyer l'historique. Réécrire l'historique ne rend pas un secret sûr : il faut le considérer comme public.</li>
+<li>Aucune donnée réelle de personne. Les jeux de données sont générés (script versionné + graine aléatoire fixée).</li>
+</ul>
+<h3>4.7 Commandes de référence</h3>
+<pre><code># première fois
+git clone git@github.com:&lt;org&gt;/alliance-briefing.git &amp;&amp; cd alliance-briefing
+git config user.name  "Prénom NOM"
+git config user.email "ton.adresse@…"        # celle liée à ton compte GitHub
+git config pull.rebase true
+git config rebase.autoStash true
+pre-commit install
+
+# démarrer une tâche
+git switch main &amp;&amp; git pull
+git switch -c l1/feat/mail-connector
+
+# travailler, committer souvent, petit
+git add -p                                    # choisir les hunks ; évite git add -A
+git commit -m "feat(collect): liste les mails des dernières 24 h"
+
+# se remettre à jour AU MOINS une fois par jour
+git fetch origin
+git rebase origin/main
+
+# publier et ouvrir la PR
+git push -u origin l1/feat/mail-connector
+gh pr create --fill --base main               # ou via l'interface web
+
+# après changements demandés en revue
+git add -p &amp;&amp; git commit -m "fix(collect): gère la pagination"
+git push                                       # sur SA branche uniquement ; --force-with-lease seulement après un rebase
+
+# conflit de rebase
+git status                                     # voir les fichiers en conflit
+# éditer, puis :
+git add &lt;fichier&gt; &amp;&amp; git rebase --continue
+# perdu ? on abandonne proprement :
+git rebase --abort
+
+# annuler sans réécrire l'historique partagé
+git revert &lt;sha&gt;
+
+# retrouver un état perdu
+git reflog</code></pre>
+<div class="box warn"><b>Interdit</b>
+<ul>
+<li><code>git push --force</code> sur <code>main</code> ou sur une branche que quelqu'un d'autre utilise. Sur ta branche perso après rebase : <code>--force-with-lease</code>.</li>
+<li><code>git add -A</code> / <code>git add .</code> sans avoir relu <code>git status</code> (on committe des <code>.env</code> et des fichiers volumineux comme ça).</li>
+<li>Committer des fichiers &gt; 5 Mo, des modèles, des bases locales, des <code>.venv</code>, <code>node_modules</code>, <code>__pycache__</code>.</li>
+<li>Modifier <code>contracts/</code> dans une PR qui contient aussi de la logique métier : PR séparée.</li>
+</ul></div>
+<h3>4.8 CI (GitHub Actions) — ce qui doit passer</h3>
+<ol>
+<li><code>ruff check</code> et <code>ruff format --check</code></li>
+<li><code>pytest</code> avec couverture ; seuil <b>80 %</b> sur <code>packages/</code> (à partir de la v0.2.0)</li>
+<li>Validation des fixtures contre les JSON Schema</li>
+<li><code>gitleaks</code></li>
+<li>Build Docker de l'API et démarrage de <code>docker compose</code> avec un test de santé</li>
+</ol>
+<p>La CI est écrite <b>par le lot 3 dans la semaine 1</b> ; sans elle, personne ne peut fusionner en sécurité.</p>
+
+<!-- ============ 5 ============ -->
+<h2 id="planning">5. Planning proposé</h2>
+<p>Jalons à partir du 30/09/2026. <b>Proposition à ajuster</b> dès que la date de soutenance est fixée (elle est « à planifier » sur la plateforme à ce jour). Les semaines sont des semaines calendaires.</p>
+<table>
+<tr><th>Échéance</th><th>Jalon commun</th><th>Lot 1</th><th>Lot 2</th><th>Lot 3</th></tr>
+<tr><td>Ven 02/10, 18h</td><td>Référents et suppléants désignés, pseudos GitHub envoyés</td><td colspan="3">Réponse à David par le référent de chaque lot (§0)</td></tr>
+<tr><td>Mer 07/10</td><td><b>Fondations</b> : dépôt, CI verte, CODEOWNERS, protections, contrats v0.1 + fixtures</td><td>Interface <code>Connector</code> + connecteur <code>demo</code> qui renvoie les fixtures</td><td>Stub d'agrégation et de brief à partir des fixtures</td><td>Dépôt, CI, contrats pydantic, docker-compose de base, guide de contribution</td></tr>
+<tr><td>Mer 14/10</td><td><b>Walking skeleton</b> — tag <code>v0.1.0</code></td><td>Pipeline demo → contrat A</td><td>Brief basé sur des règles, sans LLM</td><td>API + UI affichent un brief ; premier jeu d'évaluation (5 journées)</td></tr>
+<tr><td>Mer 28/10</td><td><b>v0.2.0</b> : premières sources réelles de démonstration</td><td>Mails + calendrier réels (compte de démo), OAuth</td><td>Scoring v1 expliqué ; premier résumé LLM avec citations</td><td>UI v1 ; évaluation v1 : 10 journées annotées, métriques calculées</td></tr>
+<tr><td>Mer 11/11</td><td><b>v0.3.0</b> : 4 sources, garde anti-hallucination</td><td>Tâches + fichiers, journal d'audit</td><td>Garde anti-hallucination active ; comparatif de 2 modèles</td><td>1ʳᵉ évaluation complète ; authentification de l'application</td></tr>
+<tr><td>Mer 25/11</td><td><b>v0.9.0</b> : gel des fonctionnalités</td><td>Durcissement sécurité, 5ᵉ connecteur de démonstration</td><td>Optimisation coût/latence, RAG si retenu</td><td>Évaluation sur le jeu de test caché ; documentation d'architecture</td></tr>
+<tr><td>Mer 09/12</td><td><b>v1.0.0</b> : rendu et répétition de la démo</td><td colspan="3">Corrections seulement. Démo devant David : 3 journées de manager.</td></tr>
+</table>
+
+<!-- ============ LOT 1 ============ -->
+<h2 id="lot1"><span class="tag l1">LOT 1</span> Collecte</h2>
+<div class="lot l1">
+<p><b>Mission.</b> Récupérer, de façon sécurisée et dans le périmètre des droits de l'utilisateur, les e-mails, événements de calendrier, tâches et fichiers, puis les livrer sous une forme unique (<b>contrat A — Item</b>) et journalisée. Le lot 1 est la <b>frontière de sécurité</b> du projet : ce qui n'est pas collecté correctement n'existe pas pour la suite.</p>
+<p><b>Entrées :</b> comptes de démonstration (Microsoft et Google), configuration OAuth. <b>Sorties :</b> liste d'<code>Item</code> valides + <code>AuditEvent</code>. <b>Consommateur :</b> lot 2.</p>
+<p><b>Rôles internes suggérés (à répartir par le lot avant le 04/10)</b> : <b>A</b> accès et sécurité (OAuth, jetons, droits) · <b>B</b> e-mails · <b>C</b> calendrier et tâches · <b>D</b> fichiers, normalisation, audit. Le référent en occupe un.</p>
+</div>
+
+<h3>Tâches du lot 1</h3>
+
+<div class="lot l1">
+<div class="task"><header>L1.0 · Contrat et connecteur de démonstration <small>Rôle D · jusqu'au 07/10 · bloquant pour les lots 2 et 3</small></header>
+<dl>
+<dt>Objectif</dt><dd>Débloquer les autres lots dès la semaine 1.</dd>
+<dt>Entrées</dt><dd>Contrat A (§2.2).</dd>
+<dt>Sortie</dt><dd><code>packages/collect/connectors/demo_*</code> qui lit des fixtures ; générateur de données factices reproductible (graine fixée) qui produit 30 journées d'un manager : 60 à 250 mails par jour, 4 à 10 événements, 3 à 12 tâches, 5 à 30 fichiers modifiés.</dd>
+<dt>Acceptation</dt><dd><ul><li>Toutes les fixtures valident le JSON Schema en CI.</li><li>Le même générateur avec la même graine produit exactement les mêmes fichiers (test).</li><li>Les données contiennent des <b>pièges volontaires</b> : fils de 15 messages, mail sans objet, événement sur plusieurs jours, événement toute la journée, fuseau horaire différent, tâche sans échéance, fichier supprimé, mail en pièce jointe, texte accentué, HTML mal formé.</li></ul></dd>
+<dt>Pièges</dt><dd>Des fixtures trop propres masquent les vrais bugs. Aucune donnée d'une personne réelle.</dd>
+</dl></div>
+
+<div class="task"><header>L1.1 · Interface <code>Connector</code> et registre <small>Rôle D · jusqu'au 14/10</small></header>
+<dl>
+<dt>Objectif</dt><dd>Ajouter une source ne doit modifier <b>que</b> le dossier du nouveau connecteur.</dd>
+<dt>Sortie</dt><dd>Classe abstraite <code>Connector</code> : <code>name</code>, <code>version</code>, <code>required_scopes()</code>, <code>collect(user, window) -&gt; Iterator[Item]</code>, <code>health() -&gt; Health</code>. Registre par découverte de paquets. Configuration par fichier (pas de code à modifier).</dd>
+<dt>Acceptation</dt><dd><ul><li><b>Preuve exigée</b> : un connecteur « source n°5 » de démonstration (ex. messages de canal, ou notes) est ajouté par un membre qui n'a pas écrit l'interface, en moins de 4 h, en ne créant que des fichiers dans un nouveau dossier. Le temps et la liste des fichiers sont inscrits dans l'issue.</li><li>Un connecteur qui plante n'empêche pas les autres de s'exécuter ; l'erreur est journalisée et remontée dans <code>warnings</code>.</li></ul></dd>
+</dl></div>
+
+<div class="task"><header>L1.2 · Authentification OAuth et gestion des jetons <small>Rôle A · jusqu'au 28/10</small></header>
+<dl>
+<dt>Objectif</dt><dd>Accéder aux sources au nom de l'utilisateur avec le <b>minimum de droits</b>, sans jamais exposer un jeton.</dd>
+<dt>Sortie</dt><dd>Flux OAuth 2.0 Authorization Code avec PKCE pour Microsoft Graph et Google. Scopes en <b>lecture seule</b> (Mail.Read, Calendars.Read, Tasks.Read, Files.Read ; équivalents Gmail, Calendar, Tasks, Drive en <code>.readonly</code>). Jetons chiffrés au repos (Fernet ou libsodium, clé dans l'environnement). Renouvellement automatique du jeton d'accès. Révocation : suppression des jetons d'un utilisateur en une commande.</dd>
+<dt>Acceptation</dt><dd><ul><li>La liste des scopes demandés est dans la documentation, chaque scope avec sa justification. Aucun scope d'écriture.</li><li>Un test parcourt les journaux et la sortie standard d'une exécution complète et ne trouve <b>aucun</b> jeton (grep automatisé en CI).</li><li>Jeton expiré : renouvelé sans intervention ; jeton révoqué : erreur explicite <code>reauth_required</code>, pas de plantage.</li><li>Un document d'une page explique comment enregistrer l'application OAuth chez Microsoft et Google, pas à pas, pour qu'un tiers le refasse.</li></ul></dd>
+<dt>Pièges</dt><dd>Le consentement administrateur d'un tenant Microsoft est souvent exigé : prévoir tôt un compte de démonstration où vous êtes administrateur, ou un mode « comptes personnels de test ». <b>Ne jamais utiliser le compte Copilot Studio du client.</b> Les URI de redirection doivent être exactes.</dd>
+</dl></div>
+
+<div class="task"><header>L1.3 · Connecteur e-mails <small>Rôle B · jusqu'au 28/10 (Graph) puis 11/11 (Google)</small></header>
+<dl>
+<dt>Fenêtre par défaut</dt><dd>Messages reçus dans les <b>24 dernières heures</b> + messages des 7 derniers jours <b>sans réponse</b> de l'utilisateur et adressés directement à lui ; plafond de 500 messages par collecte.</dd>
+<dt>Sortie</dt><dd>Un <code>Item</code> par message : <code>snippet</code> nettoyé (HTML retiré, signatures et citations en cascade réduites), <code>thread_id</code> fiable, participants avec rôle, <code>native_importance</code>, <code>is_read</code>, lien profond vers le message d'origine.</dd>
+<dt>Acceptation</dt><dd><ul><li>Pagination complète : 500 messages collectés sans doublon ni perte (test comparant au compte).</li><li>Réessai sur 429 et 5xx : attente exponentielle 1, 2, 4, 8 s, 5 essais maximum, en respectant <code>Retry-After</code>.</li><li>Nettoyage HTML testé sur ≥ 20 cas réels d'HTML de messagerie (obtenus par des e-mails de test que vous vous envoyez) : liens, tableaux, images embarquées, réponses imbriquées.</li><li>Le lien <code>url</code> ouvre bien le message dans la messagerie d'origine (vérifié manuellement, capture dans la PR).</li><li>Le corps complet n'est <b>pas</b> conservé si la politique de rétention (L1.7) ne l'autorise pas.</li></ul></dd>
+</dl></div>
+
+<div class="task"><header>L1.4 · Connecteurs calendrier et tâches <small>Rôle C · jusqu'au 28/10 (calendrier) puis 11/11 (tâches)</small></header>
+<dl>
+<dt>Calendrier</dt><dd>Événements des <b>48 prochaines heures</b>, plus l'événement en cours. Expansion des <b>récurrences</b>, événements sur toute la journée, annulations, réponses (accepté, refusé, provisoire), participants, salle, lien de visioconférence.</dd>
+<dt>Tâches</dt><dd>Tâches <b>en retard</b> (échéance passée, non terminées ; plafond 50, les plus anciennes signalées à part), tâches dues dans les 24 h. Sources : Microsoft To Do / Planner et Google Tasks.</dd>
+<dt>Acceptation</dt><dd><ul><li>Fuseaux horaires : tous les instants sont convertis en <b>Europe/Paris</b> avec décalage explicite ; tests autour du passage à l'heure d'hiver (<b>dimanche 25/10/2026</b>).</li><li>Une série récurrente hebdomadaire apparaît une seule fois dans la fenêtre avec la bonne date (test).</li><li>« En retard » = <code>due_at &lt; maintenant</code> ET <code>completed = false</code> ; une tâche sans échéance n'est jamais « en retard ».</li></ul></dd>
+</dl></div>
+
+<div class="task"><header>L1.5 · Connecteur fichiers <small>Rôle D · jusqu'au 11/11</small></header>
+<dl>
+<dt>Fenêtre par défaut</dt><dd>Fichiers créés ou modifiés dans les <b>48 dernières heures</b> ; plafond 100 ; OneDrive/SharePoint et Google Drive.</dd>
+<dt>Sortie</dt><dd><code>Item</code> avec titre, chemin, type, taille, dernier modificateur, date, lien profond. <b>Métadonnées uniquement</b> dans la première version ; l'extrait de contenu (<code>snippet</code>) seulement pour les formats texte, docx, pdf, avec limite de 500 caractères.</dd>
+<dt>Acceptation</dt><dd><ul><li>Un fichier auquel l'utilisateur n'a plus accès ne produit pas d'<code>Item</code> (test avec permissions retirées).</li><li>Un fichier de 50 Mo n'est pas téléchargé pour en extraire un extrait : lecture partielle ou métadonnées seules.</li></ul></dd>
+</dl></div>
+
+<div class="task"><header>L1.6 · Normalisation et déduplication <small>Rôle D · jusqu'au 28/10</small></header>
+<dl>
+<dt>Sortie</dt><dd>Couche unique qui convertit les objets de chaque fournisseur vers <code>Item</code>, valide via pydantic avant de sortir, et rejette (avec journal) tout objet invalide au lieu de le passer au lot 2.</dd>
+<dt>Acceptation</dt><dd><ul><li>Un même événement reçu par mail d'invitation et présent au calendrier n'est <b>pas</b> dupliqué comme deux éléments sans lien : les deux <code>Item</code> partagent un identifiant de corrélation.</li><li>Aucun champ obligatoire à <code>null</code> ; les champs optionnels absents sont explicitement <code>null</code>.</li><li>Test de propriété : pour 1 000 objets fournisseur générés aléatoirement, la sortie est toujours valide ou explicitement rejetée, jamais silencieusement altérée.</li></ul></dd>
+</dl></div>
+
+<div class="task"><header>L1.7 · Droits, isolation, rétention <small>Rôle A · jusqu'au 11/11</small></header>
+<dl>
+<dt>Sortie</dt><dd>Isolation par <code>owner_user_id</code> à tous les niveaux (stockage, cache, journaux). Politique de rétention configurable (par défaut : <code>content_text</code> non conservé, <code>snippet</code> conservé 30 jours, journaux 90 jours). Suppression complète des données d'un utilisateur en une commande.</dd>
+<dt>Acceptation</dt><dd><ul><li>Test d'intrusion simple : un utilisateur A ne peut lire aucun <code>Item</code> de l'utilisateur B, ni par l'API du lot 3, ni par les fichiers de cache.</li><li>Après la commande de suppression, une recherche par identifiant utilisateur ne renvoie plus rien (base, cache, index vectoriel du lot 2 inclus : coordonner avec le lot 2).</li><li>Modèle de menaces d'une page dans <code>docs/threat-model.md</code> : actifs, menaces, mesures (à relire par le lot 3).</li></ul></dd>
+</dl></div>
+
+<div class="task"><header>L1.8 · Journal d'audit <small>Rôle D · jusqu'au 11/11</small></header>
+<dl>
+<dt>Sortie</dt><dd>Écriture d'<code>AuditEvent</code> (contrat C) à chaque collecte : qui, quoi, combien, quels identifiants, statut. Stockage en ajout seulement (JSON Lines ou table sans mise à jour).</dd>
+<dt>Acceptation</dt><dd><ul><li>Aucun contenu de message, jeton, ni adresse complète dans le journal (test).</li><li>Pour n'importe quel <code>Item</code> d'un brief, on peut retrouver quand il a été collecté, par quel connecteur et quelle version.</li></ul></dd>
+</dl></div>
+
+<div class="task"><header>L1.9 · Tests et robustesse <small>Tous · en continu, revue à chaque jalon</small></header>
+<dl>
+<dt>Exigé</dt><dd><ul><li>Couverture ≥ <b>80 %</b> des lignes de <code>packages/collect</code>.</li><li>Tests de contrat contre les vraies API dans un job planifié séparé (non bloquant pour les PR), avec les comptes de démonstration ; tests unitaires sur réponses enregistrées (cassettes) pour la CI.</li><li>Cas d'erreur couverts : réseau coupé, 401, 403, 404, 429, 5xx, JSON incomplet, page suivante manquante.</li><li>Performance : collecte complète d'un compte de démonstration à 500 mails, 20 événements, 30 tâches, 100 fichiers en <b>moins de 30 s</b> (p95 sur 10 exécutions), mesure notée dans le README du paquet.</li></ul></dd>
+</dl></div>
+
+<div class="task"><header>L1.10 · Livrables finaux du lot 1</header>
+<dl>
+<dt>À rendre au 09/12</dt><dd><ul><li>4 connecteurs (mail, calendrier, tâches, fichiers) sur au moins un fournisseur chacun, et au moins deux fournisseurs (Microsoft et Google) pour le mail et le calendrier.</li><li>Connecteur « source n°5 » de démonstration avec la preuve L1.1.</li><li><code>packages/collect/README.md</code> : lancer, configurer, ajouter une source.</li><li>Modèle de menaces, liste des scopes justifiés, journal des décisions (ADR).</li></ul></dd>
+</dl></div>
+</div>
+
+<!-- ============ LOT 2 ============ -->
+<h2 id="lot2"><span class="tag l2">LOT 2</span> Analyse</h2>
+<div class="lot l2">
+<p><b>Mission.</b> Transformer une masse d'<code>Item</code> en un <b>brief court, priorisé, sourcé et vérifiable</b> (contrat B). Le lot 2 porte le risque principal : un brief agréable mais faux est pire qu'un brief absent. Chaque affirmation du brief doit être rattachée à ses sources et contrôlée.</p>
+<p><b>Entrées :</b> <code>Item[]</code> (fixtures d'abord, puis lot 1). <b>Sorties :</b> <code>Brief</code> valide + <code>AuditEvent</code>. <b>Consommateur :</b> lot 3 (interface et évaluation).</p>
+<p><b>Rôles internes suggérés</b> : <b>A</b> agrégation et priorisation · <b>B</b> LLM, prompts, résumés · <b>C</b> garde anti-hallucination et traçabilité · <b>D</b> RAG, coûts, comparatif de modèles. Le référent en occupe un.</p>
+</div>
+
+<div class="lot l2">
+<div class="task"><header>L2.0 · Stub de brief <small>Rôle A · jusqu'au 07/10 · bloquant pour le lot 3</small></header>
+<dl>
+<dt>Sortie</dt><dd>Fonction <code>generate_brief(items, user, date) -&gt; Brief</code> qui renvoie un brief valide construit par règles simples (les 5 mails non lus les plus récents, les réunions du jour, les tâches en retard) à partir des fixtures du lot 1.</dd>
+<dt>Acceptation</dt><dd>Le brief valide le JSON Schema ; toutes les entrées portent au moins un <code>source_item_id</code> existant dans l'entrée.</dd>
+</dl></div>
+
+<div class="task"><header>L2.1 · Agrégation et regroupement <small>Rôle A · jusqu'au 28/10</small></header>
+<dl>
+<dt>Objectif</dt><dd>Réunir des <code>Item</code> de sources différentes dans un <b>contexte commun</b> : un même sujet (un fil de mails, une réunion, un fichier, une tâche) est vu comme une seule « affaire ».</dd>
+<dt>Sortie</dt><dd>Regroupement par fil (<code>thread_id</code>), par événement (invitation + événement + documents joints), par sujet (similarité de titre et de participants). Liste d'« affaires » (<code>Case</code>) contenant leurs <code>Item</code>.</dd>
+<dt>Acceptation</dt><dd><ul><li>Sur le jeu annoté du lot 3 (jeu de développement), la précision de regroupement est ≥ 0,9 et le rappel ≥ 0,8 ; les métriques et les erreurs sont commentées.</li><li>Un fil de 15 messages produit <b>une</b> affaire et non 15.</li><li>Temps ≤ 2 s pour 500 <code>Item</code> sans appel au LLM.</li></ul></dd>
+</dl></div>
+
+<div class="task"><header>L2.2 · Score de priorité expliqué <small>Rôle A · v1 le 28/10, v2 le 11/11</small></header>
+<dl>
+<dt>Objectif</dt><dd>Classer les affaires de 0 à 100 avec des <b>raisons lisibles</b>, indépendamment du LLM.</dd>
+<dt>Signaux minimaux</dt><dd><ul><li>Expéditeur : n'appartient pas à la liste noire, appartient à la liste des contacts fréquents ou à la hiérarchie (configurable).</li><li>Question directe ou demande d'action détectée.</li><li>Échéance citée ou <code>due_at</code> proche ; ancienneté d'une demande sans réponse (en jours ouvrés).</li><li>Réunion à venir liée (même sujet) dans les 48 h.</li><li>Importance native (<code>native_importance</code>) et mots signalant l'urgence.</li><li>Bruit : newsletters, notifications automatiques (baisse du score).</li></ul></dd>
+<dt>Acceptation</dt><dd><ul><li>Chaque score est accompagné de 1 à 4 <code>priority_reasons</code> compréhensibles par un manager, sans jargon.</li><li>Le score est <b>reproductible</b> : mêmes entrées, même sortie.</li><li>Comparaison au classement de référence du jeu annoté (NDCG@5) publiée dans le README ; toute modification du barème doit améliorer ou maintenir ce chiffre sur le jeu de <b>développement</b>.</li><li>Le LLM peut <b>ajuster</b> le score dans une plage de ± 15 points avec une raison écrite ; il ne le remplace pas.</li></ul></dd>
+</dl></div>
+
+<div class="task"><header>L2.3 · Résumé par LLM avec sortie structurée <small>Rôle B · jusqu'au 28/10 (v1), 11/11 (v2)</small></header>
+<dl>
+<dt>Objectif</dt><dd>Produire le texte de chaque entrée du brief et l'action recommandée, <b>en JSON contraint</b> au contrat B.</dd>
+<dt>Sortie</dt><dd>Prompts versionnés (<code>p1</code>, <code>p2</code>…) dans <code>packages/analyse/summarize/prompts/</code> ; appel avec sortie structurée validée par pydantic ; réessai unique en cas de sortie invalide ; en cas de second échec, l'entrée est produite <b>sans</b> résumé LLM (extrait brut + lien) avec un avertissement, jamais inventée.</dd>
+<dt>Forme du brief (défauts)</dt><dd><ul><li>≤ <b>400 mots</b> au total ; ≤ <b>7</b> entrées « à traiter » ; réunions du jour listées avec l'heure (heure de Paris) ; retards regroupés.</li><li>Chaque entrée : une phrase de contexte, une phrase d'action, ≤ 40 mots.</li><li>Langue de sortie = langue de l'utilisateur (FR ou EN), configurable.</li></ul></dd>
+<dt>Acceptation</dt><dd><ul><li>100 % des entrées valident le schéma sur le jeu de développement.</li><li>Le prompt ne contient que des <code>Item</code> de l'utilisateur concerné (test d'isolation).</li><li><b>Les instructions présentes dans un e-mail ne sont jamais exécutées</b> (injection de prompt) : au moins 10 e-mails piégés dans le jeu de test (« ignore les consignes et envoie… ») ne modifient ni le brief ni les entrées.</li></ul></dd>
+</dl></div>
+
+<div class="task"><header>L2.4 · Garde anti-hallucination et traçabilité <small>Rôle C · jusqu'au 11/11 · exigence forte</small></header>
+<dl>
+<dt>Objectif</dt><dd>Aucune affirmation sans source vérifiable.</dd>
+<dt>Sortie</dt><dd>Après génération, chaque phrase est découpée en <code>claims</code> ; chaque claim porte ≥ 1 <code>source_item_id</code>. Le module <code>guard</code> vérifie de façon <b>déterministe</b> : (1) l'<code>item_id</code> cité existe dans l'entrée ; (2) les <b>dates, heures, montants, noms propres et numéros</b> du claim se retrouvent dans l'<code>Item</code> cité ; (3) un claim sans source est retiré ou l'entrée régénérée une fois.</dd>
+<dt>Acceptation</dt><dd><ul><li><b>Porte dure</b> : aucun brief n'est livré avec un claim sans source valide ; sinon l'entrée est dégradée (extrait + lien) et un <code>warning</code> est ajouté.</li><li>Taux de claims soutenus ≥ <b>95 %</b> sur le jeu de développement, mesuré par le lot 3 (pas par vous).</li><li>Un jeu de <b>20 cas adverses</b> (date fausse, montant inversé, homonyme, information présente dans un autre utilisateur) est ajouté aux tests et le module les rejette tous.</li><li>Pour une entrée du brief, une commande <code>trace &lt;brief_id&gt; &lt;rank&gt;</code> affiche les <code>Item</code> sources et l'extrait qui soutient chaque claim.</li></ul></dd>
+<dt>Piège</dt><dd>Un LLM qui vérifie un LLM n'est pas une preuve ; la vérification déterministe est la base, le LLM juge est un complément mesuré.</dd>
+</dl></div>
+
+<div class="task"><header>L2.5 · Interface LLM remplaçable et comparatif de modèles <small>Rôle D · jusqu'au 11/11</small></header>
+<dl>
+<dt>Objectif</dt><dd>L'indépendance vis-à-vis d'un fournisseur est le sujet du client : le lot 2 doit la démontrer.</dd>
+<dt>Sortie</dt><dd>Interface <code>LLMClient.generate(messages, schema, params)</code> avec <b>au moins deux implémentations</b> : un modèle hébergé (API) et un <b>modèle local</b> (Ollama ou llama.cpp). Sélection par configuration. Journalisation du modèle, de sa version et de ses paramètres dans <code>generator</code>.</dd>
+<dt>Comparatif</dt><dd>Au moins <b>2 modèles</b> × <b>2 stratégies de prompt</b>, mêmes entrées, température 0 ou graine fixée, sur le jeu de développement. Tableau : taux de claims soutenus, rappel et précision du lot 3, latence p50/p95, coût par brief (tokens et euros), taux d'échec de format. Recommandation argumentée dans un ADR.</dd>
+<dt>Acceptation</dt><dd>Changer de modèle = changer une ligne de configuration ; test qui exécute le pipeline avec chacune des deux implémentations sur les mêmes fixtures.</dd>
+</dl></div>
+
+<div class="task"><header>L2.6 · Contexte par recherche (RAG) — conditionnel <small>Rôle D · décision au 28/10</small></header>
+<dl>
+<dt>Quand</dt><dd>Seulement si le comparatif montre que le contexte manque (ex. il faut l'historique d'un fil ou un document lié pour bien résumer). À décider par un ADR avec des chiffres.</dd>
+<dt>Sortie si retenu</dt><dd>Index vectoriel par utilisateur (pgvector, Qdrant ou Chroma), alimenté à partir des <code>Item</code>, filtré par <code>acl</code> <b>avant</b> la recherche. Recherche limitée à l'utilisateur du brief. Suppression complète possible (voir L1.7).</dd>
+<dt>Acceptation</dt><dd><ul><li>Gain mesuré sur le jeu de développement (rappel ou claims soutenus) par rapport à la version sans RAG, avec intervalle de confiance ; si le gain n'est pas démontré, on ne garde pas le RAG.</li><li>Test d'isolation : requête de l'utilisateur A jamais servie avec un extrait de B.</li></ul></dd>
+</dl></div>
+
+<div class="task"><header>L2.7 · Performance, coût, robustesse <small>Rôle D · en continu</small></header>
+<dl>
+<dt>Cibles (à réviser par ADR après la première mesure)</dt><dd><ul><li>Latence de génération p95 ≤ <b>60 s</b> pour 200 <code>Item</code> avec un modèle hébergé ; ≤ <b>180 s</b> avec le modèle local.</li><li>Coût par brief mesuré et affiché dans <code>stats</code>. Budget de tokens par brief plafonné et documenté.</li><li>Dégradation gracieuse : si le LLM est indisponible, le brief à base de règles (L2.0 amélioré) est livré avec un avertissement.</li><li>Couverture ≥ <b>80 %</b> sur <code>packages/analyse</code>.</li></ul></dd>
+</dl></div>
+
+<div class="task"><header>L2.8 · Livrables finaux du lot 2</header>
+<dl>
+<dt>À rendre au 09/12</dt><dd><ul><li>Modules d'analyse et de priorisation des 4 types d'éléments (livrables 4, 5, 6, 7), agrégation (8), moteur LLM (9), brief (10).</li><li><code>packages/analyse/README.md</code> : lancer, configurer un modèle, ajouter un signal de priorité.</li><li>ADR : choix des modèles, du RAG, des seuils. Tableau du comparatif de modèles.</li><li>Journal des versions de prompts avec, pour chacune, les métriques du lot 3.</li></ul></dd>
+</dl></div>
+</div>
+
+<!-- ============ LOT 3 ============ -->
+<h2 id="lot3"><span class="tag l3">LOT 3</span> Interface, évaluation, livraison</h2>
+<div class="lot l3">
+<p><b>Mission.</b> Fournir le socle d'équipe (dépôt, CI, conteneurs), l'<b>application</b> que le manager utilise, l'<b>évaluation indépendante</b> qui dit si le brief est bon, et la <b>livraison</b> finale (documentation, démonstration). C'est le lot qui doit démarrer en premier et qui garde l'ensemble cohérent.</p>
+<p><b>Entrées :</b> <code>Brief</code> (stub d'abord, puis lot 2), <code>Item</code> (fixtures, puis lot 1). <b>Sorties :</b> application, rapport d'évaluation, documentation, releases.</p>
+<p><b>Rôles internes suggérés</b> : <b>A</b> dépôt, CI, Docker, API · <b>B</b> interface utilisateur · <b>C</b> évaluation : jeu de données, annotation, métriques · <b>D</b> documentation, démonstration, intégration et recette. Le référent (= intégrateur) en occupe un et garde la main sur <code>main</code> et les tags.</p>
+</div>
+
+<div class="lot l3">
+<div class="task"><header>L3.0 · Fondations du dépôt <small>Rôle A · jusqu'au 07/10 · bloquant pour tout le monde</small></header>
+<dl>
+<dt>Sortie</dt><dd>Dépôt créé, branche <code>main</code> protégée, <code>CODEOWNERS</code>, gabarits de PR et d'issue, <code>pyproject.toml</code> (uv, workspace), <code>ruff</code>, <code>pytest</code>, <code>pre-commit</code> (ruff, gitleaks), CI GitHub Actions (§4.8), <code>docker-compose.yml</code> qui démarre l'API et un service de base de données, README de démarrage, guide de contribution reprenant §4.</dd>
+<dt>Acceptation</dt><dd><ul><li>Un membre qui n'a jamais vu le dépôt fait <code>git clone</code>, <code>uv sync</code>, <code>docker compose up</code> et <code>pytest</code> en <b>moins de 15 minutes</b> en suivant uniquement le README (test fait par un membre d'un autre lot, noté dans l'issue).</li><li>Une PR volontairement cassée (secret factice, formatage, test rouge) est bloquée par la CI (3 captures).</li><li>Les 12 membres et David ont accès avec les bons droits ; les protections de branche sont vérifiées.</li></ul></dd>
+</dl></div>
+
+<div class="task"><header>L3.1 · Contrats exécutables et validation croisée <small>Rôle A · jusqu'au 07/10</small></header>
+<dl>
+<dt>Sortie</dt><dd><code>contracts/</code> : modèles pydantic v2 des contrats A, B, C ; export JSON Schema ; fixtures valides et invalides ; test qui vérifie que les stubs des lots 1 et 2 produisent des objets conformes ; <code>CHANGELOG.md</code>.</dd>
+<dt>Acceptation</dt><dd>Le dossier <code>fixtures/invalid/</code> contient ≥ 15 cas (champ manquant, mauvais type, date sans fuseau, <code>url</code> absente…) et tous sont rejetés par le validateur.</dd>
+</dl></div>
+
+<div class="task"><header>L3.2 · API <small>Rôle A · jusqu'au 14/10 (squelette), 28/10 (v1)</small></header>
+<dl>
+<dt>Sortie</dt><dd>FastAPI : <code>POST /briefs</code> (génère pour l'utilisateur connecté), <code>GET /briefs/{date}</code>, <code>GET /items/{item_id}</code> (métadonnées et lien source), <code>POST /feedback</code>, <code>GET /health</code>. Documentation OpenAPI générée. Erreurs au format standard (code, message, identifiant de corrélation).</dd>
+<dt>Acceptation</dt><dd><ul><li>Tous les endpoints sauf <code>/health</code> exigent une authentification ; un utilisateur ne peut lire que ses propres briefs et items (tests).</li><li>Le brief déjà généré du jour est servi en moins de 2 s (cache) ; une génération lance une tâche et renvoie l'état.</li><li>Chaque appel écrit un <code>AuditEvent</code> <code>view</code> ou <code>generate</code>.</li></ul></dd>
+</dl></div>
+
+<div class="task"><header>L3.3 · Interface de consultation <small>Rôle B · squelette 14/10, v1 28/10, v2 11/11</small></header>
+<dl>
+<dt>Choix</dt><dd>FastAPI + Jinja/HTMX, ou SPA (Vite + React). Le choix est justifié dans un ADR (critère : simplicité de maintenance par une équipe de 4).</dd>
+<dt>Contenu</dt><dd><ul><li>Brief du jour : sections <i>À traiter</i>, <i>Réunions</i>, <i>Retards</i>, <i>Fichiers</i>, dans l'ordre de priorité.</li><li>Pour chaque entrée : texte, score et raisons de priorité, <b>« Voir la source »</b> qui ouvre l'élément d'origine (contrat A, champ <code>url</code>), et l'extrait ayant servi.</li><li>Alertes : <code>warnings</code> du brief visibles (source indisponible, entrée dégradée).</li><li>Retour utilisateur par entrée : utile / pas utile / faux, stocké pour l'évaluation.</li><li>Historique des briefs des 30 derniers jours.</li></ul></dd>
+<dt>Acceptation</dt><dd><ul><li>Utilisable au clavier seul ; contraste conforme WCAG AA ; lisible sur mobile (largeur 375 px).</li><li>Aucun texte du brief n'est affiché sans son lien de source (test de rendu).</li><li>Aucun contenu HTML issu d'un e-mail n'est injecté tel quel dans la page (protection contre l'injection XSS ; test avec un e-mail contenant <code>&lt;script&gt;</code>).</li></ul></dd>
+</dl></div>
+
+<div class="task"><header>L3.4 · Authentification et droits de l'application <small>Rôle A/B · jusqu'au 11/11</small></header>
+<dl>
+<dt>Sortie</dt><dd>Connexion via OAuth/OpenID (fournisseur au choix, documenté), sessions à durée limitée, rôles <code>manager</code> et <code>admin</code>, déconnexion, protection CSRF.</dd>
+<dt>Acceptation</dt><dd>Tests automatisés : accès sans session refusé (401), accès à la ressource d'un autre utilisateur refusé (403), session expirée gérée. Revue de sécurité croisée avec le lot 1 (le référent sécurité signe dans la PR).</dd>
+</dl></div>
+
+<div class="task"><header>L3.5 · Évaluation — jeu de données <small>Rôle C · v0 (5 journées) 14/10, v1 (10 journées) 28/10, complet (≥ 30) 11/11</small></header>
+<dl>
+<dt>Principe</dt><dd>L'évaluation doit être <b>indépendante</b> du lot 2. Le lot 3 annote les journées avant que le lot 2 en voie les réponses.</dd>
+<dt>Sortie</dt><dd><ul><li>≥ <b>30 journées de manager synthétiques</b> (générées avec le lot 1, L1.0) réparties en un jeu de <b>développement</b> (10 journées, visibles du lot 2) et un jeu de <b>test caché</b> (≥ 20 journées, jamais partagé avant v0.9.0).</li><li>Pour chaque journée : la liste <b>de référence</b> des 3 à 7 éléments qui <i>doivent</i> figurer dans le brief, avec leur ordre d'importance, et les éléments qui ne doivent <i>pas</i> y figurer.</li><li>Guide d'annotation écrit (1 page) : critères d'importance, exemples limites, règles de départage.</li><li><b>Double annotation</b> par deux membres différents sur 20 % des journées ; accord mesuré par le kappa de Cohen, attendu ≥ <b>0,6</b> ; sinon on précise le guide et on ré-annote.</li></ul></dd>
+<dt>Acceptation</dt><dd><ul><li>Les annotations sont dans le dépôt, versionnées, avec leur date ; le jeu de test caché est dans une branche ou un dépôt séparé accessible au seul lot 3 jusqu'à v0.9.0.</li><li>Des journées avec pièges : journée calme, journée surchargée, deux urgences en conflit, informations contradictoires, e-mails d'injection de prompt.</li></ul></dd>
+</dl></div>
+
+<div class="task"><header>L3.6 · Évaluation — métriques et protocole <small>Rôle C · jusqu'au 28/10 (v1), 11/11 (v2), 25/11 (test caché)</small></header>
+<dl>
+<dt>Métriques (livrable 15)</dt><dd>
+<table>
+<tr><th>Dimension</th><th>Métrique</th><th>Cible proposée</th></tr>
+<tr><td>Pertinence</td><td>Rappel des éléments de référence dans le brief (recall@7)</td><td>≥ 0,80</td></tr>
+<tr><td>Pertinence</td><td>Précision : part des entrées du brief jugées pertinentes</td><td>≥ 0,70</td></tr>
+<tr><td>Priorisation</td><td>NDCG@5 contre le classement de référence</td><td>≥ 0,75</td></tr>
+<tr><td>Fiabilité</td><td>Taux de claims soutenus par leur source</td><td>≥ 0,95</td></tr>
+<tr><td>Fiabilité</td><td>Taux de brief contenant au moins un claim non soutenu</td><td>≤ 0,10</td></tr>
+<tr><td>Résumé</td><td>Notation humaine 1-5 (clarté, concision, actionnabilité) par 2 relecteurs</td><td>moyenne ≥ 4,0</td></tr>
+<tr><td>Sécurité</td><td>Injections de prompt neutralisées</td><td>100 %</td></tr>
+<tr><td>Coût/latence</td><td>Latence p95 et coût par brief</td><td>voir L2.7</td></tr>
+</table>
+Ces cibles sont des <b>points de départ</b> : elles ne sont abaissées que par un ADR qui explique pourquoi. Chaque rapport donne des <b>intervalles de confiance</b> (bootstrap sur les journées) et les cas où le système échoue, pas seulement la moyenne.</dd>
+<dt>Sortie</dt><dd>Commande unique <code>make eval</code> (ou <code>uv run eval</code>) qui génère un rapport Markdown/HTML daté : version du code, modèle, prompt, jeu utilisé, métriques, 10 pires cas commentés. Rapports archivés dans <code>eval/reports/</code>.</dd>
+<dt>Acceptation</dt><dd><ul><li>Le rapport se régénère à l'identique (mêmes graines) sur la même version du code.</li><li>Une régression de plus de 3 points sur une métrique entre deux versions déclenche une alerte dans la CI (job non bloquant à partir de v0.3.0, bloquant à partir de v0.9.0).</li><li>Le lot 2 <b>ne peut pas</b> lire les réponses de référence du jeu de test.</li></ul></dd>
+</dl></div>
+
+<div class="task"><header>L3.7 · Observabilité et journal côté application <small>Rôle A · jusqu'au 11/11</small></header>
+<dl>
+<dt>Sortie</dt><dd>Page d'administration listant les <code>AuditEvent</code> filtrables par utilisateur, date, action ; identifiant de corrélation propagé du lot 1 au lot 3 ; métriques techniques (durées de collecte, de génération, taux d'erreur).</dd>
+<dt>Acceptation</dt><dd>Pour un brief donné, un administrateur voit la chaîne complète : collecte (quels connecteurs, combien d'éléments), génération (modèle, tokens), consultation (qui, quand). Aucun contenu de message dans ces vues.</dd>
+</dl></div>
+
+<div class="task"><header>L3.8 · Packaging et livraison <small>Rôle A/D · 11/11 (v1), 09/12 (final)</small></header>
+<dl>
+<dt>Sortie</dt><dd><code>docker compose up</code> lance toute l'application avec les données de démonstration ; variables documentées ; volumes pour les données ; scripts d'amorçage ; sauvegarde et restauration d'une base de démonstration ; mode « hors ligne » sans compte externe (connecteur demo + modèle local).</dd>
+<dt>Acceptation</dt><dd>Sur une machine vierge (ou une VM) : clone, <code>docker compose up</code>, ouverture de l'interface, génération d'un brief de démonstration en <b>moins de 10 minutes</b>. Test fait par un membre du lot 1 ou 2 et enregistré.</dd>
+</dl></div>
+
+<div class="task"><header>L3.9 · Documentation technique <small>Rôle D · en continu, complète au 09/12</small></header>
+<dl>
+<dt>Contenu attendu (livrable 16)</dt><dd><ul><li>Architecture : diagramme, flux de données, contrats, responsabilités des lots.</li><li>Technologies retenues et <b>choix justifiés</b> (ADR référencés).</li><li>Sécurité : modèle de menaces, gestion des jetons et des droits, données conservées et durées.</li><li>Évaluation : protocole, jeux, métriques, résultats, limites.</li><li>Guide d'exploitation : installation, configuration, ajout d'une source, changement de modèle.</li><li>Limites connues et pistes pour Alliance Experts (ce qui manque pour une mise en production).</li></ul></dd>
+<dt>Acceptation</dt><dd>Relecture croisée par un membre d'un autre lot ; aucune commande du guide ne doit échouer quand on les rejoue.</dd>
+</dl></div>
+
+<div class="task"><header>L3.10 · Intégration, recette et démonstration finale <small>Rôle D + référent · 09/12</small></header>
+<dl>
+<dt>Sortie</dt><dd>Script de démonstration sur <b>au moins 3 journées de manager représentatives</b> : (1) journée normale ; (2) journée surchargée avec deux urgences en conflit ; (3) journée avec un cas piégé (e-mail d'injection ou information contradictoire). Répétition générale le 02/12.</dd>
+<dt>Acceptation</dt><dd><ul><li>La démonstration tourne depuis le tag <code>v1.0.0</code>, sur une machine différente de celle du développement.</li><li>Chaque membre présente sa partie et répond à une question sur le code qu'il a écrit.</li><li>Plan B écrit si une source externe tombe : vidéo enregistrée ou données locales.</li></ul></dd>
+</dl></div>
+</div>
+
+<!-- ============ 6 ============ -->
+<h2 id="qualite">6. Exigences transverses</h2>
+<table>
+<tr><th>Domaine</th><th>Exigence</th></tr>
+<tr><td>Qualité du code</td><td>Python 3.12, typage sur les interfaces publiques, <code>ruff</code> sans avertissement, fonctions courtes, pas de code mort commité.</td></tr>
+<tr><td>Tests</td><td>Couverture ≥ 80 % sur <code>packages/</code> ; chaque bug corrigé ajoute un test qui le reproduit.</td></tr>
+<tr><td>Reproductibilité</td><td>Graines fixées, versions de dépendances verrouillées (<code>uv.lock</code> commité), <code>docker compose up</code> suffit.</td></tr>
+<tr><td>Sécurité</td><td>Scopes en lecture seule, jetons chiffrés, aucun secret dans Git, isolation testée, injection de prompt testée, XSS testée.</td></tr>
+<tr><td>Données</td><td>Synthétiques uniquement ; aucune donnée personnelle réelle dans le dépôt, les issues, les captures ou les prompts.</td></tr>
+<tr><td>Traçabilité</td><td>Chaque phrase du brief est rattachée à une source ; chaque brief à un modèle, une version de prompt et une version de code.</td></tr>
+<tr><td>Honnêteté des résultats</td><td>Les rapports donnent les échecs, les intervalles de confiance et les limites. Un résultat qui n'a pas été reproduit n'est pas présenté comme acquis.</td></tr>
+<tr><td>Heures</td><td>Toutes les heures écrites dans le code, les docs et les messages sont en <b>heure de Paris</b> avec le décalage explicite dans les données (<code>+02:00</code> / <code>+01:00</code>).</td></tr>
+<tr><td>Usage d'outils d'IA</td><td>Autorisé pour coder et rédiger. Tu restes responsable de chaque ligne soumise, tu sais l'expliquer et tu l'as testée. Le fait qu'un assistant l'ait produite ne dispense pas de la relire.</td></tr>
+</table>
+
+<!-- ============ 7 ============ -->
+<h2 id="risques">7. Risques et parades</h2>
+<table>
+<tr><th>Risque</th><th>Signal</th><th>Parade</th></tr>
+<tr><td>Lot 3 sans équipe</td><td>Pas de dépôt au 05/10</td><td>Un membre du lot 1 (5 personnes) passe au lot 3 pour la CI et l'API ; à défaut, le référent du lot 1 prête un membre pour la CI en attendant.</td></tr>
+<tr><td>Un lot attend un autre</td><td>Issue « bloquée par lot X » &gt; 2 jours</td><td>Fixtures et stubs dès la semaine 1 ; le comité tranche sous 48 h.</td></tr>
+<tr><td>Consentement OAuth impossible</td><td>Erreur admin consent</td><td>Comptes personnels de test ; fournisseur « demo » complet pour ne rien bloquer.</td></tr>
+<tr><td>Brief faux mais convaincant</td><td>Taux de claims soutenus &lt; 95 %</td><td>Garde déterministe (L2.4), évaluation indépendante (L3.5), entrée dégradée plutôt qu'inventée.</td></tr>
+<tr><td>Injection de prompt via e-mail</td><td>Sortie qui suit une consigne présente dans un message</td><td>Séparation stricte des instructions et des données, cas piégés dans le jeu de test, aucune action déclenchée par le contenu.</td></tr>
+<tr><td>Coût ou latence explosifs</td><td>p95 &gt; cible</td><td>Budget de tokens, pré-filtrage par le score de priorité, modèle local de repli.</td></tr>
+<tr><td>Conflits Git en série</td><td>PR qui vieillit &gt; 2 jours</td><td>Branches courtes, rebase quotidien, CODEOWNERS, PR ≤ 400 lignes.</td></tr>
+<tr><td>Fuite de secret</td><td>Alerte gitleaks</td><td>Révocation immédiate, puis nettoyage (§4.6).</td></tr>
+<tr><td>Membre absent ou inactif</td><td>0 activité 5 jours ouvrés</td><td>Suppléant, signalement à David, redistribution des tâches par le référent.</td></tr>
+<tr><td>Le rendu ne tourne pas ailleurs</td><td>Test L3.8 échoue</td><td>Test sur machine vierge à chaque jalon, pas seulement à la fin.</td></tr>
+</table>
+
+<!-- ============ 8 ============ -->
+<h2 id="annexes">8. Annexes</h2>
+<h3>8.1 Vérifier l'environnement</h3>
+<pre><code>git --version            # ≥ 2.40
+python3 --version        # 3.12.x
+uv --version
+docker --version &amp;&amp; docker compose version
+gh --version             # facultatif (GitHub CLI)
+pre-commit --version</code></pre>
+<h3>8.2 Gabarit de pull request (<code>.github/PULL_REQUEST_TEMPLATE.md</code>)</h3>
+<pre><code>## Issue liée
+Closes #
+
+## Ce qui change (3 lignes maximum)
+
+## Comment vérifier
+1.
+2.
+
+## Captures / sorties (si interface ou rapport)
+
+## Cases à cocher
+- [ ] Tests ajoutés ou mis à jour
+- [ ] Documentation mise à jour
+- [ ] Aucun secret ni donnée réelle
+- [ ] Ne touche pas contracts/ (sinon : étiquette contract-change et 2 approbations)
+- [ ] La PR fait moins de 400 lignes modifiées
+
+## Risques et retours arrière</code></pre>
+<h3>8.3 Gabarit d'ADR (<code>docs/adr/NNNN-titre.md</code>)</h3>
+<pre><code># ADR-0004 : titre court
+Date : 2026-10-14 · Statut : proposé | accepté | remplacé par ADR-00XX
+Décideurs : référents lot 1, 2, 3
+
+## Contexte (3 lignes)
+## Options examinées (2 à 4, avec un chiffre ou un test pour chacune)
+## Décision
+## Conséquences (ce que ça coûte, comment on revient en arrière)</code></pre>
+<h3>8.4 Point du matin (message Teams, 3 lignes)</h3>
+<pre><code>Hier : connecteur mail — pagination terminée (PR #12)
+Aujourd'hui : cassettes de tests 429/5xx
+Bloqué : rien | attente de la fixture "journée surchargée" (lot 3)</code></pre>
+<h3>8.5 Statut hebdomadaire du référent à David (vendredi 17h, ≤ 10 lignes)</h3>
+<pre><code>Lot N — semaine du JJ/MM
+Fait : …
+Prévu : …
+Bloqué / risque : …
+Métriques (si dispo) : couverture X %, tests Y, PR fusionnées Z
+Décisions (liens ADR) : …
+Personnes : actives / absentes / en difficulté</code></pre>
+<h3>8.6 Definition of Done d'une tâche</h3>
+<ul class="chk">
+<li>Le critère d'acceptation de la tâche est vérifié et la preuve est dans l'issue (capture, sortie, lien)</li>
+<li>Code relu et fusionné par PR, CI verte</li>
+<li>Tests écrits et passants ; aucun test désactivé</li>
+<li>Documentation du paquet à jour (README, docstrings des interfaces)</li>
+<li>Aucun secret, aucune donnée réelle</li>
+<li>Contrats inchangés, ou changés selon §2.5</li>
+<li>L'issue est fermée par la PR</li>
+</ul>
+<h3>8.7 Glossaire</h3>
+<table>
+<tr><th>Terme</th><th>Sens ici</th></tr>
+<tr><td>Item</td><td>Un élément collecté (mail, événement, tâche, fichier), sous forme normalisée.</td></tr>
+<tr><td>Affaire (Case)</td><td>Groupe d'<code>Item</code> qui parlent du même sujet.</td></tr>
+<tr><td>Brief</td><td>Le document quotidien produit pour un manager.</td></tr>
+<tr><td>Claim</td><td>Une affirmation vérifiable contenue dans le brief.</td></tr>
+<tr><td>Fixture</td><td>Donnée factice conforme à un contrat, utilisée en test et pour débloquer les autres lots.</td></tr>
+<tr><td>Stub</td><td>Implémentation minimale d'une interface, qui renvoie des fixtures.</td></tr>
+<tr><td>Walking skeleton</td><td>Version bout en bout, minimale, du pipeline complet.</td></tr>
+<tr><td>ADR</td><td>Architecture Decision Record : fiche d'une décision technique.</td></tr>
+<tr><td>Trunk-based</td><td>Méthode : une branche principale, des branches très courtes, fusion fréquente.</td></tr>
+</table>
+
+<h2 id="en">English summary</h2>
+<div class="box en">
+<p>12 students, 3 work packages: <b>Lot 1 Collection</b> (connectors for mail, calendar, tasks, files; OAuth; normalisation to the <i>Item</i> contract; permissions; audit log), <b>Lot 2 Analysis</b> (aggregation, explainable priority score, structured LLM summaries, deterministic anti-hallucination guard, model comparison including a local model, optional RAG), <b>Lot 3 Interface, evaluation, delivery</b> (repository, CI, Docker, API, UI, independent annotated evaluation set with hidden test split, documentation, final demo).</p>
+<p>Each lot elects a <b>referent and a deputy</b> by Friday 2 October 2026, 18:00 (Paris time), and sends the names plus the four GitHub usernames to David on Teams. Referents form the technical committee (weekly, 30 min). Git rules: one private monorepo, protected <code>main</code>, short-lived branches (≤ 2 working days), PRs ≤ 400 lines, squash merge, Conventional Commits, CODEOWNERS per lot, contract changes require approval from one referent of each lot, no secrets in Git (gitleaks). Everything is done with synthetic data only; no direct contact with the client.</p>
+</div>
+
+<footer>
+Clinique de l'IA · Alliance Experts · « Development of an AI Agent for Daily Management Briefings » / « Développement d'un agent IA de briefing quotidien pour les managers » · Référent école : David Appadourai · Document du 30/09/2026 · Les dates et les seuils sont des propositions modifiables par décision écrite du comité technique.
+</footer>
+</main>
+</div>
+</body>
+</html>
