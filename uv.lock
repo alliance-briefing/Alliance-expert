@@ -14,12 +14,14 @@ version = "0.0.0"
 source = { editable = "apps/api" }
 dependencies = [
     { name = "fastapi" },
+    { name = "pydantic" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
+    { name = "pydantic", specifier = ">=2.7" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
 ]
 
