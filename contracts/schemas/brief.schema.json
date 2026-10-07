@@ -1,0 +1,280 @@
+{
+  "$defs": {
+    "Claim": {
+      "additionalProperties": false,
+      "description": "Une affirmation factuelle de l'entrée, rattachée aux items qui la prouvent.",
+      "properties": {
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "source_item_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Source Item Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "text",
+        "source_item_ids"
+      ],
+      "title": "Claim",
+      "type": "object"
+    },
+    "Entry": {
+      "additionalProperties": false,
+      "properties": {
+        "rank": {
+          "description": "1 = le plus prioritaire de la section",
+          "minimum": 1,
+          "title": "Rank",
+          "type": "integer"
+        },
+        "priority_score": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Priority Score",
+          "type": "integer"
+        },
+        "priority_reasons": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Priority Reasons",
+          "type": "array"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "claims": {
+          "items": {
+            "$ref": "#/$defs/Claim"
+          },
+          "title": "Claims",
+          "type": "array"
+        },
+        "recommended_action": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recommended Action"
+        },
+        "source_item_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Source Item Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "rank",
+        "priority_score",
+        "priority_reasons",
+        "text",
+        "source_item_ids"
+      ],
+      "title": "Entry",
+      "type": "object"
+    },
+    "Generator": {
+      "additionalProperties": false,
+      "description": "Ce qui a produit le brief. Un brief à base de règles (v0.1.0) met llm = \"rules\".",
+      "properties": {
+        "llm": {
+          "minLength": 1,
+          "title": "Llm",
+          "type": "string"
+        },
+        "llm_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Llm Version"
+        },
+        "prompt_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt Version"
+        },
+        "temperature": {
+          "anyOf": [
+            {
+              "maximum": 2,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Temperature"
+        }
+      },
+      "required": [
+        "llm"
+      ],
+      "title": "Generator",
+      "type": "object"
+    },
+    "Section": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "actions",
+            "meetings",
+            "overdue",
+            "files"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "entries": {
+          "items": {
+            "$ref": "#/$defs/Entry"
+          },
+          "title": "Entries",
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "Section",
+      "type": "object"
+    },
+    "Stats": {
+      "additionalProperties": false,
+      "properties": {
+        "items_in": {
+          "minimum": 0,
+          "title": "Items In",
+          "type": "integer"
+        },
+        "items_out": {
+          "minimum": 0,
+          "title": "Items Out",
+          "type": "integer"
+        },
+        "tokens_in": {
+          "minimum": 0,
+          "title": "Tokens In",
+          "type": "integer"
+        },
+        "tokens_out": {
+          "minimum": 0,
+          "title": "Tokens Out",
+          "type": "integer"
+        },
+        "latency_ms": {
+          "minimum": 0,
+          "title": "Latency Ms",
+          "type": "integer"
+        },
+        "cost_eur": {
+          "minimum": 0,
+          "title": "Cost Eur",
+          "type": "number"
+        }
+      },
+      "required": [
+        "items_in",
+        "items_out",
+        "tokens_in",
+        "tokens_out",
+        "latency_ms",
+        "cost_eur"
+      ],
+      "title": "Stats",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Le brief du jour d'un utilisateur, prêt à afficher.",
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "brief_id": {
+      "description": "b_<date>_<owner_user_id>",
+      "title": "Brief Id",
+      "type": "string"
+    },
+    "owner_user_id": {
+      "minLength": 1,
+      "title": "Owner User Id",
+      "type": "string"
+    },
+    "date": {
+      "format": "date",
+      "title": "Date",
+      "type": "string"
+    },
+    "generated_at": {
+      "format": "date-time",
+      "title": "Generated At",
+      "type": "string"
+    },
+    "generator": {
+      "$ref": "#/$defs/Generator"
+    },
+    "sections": {
+      "items": {
+        "$ref": "#/$defs/Section"
+      },
+      "title": "Sections",
+      "type": "array"
+    },
+    "stats": {
+      "$ref": "#/$defs/Stats"
+    },
+    "warnings": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "brief_id",
+    "owner_user_id",
+    "date",
+    "generated_at",
+    "generator",
+    "sections",
+    "stats"
+  ],
+  "title": "Brief",
+  "type": "object"
+}

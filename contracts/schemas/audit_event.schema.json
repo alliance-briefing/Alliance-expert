@@ -1,0 +1,89 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "ts": {
+      "format": "date-time",
+      "title": "Ts",
+      "type": "string"
+    },
+    "actor": {
+      "pattern": "^(connector:[a-z0-9_-]+|analyse|api)$",
+      "title": "Actor",
+      "type": "string"
+    },
+    "user_id": {
+      "minLength": 1,
+      "title": "User Id",
+      "type": "string"
+    },
+    "action": {
+      "enum": [
+        "collect",
+        "generate",
+        "view"
+      ],
+      "title": "Action",
+      "type": "string"
+    },
+    "source": {
+      "anyOf": [
+        {
+          "enum": [
+            "mail",
+            "calendar",
+            "task",
+            "file"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source"
+    },
+    "item_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Item Ids",
+      "type": "array"
+    },
+    "count": {
+      "minimum": 0,
+      "title": "Count",
+      "type": "integer"
+    },
+    "status": {
+      "enum": [
+        "ok",
+        "error"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "error_code": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Error Code"
+    }
+  },
+  "required": [
+    "ts",
+    "actor",
+    "user_id",
+    "action",
+    "count",
+    "status"
+  ],
+  "title": "AuditEvent",
+  "type": "object"
+}

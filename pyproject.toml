@@ -2,7 +2,7 @@
 name = "alliance-briefing"
 version = "0.0.0"
 requires-python = ">=3.12"
-dependencies = ["alliance-api"]
+dependencies = ["alliance-api", "pydantic>=2.7"]
 
 [tool.uv]
 package = false
@@ -14,12 +14,13 @@ members = ["apps/api"]  # ajouter packages/collect, packages/analyse quand ils o
 alliance-api = { workspace = true }
 
 [dependency-groups]
-dev = ["ruff", "pytest", "pytest-cov", "httpx", "pre-commit"]
+dev = ["ruff", "pytest", "pytest-cov", "httpx", "jsonschema>=4.21", "pre-commit"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py312"
 
 [tool.pytest.ini_options]
-testpaths = ["packages", "apps", "eval"]
+testpaths = ["contracts", "packages", "apps", "eval"]
+pythonpath = ["."]
 addopts = "--import-mode=importlib"

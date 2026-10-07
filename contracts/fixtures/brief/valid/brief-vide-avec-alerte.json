@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0",
+  "brief_id": "b_2026-10-05_u_demo_001",
+  "owner_user_id": "u_demo_001",
+  "date": "2026-10-05",
+  "generated_at": "2026-10-05T08:31:10+02:00",
+  "generator": {
+    "llm": "rules",
+    "llm_version": null,
+    "prompt_version": null,
+    "temperature": null
+  },
+  "sections": [
+    {
+      "kind": "actions",
+      "entries": []
+    },
+    {
+      "kind": "meetings",
+      "entries": []
+    },
+    {
+      "kind": "overdue",
+      "entries": []
+    },
+    {
+      "kind": "files",
+      "entries": []
+    }
+  ],
+  "stats": {
+    "items_in": 123,
+    "items_out": 0,
+    "tokens_in": 0,
+    "tokens_out": 0,
+    "latency_ms": 120,
+    "cost_eur": 0.0
+  },
+  "warnings": [
+    "source calendar indisponible : 7 items ignorés"
+  ]
+}

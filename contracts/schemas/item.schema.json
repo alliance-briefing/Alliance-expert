@@ -1,0 +1,282 @@
+{
+  "$defs": {
+    "Acl": {
+      "additionalProperties": false,
+      "properties": {
+        "visible_to": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Visible To",
+          "type": "array"
+        }
+      },
+      "required": [
+        "visible_to"
+      ],
+      "title": "Acl",
+      "type": "object"
+    },
+    "ConnectorInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "title": "ConnectorInfo",
+      "type": "object"
+    },
+    "Participant": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "email": {
+          "title": "Email",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "from",
+            "to",
+            "cc",
+            "organizer",
+            "attendee",
+            "assignee",
+            "modifier"
+          ],
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "email",
+        "role"
+      ],
+      "title": "Participant",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Un élément collecté (mail, événement, tâche, fichier) sous forme normalisée.",
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "item_id": {
+      "description": "source + identifiant natif ; jamais un hash de contenu",
+      "minLength": 3,
+      "title": "Item Id",
+      "type": "string"
+    },
+    "source": {
+      "enum": [
+        "mail",
+        "calendar",
+        "task",
+        "file"
+      ],
+      "title": "Source",
+      "type": "string"
+    },
+    "provider": {
+      "enum": [
+        "microsoft",
+        "google",
+        "demo"
+      ],
+      "title": "Provider",
+      "type": "string"
+    },
+    "owner_user_id": {
+      "minLength": 1,
+      "title": "Owner User Id",
+      "type": "string"
+    },
+    "title": {
+      "description": "Peut être vide (mail sans objet)",
+      "title": "Title",
+      "type": "string"
+    },
+    "snippet": {
+      "description": "Texte brut, sans balisage, sans signature",
+      "maxLength": 500,
+      "title": "Snippet",
+      "type": "string"
+    },
+    "content_text": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Content Text"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "updated_at": {
+      "format": "date-time",
+      "title": "Updated At",
+      "type": "string"
+    },
+    "start_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Start At"
+    },
+    "end_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "End At"
+    },
+    "due_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Due At"
+    },
+    "completed": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Completed"
+    },
+    "participants": {
+      "items": {
+        "$ref": "#/$defs/Participant"
+      },
+      "title": "Participants",
+      "type": "array"
+    },
+    "thread_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Thread Id"
+    },
+    "native_importance": {
+      "anyOf": [
+        {
+          "enum": [
+            "low",
+            "normal",
+            "high"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Native Importance"
+    },
+    "is_read": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Is Read"
+    },
+    "url": {
+      "format": "uri",
+      "maxLength": 2083,
+      "minLength": 1,
+      "title": "Url",
+      "type": "string"
+    },
+    "acl": {
+      "$ref": "#/$defs/Acl"
+    },
+    "collected_at": {
+      "format": "date-time",
+      "title": "Collected At",
+      "type": "string"
+    },
+    "connector": {
+      "$ref": "#/$defs/ConnectorInfo"
+    }
+  },
+  "required": [
+    "item_id",
+    "source",
+    "provider",
+    "owner_user_id",
+    "title",
+    "snippet",
+    "created_at",
+    "updated_at",
+    "url",
+    "acl",
+    "collected_at",
+    "connector"
+  ],
+  "title": "Item",
+  "type": "object"
+}

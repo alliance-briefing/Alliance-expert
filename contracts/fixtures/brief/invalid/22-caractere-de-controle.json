@@ -1,0 +1,127 @@
+{
+  "_cas": "caractere de controle",
+  "_attendu": "rejeté par le contrat B",
+  "brief": {
+    "schema_version": "1.0",
+    "brief_id": "b_2026-10-05_u_demo_001",
+    "owner_user_id": "u_demo_001",
+    "date": "2026-10-05",
+    "generated_at": "2026-10-05T08:31:10+02:00",
+    "generator": {
+      "llm": "rules",
+      "llm_version": null,
+      "prompt_version": null,
+      "temperature": null
+    },
+    "sections": [
+      {
+        "kind": "actions",
+        "entries": [
+          {
+            "rank": 1,
+            "priority_score": 80,
+            "priority_reasons": [
+              "exemple de raison"
+            ],
+            "text": "Valider\u0000",
+            "claims": [
+              {
+                "text": "message reçu ce matin",
+                "source_item_ids": [
+                  "mail:dm1-msg-000541"
+                ]
+              }
+            ],
+            "recommended_action": "Répondre au fil",
+            "source_item_ids": [
+              "mail:dm1-msg-000541"
+            ]
+          },
+          {
+            "rank": 2,
+            "priority_score": 55,
+            "priority_reasons": [
+              "exemple de raison"
+            ],
+            "text": "Traiter : Photos du dossier 2026-6029 déposées",
+            "claims": [],
+            "recommended_action": null,
+            "source_item_ids": [
+              "mail:dm1-msg-000649"
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "meetings",
+        "entries": [
+          {
+            "rank": 1,
+            "priority_score": 60,
+            "priority_reasons": [
+              "réunion aujourd'hui"
+            ],
+            "text": "Réunion : Point hebdo agence",
+            "claims": [
+              {
+                "text": "réunion aujourd'hui",
+                "source_item_ids": [
+                  "calendar:dm1-ser-000001_20261005"
+                ]
+              }
+            ],
+            "recommended_action": null,
+            "source_item_ids": [
+              "calendar:dm1-ser-000001_20261005"
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "overdue",
+        "entries": [
+          {
+            "rank": 1,
+            "priority_score": 50,
+            "priority_reasons": [
+              "exemple de raison"
+            ],
+            "text": "Tâche : Affecter un expert au dossier 2026-3156",
+            "claims": [],
+            "recommended_action": null,
+            "source_item_ids": [
+              "task:dm1-tsk-000017"
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "files",
+        "entries": [
+          {
+            "rank": 1,
+            "priority_score": 30,
+            "priority_reasons": [
+              "modifié récemment"
+            ],
+            "text": "Fichier : Export_sinistres_20261005_755.xlsx",
+            "claims": [],
+            "recommended_action": null,
+            "source_item_ids": [
+              "file:dm1-fil-000258"
+            ]
+          }
+        ]
+      }
+    ],
+    "stats": {
+      "items_in": 123,
+      "items_out": 5,
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "latency_ms": 120,
+      "cost_eur": 0.0
+    },
+    "warnings": []
+  }
+}
