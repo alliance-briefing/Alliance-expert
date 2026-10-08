@@ -6,14 +6,24 @@ import os
 
 from fastapi import FastAPI
 
-from alliance_api import errors
+from alliance_api import errors, items
+from alliance_api.audit import AuditSink, LogAuditSink
 from alliance_api.auth import CurrentUser
+from alliance_api.stores import DemoItemStore, ItemStore
 
 
-def create_app(*, auth_mode: str | None = None) -> FastAPI:
+def create_app(
+    *,
+    item_store: ItemStore | None = None,
+    audit: AuditSink | None = None,
+    auth_mode: str | None = None,
+) -> FastAPI:
     app = FastAPI(title="Alliance Briefing API")
+    app.state.items = item_store or DemoItemStore()
+    app.state.audit = audit or LogAuditSink()
     app.state.auth_mode = auth_mode if auth_mode is not None else os.getenv("AUTH_MODE", "")
     errors.install(app)
+    app.include_router(items.router)
 
     @app.get("/health")
     def health() -> dict[str, str]:
