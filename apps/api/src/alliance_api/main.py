@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 from fastapi import FastAPI
 
@@ -23,7 +24,7 @@ def create_app(
     auth_mode: str | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Alliance Briefing API")
-    app.state.items = item_store or DemoItemStore()
+    app.state.items = item_store or _default_item_store()
     app.state.briefs = brief_store or MemoryBriefStore()
     app.state.generator = generator or generate_brief
     app.state.audit = audit or LogAuditSink()
@@ -43,6 +44,13 @@ def create_app(
         return {"user_id": user}
 
     return app
+
+
+def _default_item_store() -> ItemStore:
+    """Items lus dans DATA_DIR (<user>/<AAAA-MM-JJ>/items.jsonl, écrit par le pipeline du
+    lot 1) ; sans DATA_DIR, les journées de démonstration de contracts/fixtures/demo."""
+    data_dir = os.getenv("DATA_DIR")
+    return DemoItemStore(Path(data_dir)) if data_dir else DemoItemStore()
 
 
 app = create_app()
