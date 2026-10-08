@@ -20,7 +20,12 @@ from pathlib import Path
 from collect.synth.generator import DEFAULT_START, Params, generate
 from collect.synth.people import PROFILES
 
-SECTIONS = {"actions": "À traiter", "meetings": "Réunion", "overdue": "En retard", "files": "Fichier"}
+SECTIONS = {
+    "actions": "À traiter",
+    "meetings": "Réunion",
+    "overdue": "En retard",
+    "files": "Fichier",
+}
 
 
 def explain(out: Path, user_id: str, day: str) -> str:
@@ -32,8 +37,10 @@ def explain(out: Path, user_id: str, day: str) -> str:
     counts = Counter(it["source"] for it in items)
     lines = [
         f"Journée du {day} — type « {truth['day_type']} » — collecte à {truth['collected_at'][11:16]}",
-        f"Collecté : {counts['mail']} mails, {counts['calendar']} événements, {counts['task']} tâches, "
-        f"{counts['file']} fichiers ({len(truth['noise_item_ids'])} éléments de bruit)",
+        (
+            f"Collecté : {counts['mail']} mails, {counts['calendar']} événements, {counts['task']} tâches, "
+            f"{counts['file']} fichiers ({len(truth['noise_item_ids'])} éléments de bruit)"
+        ),
         "",
         "Ce que le brief DOIT contenir, dans cet ordre :",
     ]
@@ -43,22 +50,36 @@ def explain(out: Path, user_id: str, day: str) -> str:
         )
         lines.append(f"     pourquoi : {', '.join(entry['priority_reasons'])}")
         for source_id in entry["source_item_ids"]:
-            lines.append(f"     source : {by_id[source_id]['title'] or '(sans objet)'}  <{source_id}>")
+            lines.append(
+                f"     source : {by_id[source_id]['title'] or '(sans objet)'}  <{source_id}>"
+            )
     for note in truth["notes"]:
-        lines.append(f"\nÀ signaler ({note['kind']}) : {note.get('attendu', note.get('explication', ''))}")
+        lines.append(
+            f"\nÀ signaler ({note['kind']}) : {note.get('attendu', note.get('explication', ''))}"
+        )
     if truth["prompt_injections"]:
         lines.append(f"\nPièges d'injection à ignorer : {len(truth['prompt_injections'])}")
-    traps = {k: len(v) for k, v in truth["traps"].items() if k not in ("malformed_html", "recurring")}
+    traps = {
+        k: len(v) for k, v in truth["traps"].items() if k not in ("malformed_html", "recurring")
+    }
     if traps:
-        lines.append("Autres pièges présents : " + ", ".join(f"{k} ×{n}" for k, n in sorted(traps.items())))
+        lines.append(
+            "Autres pièges présents : " + ", ".join(f"{k} ×{n}" for k, n in sorted(traps.items()))
+        )
     return "\n".join(lines)
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="synth", description="Génère des journées de manager factices (L1.0).")
-    parser.add_argument("--seed", type=int, default=42, help="graine (même graine = mêmes fichiers)")
+    parser = argparse.ArgumentParser(
+        prog="synth", description="Génère des journées de manager factices (L1.0)."
+    )
+    parser.add_argument(
+        "--seed", type=int, default=42, help="graine (même graine = mêmes fichiers)"
+    )
     parser.add_argument("--days", type=int, default=30, help="nombre de journées ouvrées exportées")
-    parser.add_argument("--start", type=date.fromisoformat, default=DEFAULT_START, help="premier jour (AAAA-MM-JJ)")
+    parser.add_argument(
+        "--start", type=date.fromisoformat, default=DEFAULT_START, help="premier jour (AAAA-MM-JJ)"
+    )
     parser.add_argument("--users", nargs="+", default=["u_demo_001"], choices=sorted(PROFILES))
     parser.add_argument("--out", type=Path, default=Path("contracts/fixtures/demo"))
     parser.add_argument(
@@ -67,7 +88,9 @@ def main(argv: list[str] | None = None) -> int:
         default=True,
         help="écrit aussi les corps HTML bruts des mails, piège « HTML mal formé » (désactiver : --no-with-raw)",
     )
-    parser.add_argument("--explique", metavar="AAAA-MM-JJ", help="affiche le résumé d'une journée déjà générée")
+    parser.add_argument(
+        "--explique", metavar="AAAA-MM-JJ", help="affiche le résumé d'une journée déjà générée"
+    )
     args = parser.parse_args(argv)
 
     if args.explique:
@@ -75,9 +98,13 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     started = time.perf_counter()
-    manifest = generate(args.out, Params(args.seed, args.days, args.start, tuple(args.users), args.with_raw))
+    manifest = generate(
+        args.out, Params(args.seed, args.days, args.start, tuple(args.users), args.with_raw)
+    )
     totals = manifest["totals"]
-    print(f"{len(manifest['days'])} journées écrites dans {args.out} en {time.perf_counter() - started:.1f} s")
+    print(
+        f"{len(manifest['days'])} journées écrites dans {args.out} en {time.perf_counter() - started:.1f} s"
+    )
     print(
         f"  mails {totals['mail']} · événements {totals['calendar']} · tâches {totals['task']} · fichiers {totals['file']}"
     )

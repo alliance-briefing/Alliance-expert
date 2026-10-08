@@ -22,6 +22,7 @@ from collect.core.text import make_snippet, truncate
 from collect.synth.clock import collect_time, to_paris
 from collect.synth.model import SimEvent, SimFile, SimFileVersion, SimMail, SimTask
 from collect.synth.people import INTERNAL_DOMAIN, Person, slug
+
 from contracts.models import Item
 
 CONNECTOR_NAME = "demo"
@@ -42,7 +43,12 @@ class Snapshot:
     overdue_dropped: int = 0
 
     def counts(self) -> dict[str, int]:
-        return {"mail": len(self.mails), "calendar": len(self.events), "task": len(self.tasks), "file": len(self.files)}
+        return {
+            "mail": len(self.mails),
+            "calendar": len(self.events),
+            "task": len(self.tasks),
+            "file": len(self.files),
+        }
 
 
 def mail_in_window(m: SimMail, now: datetime, me: Person) -> bool:
@@ -58,7 +64,10 @@ def snapshot(world, day: date) -> Snapshot:
     now = collect_time(day)
     me = world.me
 
-    mails = sorted((m for m in world.mails if mail_in_window(m, now, me)), key=lambda m: (m.sent_at, m.native_id))
+    mails = sorted(
+        (m for m in world.mails if mail_in_window(m, now, me)),
+        key=lambda m: (m.sent_at, m.native_id),
+    )
     mails = mails[-MAIL_CAP:]
 
     horizon = now + timedelta(hours=48)
