@@ -41,6 +41,14 @@ jobs:
       - run: cp infra/.env.example infra/.env
       - run: docker compose -f infra/docker-compose.yml up -d --build --wait
       - run: curl -fsS http://localhost:8000/health
+      # appel réel : contracts et packages.analyse s'importent dans le conteneur
+      - name: brief de démonstration
+        env:
+          AUTH: "X-Demo-User: u_demo_001"
+        run: |
+          curl -fsS -X POST http://localhost:8000/briefs -H "$AUTH" -H "Content-Type: application/json" -d '{"date": "2026-10-07"}'
+          curl -fsS http://localhost:8000/briefs/2026-10-07 -H "$AUTH" -o brief.json
+          python3 -c "import json; assert json.load(open('brief.json'))['brief_id'] == 'b_2026-10-07_u_demo_001'"
       - if: failure()
         run: docker compose -f infra/docker-compose.yml logs
       - if: always()

@@ -1,5 +1,7 @@
 from collections.abc import Callable
+from pathlib import Path
 
+import pytest
 from alliance_api.audit import LogAuditSink
 from alliance_api.main import create_app
 from fastapi.testclient import TestClient
@@ -78,3 +80,12 @@ def test_donnees_de_demo_reelles(as_user: Headers) -> None:
     response = client.get(f"/items/{item.item_id}", headers=as_user(DEFAULT_USER))
     assert response.status_code == 200
     assert response.json()["url"] == str(item.url)
+
+
+def test_data_dir_choisit_le_dossier_des_items(
+    data_root: Path, as_user: Headers, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("DATA_DIR", str(data_root))
+    client = TestClient(create_app(auth_mode="demo"))
+    response = client.get(f"/items/mail:{USER_A}-1", headers=as_user(USER_A))
+    assert response.status_code == 200
