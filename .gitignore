@@ -9,6 +9,5 @@ node_modules/
 *.db
 *.sqlite
 *.zip
-
-# macOS
-.DS_Store
+# Fiches dérivées des items (régénérables)
+eval/annotations/fiches/
