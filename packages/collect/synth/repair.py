@@ -53,7 +53,8 @@ def _fix_mails(world, day) -> bool:
     if n > high:
         last_day_only = [m for m in snap.mails if m.sent_at > snap.now - timedelta(hours=24)]
         candidates = sorted(
-            (m for m in last_day_only if m.sender.automated and _removable(m)), key=lambda m: m.native_id
+            (m for m in last_day_only if m.sender.automated and _removable(m)),
+            key=lambda m: m.native_id,
         )
         for m in candidates[: n - high]:
             world.mails.remove(m)
@@ -73,7 +74,9 @@ def _fix_events(world, day) -> bool:
         candidates = [e for e in snap.events if e.filler] or [
             e for e in snap.events if _removable(e) and e.series_id is None and not e.all_day
         ]
-        candidates.sort(key=lambda e: (-e.start.astimezone(PARIS).toordinal(), e.native_id))  # le plus tardif d'abord
+        candidates.sort(
+            key=lambda e: (-e.start.astimezone(PARIS).toordinal(), e.native_id)
+        )  # le plus tardif d'abord
         for e in candidates[: n - high]:
             world.events.remove(e)
         return bool(candidates)
@@ -86,8 +89,14 @@ def _fix_tasks(world, day) -> bool:
     n = len(snap.tasks)
     if n > high:
         catch_up = snap.now - timedelta(hours=15)  # la veille vers 17h30
-        overdue = [t for t in snap.tasks if t.due_at is not None and t.due_at < snap.now and t.created_at < catch_up]
-        overdue.sort(key=lambda t: (not t.filler, "task_no_due" in t.tags, t.salience, t.due_at, t.native_id))
+        overdue = [
+            t
+            for t in snap.tasks
+            if t.due_at is not None and t.due_at < snap.now and t.created_at < catch_up
+        ]
+        overdue.sort(
+            key=lambda t: (not t.filler, "task_no_due" in t.tags, t.salience, t.due_at, t.native_id)
+        )
         for t in overdue[: n - high]:
             t.completed_at = catch_up
         return bool(overdue)

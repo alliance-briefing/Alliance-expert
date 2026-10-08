@@ -68,16 +68,23 @@ def generate(out_dir: Path, params: Params | None = None) -> dict:
             items, index = to_items(world, snap)
             truth = build_truth(world, snap, items, index)
             folder = out_dir / user_id / day.isoformat()
-            lines = "".join(json.dumps(it.model_dump(mode="json"), ensure_ascii=False) + "\n" for it in items)
+            lines = "".join(
+                json.dumps(it.model_dump(mode="json"), ensure_ascii=False) + "\n" for it in items
+            )
             rel = f"{user_id}/{day.isoformat()}"
             checksums[f"{rel}/items.jsonl"] = _write(folder / "items.jsonl", lines)
             checksums[f"{rel}/truth.json"] = _write(folder / "truth.json", _dump_json(truth))
             if params.with_raw:
                 raw = "".join(
-                    json.dumps({"item_id": f"mail:{m.native_id}", "html": m.html}, ensure_ascii=False) + "\n"
+                    json.dumps(
+                        {"item_id": f"mail:{m.native_id}", "html": m.html}, ensure_ascii=False
+                    )
+                    + "\n"
                     for m in snap.mails
                 )
-                checksums[f"{rel}/raw_mail_html.jsonl"] = _write(folder / "raw_mail_html.jsonl", raw)
+                checksums[f"{rel}/raw_mail_html.jsonl"] = _write(
+                    folder / "raw_mail_html.jsonl", raw
+                )
             per_day.append(
                 {
                     "user_id": user_id,
