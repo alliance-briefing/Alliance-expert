@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Alliance Briefing{% endblock %}</title>
+  <style>
+    /* Contrastes WCAG AA : texte #1b1b1b et liens #0b57d0 sur blanc (> 4,5:1). */
+    :root { --text: #1b1b1b; --muted: #4a4a4a; --link: #0b57d0; --line: #d0d0d0;
+            --warn-bg: #fff4ce; --warn-line: #8a6100; --error-bg: #fde7e9; --error-line: #a4262c; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 16px/1.5 system-ui, sans-serif; color: var(--text); background: #fff; }
+    header, main { max-width: 52rem; margin: 0 auto; padding: 1rem; }
+    header { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center;
+             justify-content: space-between; border-bottom: 1px solid var(--line); }
+    h1 { font-size: 1.25rem; margin: 0; }
+    h2 { font-size: 1.1rem; margin: 1.5rem 0 .5rem; }
+    a { color: var(--link); }
+    a:focus-visible, button:focus-visible, input:focus-visible { outline: 3px solid var(--link); outline-offset: 2px; }
+    button, input { font: inherit; min-height: 2.75rem; padding: .25rem .75rem; }
+    form.inline { display: flex; flex-wrap: wrap; gap: .5rem; align-items: end; }
+    label { display: block; font-weight: 600; }
+    .muted { color: var(--muted); }
+    .box { padding: .75rem 1rem; border-left: 4px solid; margin: 1rem 0; }
+    .warn { background: var(--warn-bg); border-color: var(--warn-line); }
+    .error { background: var(--error-bg); border-color: var(--error-line); }
+    ol.entries { padding-left: 1.25rem; }
+    ol.entries > li { margin-bottom: 1rem; overflow-wrap: anywhere; }
+    .sources { margin: .25rem 0 0; padding-left: 1rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Alliance Briefing</h1>
+    {% block nav %}{% endblock %}
+  </header>
+  <main id="contenu">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

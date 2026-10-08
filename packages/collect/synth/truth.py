@@ -18,7 +18,13 @@ from collect.synth.window import Snapshot
 
 TRUTH_SCHEMA = "truth/1.0"
 BRIEF_MIN, BRIEF_MAX, SALIENCE_THRESHOLD = 3, 7, 62
-_NEVER_IN_BRIEF = {"prompt_injection", "prompt_injection_hidden", "xss_payload", "cancelled", "deleted_file"}
+_NEVER_IN_BRIEF = {
+    "prompt_injection",
+    "prompt_injection_hidden",
+    "xss_payload",
+    "cancelled",
+    "deleted_file",
+}
 
 
 def _working_days_between(start: datetime, end: datetime) -> int:
@@ -42,7 +48,11 @@ def score(obj: object, now: datetime, me) -> tuple[int, list[str]]:
             reasons.append("demande de la direction régionale")
         if obj.importance == "high":
             reasons.append("marqué important par l'expéditeur")
-        pending = obj.requires_answer and me in obj.to and (obj.answered_at is None or obj.answered_at > now)
+        pending = (
+            obj.requires_answer
+            and me in obj.to
+            and (obj.answered_at is None or obj.answered_at > now)
+        )
         if pending:
             days = _working_days_between(obj.sent_at, now)
             reasons.append(
@@ -56,7 +66,9 @@ def score(obj: object, now: datetime, me) -> tuple[int, list[str]]:
     elif isinstance(obj, SimTask):
         if obj.due_at is not None and obj.due_at < now:
             late = max(1, _working_days_between(obj.due_at, now))
-            reasons.append(f"en retard de {late} jour{'s' if late > 1 else ''} ouvré{'s' if late > 1 else ''}")
+            reasons.append(
+                f"en retard de {late} jour{'s' if late > 1 else ''} ouvré{'s' if late > 1 else ''}"
+            )
             s += 20 + min(10, 2 * late)
         elif obj.due_at is not None:
             when = "aujourd'hui" if obj.due_at.astimezone(PARIS).date() == now.date() else "demain"
@@ -117,7 +129,9 @@ def build_truth(world, snap: Snapshot, items: list, index: dict[str, object]) ->
                 "section": _section(top_obj, now),
                 "salience": top_s,
                 "priority_reasons": top_reasons,
-                "attendu": top_obj.hint or getattr(top_obj, "title", None) or getattr(top_obj, "name", ""),
+                "attendu": top_obj.hint
+                or getattr(top_obj, "title", None)
+                or getattr(top_obj, "name", ""),
                 "source_item_ids": [row[1] for row in scored[:3]],
             }
         )
@@ -166,6 +180,10 @@ def build_truth(world, snap: Snapshot, items: list, index: dict[str, object]) ->
             for k, v in sorted(traps.items())
             if k not in {"notification", "newsletter", "info_cc", "team_info", "insurer_info"}
         },
-        "cases": {item.item_id: index[item.item_id].case_id for item in items if index[item.item_id].case_id},
+        "cases": {
+            item.item_id: index[item.item_id].case_id
+            for item in items
+            if index[item.item_id].case_id
+        },
         "annotation": {"source": "générée par construction", "a_relire_par": "lot 3 (L3.5)"},
     }

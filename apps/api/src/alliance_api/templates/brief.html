@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Brief du {{ day.strftime("%d/%m/%Y") }} — Alliance Briefing{% endblock %}
+{% block nav %}
+<form method="post" action="/logout" class="inline">
+  <span class="muted">{{ user }}</span>
+  <button type="submit">Se déconnecter</button>
+</form>
+{% endblock %}
+{% block content %}
+<form method="get" action="/" class="inline">
+  <div>
+    <label for="date">Jour</label>
+    <input type="date" id="date" name="date" value="{{ day.isoformat() }}" required>
+  </div>
+  <button type="submit">Afficher</button>
+</form>
+
+{% if error %}
+<p class="box error" role="alert">{{ error.message }}</p>
+{% endif %}
+
+{% if brief is none %}
+<p>Aucun brief n'a encore été généré pour le {{ day.strftime("%d/%m/%Y") }}.</p>
+<form method="post" action="/generate">
+  <input type="hidden" name="date" value="{{ day.isoformat() }}">
+  <button type="submit">Générer le brief</button>
+</form>
+{% else %}
+<p class="muted">Généré le {{ brief.generated_at.strftime("%d/%m/%Y à %H:%M") }}.</p>
+
+{% if brief.warnings or hidden %}
+<div class="box warn" role="status">
+  <h2>Alertes</h2>
+  <ul>
+    {% for warning in brief.warnings %}<li>{{ warning }}</li>{% endfor %}
+    {% if hidden %}<li>{{ hidden }} entrée(s) masquée(s) : source introuvable.</li>{% endif %}
+  </ul>
+</div>
+{% endif %}
+
+{% for section in sections %}
+<section aria-labelledby="s{{ loop.index }}">
+  <h2 id="s{{ loop.index }}">{{ section.label }}</h2>
+  {% if section.entries %}
+  <ol class="entries">
+    {% for view in section.entries %}
+    <li class="entry">
+      <p><strong>{{ view.entry.text }}</strong></p>
+      <p class="muted">Priorité {{ view.entry.priority_score }}/100 —
+        {{ view.entry.priority_reasons | join(" ; ") }}</p>
+      {% if view.entry.recommended_action %}<p>Action conseillée : {{ view.entry.recommended_action }}</p>{% endif %}
+      <ul class="sources">
+        {% for source in view.sources %}
+        <li>
+          <a href="{{ source.url }}" target="_blank" rel="noopener noreferrer">Voir la source<span class="muted"> : {{ source.title or "(sans objet)" }}</span></a>
+          {% if source.snippet %}<br><span class="muted">Extrait : « {{ source.snippet }} »</span>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <p class="muted">Rien dans cette section.</p>
+  {% endif %}
+</section>
+{% endfor %}
+
+<form method="post" action="/generate">
+  <input type="hidden" name="date" value="{{ day.isoformat() }}">
+  <button type="submit">Régénérer le brief</button>
+</form>
+{% endif %}
+{% endblock %}

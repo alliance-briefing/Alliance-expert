@@ -109,12 +109,16 @@ class World:
         self._counters[kind] += 1
         return f"{self.profile.code}-{kind}-{self._counters[kind]:06d}"
 
-    def moment(self, day: date, start_h: float, end_h: float, rng: random.Random | None = None) -> datetime:
+    def moment(
+        self, day: date, start_h: float, end_h: float, rng: random.Random | None = None
+    ) -> datetime:
         rng = rng or self.rng
         minute = rng.randint(int(start_h * 60), int(end_h * 60) - 1)
         return at(day, minute // 60, minute % 60)
 
-    def slot(self, day: date, start_h: int = 9, end_h: int = 17, rng: random.Random | None = None) -> datetime:
+    def slot(
+        self, day: date, start_h: int = 9, end_h: int = 17, rng: random.Random | None = None
+    ) -> datetime:
         """Début d'événement au quart d'heure, heure de Paris."""
         rng = rng or self.rng
         quarter = rng.randint(start_h * 4, end_h * 4 - 1)
@@ -246,7 +250,9 @@ class World:
         if organizer != self.me and self.me not in attendees:
             attendees = [*attendees, self.me]
         end = start + timedelta(minutes=minutes)
-        invited = created_at or start - timedelta(days=invited_days_before, hours=self.rng.randint(0, 6))
+        invited = created_at or start - timedelta(
+            days=invited_days_before, hours=self.rng.randint(0, 6)
+        )
         e = SimEvent(
             native_id=native_id or self.nid("evt"),
             title=title,
@@ -297,18 +303,32 @@ class World:
         )
         if due_at is not None:
             roll = self.rng.random()
-            if roll < diligence:  # terminée à temps : le jour J avant l'heure, ou la veille après-midi
+            if (
+                roll < diligence
+            ):  # terminée à temps : le jour J avant l'heure, ou la veille après-midi
                 due_local = due_at.astimezone(PARIS)
                 if due_local.hour >= 10 and self.rng.random() < 0.7:
-                    done = at(due_local.date(), self.rng.randint(9, due_local.hour - 1), self.rng.randint(0, 59))
+                    done = at(
+                        due_local.date(),
+                        self.rng.randint(9, due_local.hour - 1),
+                        self.rng.randint(0, 59),
+                    )
                 else:
-                    done = at(self.wd(due_local.date(), -1), self.rng.randint(14, 18), self.rng.randint(0, 59))
+                    done = at(
+                        self.wd(due_local.date(), -1),
+                        self.rng.randint(14, 18),
+                        self.rng.randint(0, 59),
+                    )
                 done = max(done, created_at + timedelta(minutes=20))
                 t.completed_at = min(done, due_at - timedelta(minutes=5))
             elif roll < diligence + (1 - diligence) * 0.8:  # terminée avec 1 à 3 jours de retard
-                t.completed_at = at(self.wd(due_at.date(), self.rng.randint(1, 3)), self.rng.randint(9, 17))
+                t.completed_at = at(
+                    self.wd(due_at.date(), self.rng.randint(1, 3)), self.rng.randint(9, 17)
+                )
             else:  # gros retard (5 à 8 jours ouvrés) : la « dette » que le brief doit faire remonter
-                t.completed_at = at(self.wd(due_at.date(), self.rng.randint(5, 8)), self.rng.randint(9, 17))
+                t.completed_at = at(
+                    self.wd(due_at.date(), self.rng.randint(5, 8)), self.rng.randint(9, 17)
+                )
         self.tasks.append(t)
         return t
 
@@ -477,10 +497,14 @@ class World:
             insurer,
             f"Mission d'expertise – dossier {num} – {vehicle}",
             [
-                f"Nous vous confions l'expertise du véhicule {vehicle} immatriculé {plate}, assuré {client.name}, "
-                f"suite au sinistre du {C.fr_date(sinistre)} : {damage}.",
-                f"Le véhicule est visible chez {garage.org}. Merci de nous confirmer la prise en charge et la date de "
-                "passage de l'expert.",
+                (
+                    f"Nous vous confions l'expertise du véhicule {vehicle} immatriculé {plate}, assuré {client.name}, "
+                    f"suite au sinistre du {C.fr_date(sinistre)} : {damage}."
+                ),
+                (
+                    f"Le véhicule est visible chez {garage.org}. Merci de nous confirmer la prise en charge et la date de "
+                    "passage de l'expert."
+                ),
             ],
             t0,
             cc=[d.assistant],
@@ -497,9 +521,11 @@ class World:
                 insurer,
                 f"RE: Mission d'expertise – dossier {num} – {vehicle} – RELANCE",
                 [
-                    f"Sauf erreur de notre part, nous n'avons pas eu de retour sur le dossier {num} transmis le "
-                    f"{C.fr_date(day)}. Notre assuré s'impatiente : pouvez-vous nous indiquer une date d'expertise "
-                    "au plus vite ?"
+                    (
+                        f"Sauf erreur de notre part, nous n'avons pas eu de retour sur le dossier {num} transmis le "
+                        f"{C.fr_date(day)}. Notre assuré s'impatiente : pouvez-vous nous indiquer une date d'expertise "
+                        "au plus vite ?"
+                    )
                 ],
                 self.moment(relance_day, 9, 11.5),
                 thread=thread,
@@ -508,7 +534,11 @@ class World:
                 requires_answer=True,
                 answer_prob=0.8,
                 importance="high",
-                quoted=(C.fr_date(day), insurer.name, "Nous vous confions l'expertise du véhicule…"),
+                quoted=(
+                    C.fr_date(day),
+                    insurer.name,
+                    "Nous vous confions l'expertise du véhicule…",
+                ),
                 hint=f"Répondre à la relance de {insurer.org} sur le dossier {num} (sans réponse depuis 3 jours)",
             )
             relance.tags.add("relance")
@@ -558,9 +588,11 @@ class World:
                 expert,
                 f"Devis {num} au-dessus du seuil – validation nécessaire",
                 [
-                    f"Le devis transmis par {garage.org} pour le dossier {num} s'élève à {C.fr_amount(amount)}, au-dessus de mon "
-                    f"seuil de délégation. Peux-tu le valider avant {C.fr_date(deadline)} {C.fr_time(deadline)} ? "
-                    f"{insurer.org} attend notre retour."
+                    (
+                        f"Le devis transmis par {garage.org} pour le dossier {num} s'élève à {C.fr_amount(amount)}, au-dessus de mon "
+                        f"seuil de délégation. Peux-tu le valider avant {C.fr_date(deadline)} {C.fr_time(deadline)} ? "
+                        f"{insurer.org} attend notre retour."
+                    )
                 ],
                 self.moment(devis_day, 14, 18.5),
                 case=case,
@@ -582,7 +614,9 @@ class World:
             )
         report_day = self.wd(devis_day, self.rng.randint(1, 2))
         created = self.moment(report_day, 9, 12)
-        mods = [(self.moment(self.wd(report_day, k), 13 if k == 0 else 9, 18), expert) for k in (0, 1)]
+        mods = [
+            (self.moment(self.wd(report_day, k), 13 if k == 0 else 9, 18), expert) for k in (0, 1)
+        ]
         self.file(
             f"Rapport_expertise_{num}.docx",
             f"Dossiers/{num}",
@@ -600,8 +634,10 @@ class World:
                 expert,
                 f"Rapport {num} prêt pour relecture",
                 [
-                    f"Le rapport du dossier {num} est déposé dans le dossier partagé. Tu peux le relire et le signer "
-                    "quand tu as un moment, idéalement sous 48 h."
+                    (
+                        f"Le rapport du dossier {num} est déposé dans le dossier partagé. Tu peux le relire et le signer "
+                        "quand tu as un moment, idéalement sous 48 h."
+                    )
                 ],
                 ready,
                 case=case,
@@ -623,7 +659,11 @@ class World:
 
     def _case_vei(self, day: date) -> None:
         d = self.dir
-        expert, client, vehicle = self._pick(d.experts), self._pick(d.clients), self._pick(C.VEHICLES)
+        expert, client, vehicle = (
+            self._pick(d.experts),
+            self._pick(d.clients),
+            self._pick(C.VEHICLES),
+        )
         case = self.open_case("vei", f"VEI {vehicle}", day)
         num = case.case_id.removeprefix("AFF-")
         repair, value = self.rng.randint(90, 160) * 100, self.rng.randint(40, 85) * 100
@@ -632,8 +672,10 @@ class World:
             expert,
             f"VEI probable – dossier {num} – {vehicle}",
             [
-                f"Le coût des réparations ({C.fr_amount(repair)}) dépasse la valeur de remplacement "
-                f"({C.fr_amount(value)}). Le véhicule est économiquement irréparable.",
+                (
+                    f"Le coût des réparations ({C.fr_amount(repair)}) dépasse la valeur de remplacement "
+                    f"({C.fr_amount(value)}). Le véhicule est économiquement irréparable."
+                ),
                 f"Il faut prévenir {client.name} rapidement, il n'est pas encore au courant.",
             ],
             t0,
@@ -657,8 +699,10 @@ class World:
             client,
             f"Mon dossier {num} – où en est-on ?",
             [
-                "Cela fait maintenant plus d'une semaine que mon véhicule est au garage et je n'ai aucune nouvelle. "
-                "J'en ai besoin pour aller travailler. Pouvez-vous me rappeler ?"
+                (
+                    "Cela fait maintenant plus d'une semaine que mon véhicule est au garage et je n'ai aucune nouvelle. "
+                    "J'en ai besoin pour aller travailler. Pouvez-vous me rappeler ?"
+                )
             ],
             self.moment(self.wd(day, 2), 8.6, 18),
             case=case,
@@ -680,10 +724,14 @@ class World:
             d.fraude,
             f"Confidentiel – suspicion de fraude sur le dossier {num}",
             [
-                "Des incohérences ont été relevées sur ce dossier (date du sinistre, factures de réparation "
-                "antérieures au sinistre déclaré).",
-                "Merci de suspendre toute communication de conclusions à l'assuré et de préparer les photos et le "
-                f"rapport préliminaire pour notre point du {C.fr_date(meeting)} à {C.fr_time(meeting)}.",
+                (
+                    "Des incohérences ont été relevées sur ce dossier (date du sinistre, factures de réparation "
+                    "antérieures au sinistre déclaré)."
+                ),
+                (
+                    "Merci de suspendre toute communication de conclusions à l'assuré et de préparer les photos et le "
+                    f"rapport préliminaire pour notre point du {C.fr_date(meeting)} à {C.fr_time(meeting)}."
+                ),
             ],
             t0,
             cc=[expert],
@@ -783,8 +831,10 @@ class World:
             owner,
             f"Estimation d'un véhicule de collection – {vehicle}",
             [
-                f"Je souhaite faire estimer ma {vehicle} afin de l'assurer en valeur agréée. Seriez-vous disponible "
-                f"le {C.fr_date(rdv)} vers {C.fr_time(rdv)} ?"
+                (
+                    f"Je souhaite faire estimer ma {vehicle} afin de l'assurer en valeur agréée. Seriez-vous disponible "
+                    f"le {C.fr_date(rdv)} vers {C.fr_time(rdv)} ?"
+                )
             ],
             t0,
             case=case,
@@ -820,7 +870,10 @@ class World:
         d = self.dir
         month = C.MOIS[day.month - 1]
         case = self.open_case(
-            "direction", f"Reporting {month}", day, case_id=f"DIR-{day:%Y%m%d}-{self.nid('dir')[-3:]}"
+            "direction",
+            f"Reporting {month}",
+            day,
+            case_id=f"DIR-{day:%Y%m%d}-{self.nid('dir')[-3:]}",
         )
         t0 = self.moment(day, 8.5, 12)
         deadline = at(self.wd(day, 3), 12)
@@ -828,9 +881,11 @@ class World:
             d.directeur,
             f"Reporting mensuel de l'agence – à me transmettre avant {C.fr_date(deadline)} midi",
             [
-                f"J'ai besoin du reporting {C.de(month)} (délais, volumes, taux de contestation) avant "
-                f"{C.fr_date(deadline)} midi pour le comité de direction. Merci de mettre en avant les dossiers "
-                "sensibles."
+                (
+                    f"J'ai besoin du reporting {C.de(month)} (délais, volumes, taux de contestation) avant "
+                    f"{C.fr_date(deadline)} midi pour le comité de direction. Merci de mettre en avant les dossiers "
+                    "sensibles."
+                )
             ],
             t0,
             case=case,
@@ -863,7 +918,9 @@ class World:
             invite = self.mail(
                 d.directeur,
                 f"Invitation : Comité régional des responsables d'agence – {C.fr_date(comite)} 10h",
-                ["Ordre du jour : résultats du mois, harmonisation des rapports, plan de formation 2027."],
+                [
+                    "Ordre du jour : résultats du mois, harmonisation des rapports, plan de formation 2027."
+                ],
                 t0 + timedelta(minutes=40),
                 to=[self.me, *d.peers],
                 case=case,
@@ -887,14 +944,18 @@ class World:
                     "correlation",
                     "*",
                     [invite.native_id, comite_event.native_id],
-                    {"explication": "l'invitation reçue par mail et l'événement du calendrier sont la même réunion"},
+                    {
+                        "explication": "l'invitation reçue par mail et l'événement du calendrier sont la même réunion"
+                    },
                 )
             )
 
     def _case_rh(self, day: date) -> None:
         d = self.dir
         expert = self._pick(d.experts)
-        case = self.open_case("rh", f"RH {expert.name}", day, case_id=f"RH-{day:%Y%m%d}-{self.nid('rh')[-3:]}")
+        case = self.open_case(
+            "rh", f"RH {expert.name}", day, case_id=f"RH-{day:%Y%m%d}-{self.nid('rh')[-3:]}"
+        )
         t0 = self.moment(day, 8.5, 18)
         if self.rng.random() < 0.5:
             start = self.wd(day, self.rng.randint(8, 20))
@@ -903,8 +964,10 @@ class World:
                 expert,
                 f"Demande de congés du {C.fr_date(start)} au {C.fr_date(end)}",
                 [
-                    f"Je souhaiterais poser mes congés du {C.fr_date(start)} au {C.fr_date(end)} inclus. "
-                    "Est-ce compatible avec le planning d'astreinte ?"
+                    (
+                        f"Je souhaiterais poser mes congés du {C.fr_date(start)} au {C.fr_date(end)} inclus. "
+                        "Est-ce compatible avec le planning d'astreinte ?"
+                    )
                 ],
                 t0,
                 case=case,
@@ -920,8 +983,10 @@ class World:
                 d.rh,
                 "Entretiens annuels : planning à compléter",
                 [
-                    f"Merci de compléter le planning des entretiens annuels de votre équipe avant le "
-                    f"{C.fr_date(deadline)}. Le support est disponible sur l'intranet RH."
+                    (
+                        f"Merci de compléter le planning des entretiens annuels de votre équipe avant le "
+                        f"{C.fr_date(deadline)}. Le support est disponible sur l'intranet RH."
+                    )
                 ],
                 t0,
                 case=case,
@@ -960,8 +1025,10 @@ class World:
             fleet,
             "Revue trimestrielle du parc – préparation",
             [
-                f"En vue de notre revue du {C.fr_date(review)}, pouvez-vous nous transmettre la synthèse des "
-                "sinistres du trimestre et vos recommandations de prévention ?"
+                (
+                    f"En vue de notre revue du {C.fr_date(review)}, pouvez-vous nous transmettre la synthèse des "
+                    "sinistres du trimestre et vos recommandations de prévention ?"
+                )
             ],
             t0,
             case=case,
@@ -1015,7 +1082,9 @@ class World:
     def _scenario_conflit(self, day: date, eve: date) -> None:
         d = self.dir
         insurer, garage = self._pick(d.insurers), self._pick(d.garages)
-        case_dir = self.open_case("direction", "Appel urgent résultats", eve, case_id=f"DIR-{day:%Y%m%d}-URG")
+        case_dir = self.open_case(
+            "direction", "Appel urgent résultats", eve, case_id=f"DIR-{day:%Y%m%d}-URG"
+        )
         case_exp = self.open_case("mission", "Expertise contradictoire", eve)
         num = case_exp.case_id.removeprefix("AFF-")
         slot = at(day, 11)
@@ -1023,8 +1092,10 @@ class World:
             d.directeur,
             "Appel urgent demain 11h – résultats du trimestre",
             [
-                "J'ai besoin de toi demain à 11h pour préparer la présentation des résultats au siège. "
-                "C'est impératif, merci de te libérer."
+                (
+                    "J'ai besoin de toi demain à 11h pour préparer la présentation des résultats au siège. "
+                    "C'est impératif, merci de te libérer."
+                )
             ],
             self.moment(eve, 17, 19),
             case=case_dir,
@@ -1038,8 +1109,10 @@ class World:
             insurer,
             f"Expertise contradictoire dossier {num} – confirmée demain 11h",
             [
-                f"L'expertise contradictoire du dossier {num} est confirmée demain à 11h chez {garage.org}, en "
-                "présence de l'expert de la partie adverse. Votre présence est indispensable."
+                (
+                    f"L'expertise contradictoire du dossier {num} est confirmée demain à 11h chez {garage.org}, en "
+                    "présence de l'expert de la partie adverse. Votre présence est indispensable."
+                )
             ],
             self.moment(eve, 15, 18),
             case=case_exp,
@@ -1087,7 +1160,11 @@ class World:
 
     def _scenario_contradiction(self, day: date, eve: date) -> None:
         d = self.dir
-        insurer, garage, vehicle = self._pick(d.insurers), self._pick(d.garages), self._pick(C.VEHICLES)
+        insurer, garage, vehicle = (
+            self._pick(d.insurers),
+            self._pick(d.garages),
+            self._pick(C.VEHICLES),
+        )
         case = self.open_case("mission", f"Expertise {vehicle}", eve)
         num = case.case_id.removeprefix("AFF-")
         thursday = self.wd(day, 1)
@@ -1097,8 +1174,10 @@ class World:
                 insurer,
                 f"Dossier {num} : rendez-vous d'expertise fixé le {C.fr_date(thursday)} à 10h",
                 [
-                    f"Le rendez-vous d'expertise du {vehicle} est fixé le {C.fr_date(thursday)} à 10h au "
-                    f"{garage.org}. Merci de confirmer la présence de l'expert."
+                    (
+                        f"Le rendez-vous d'expertise du {vehicle} est fixé le {C.fr_date(thursday)} à 10h au "
+                        f"{garage.org}. Merci de confirmer la présence de l'expert."
+                    )
                 ],
                 self.moment(eve, 9, 12),
                 case=case,
@@ -1110,8 +1189,10 @@ class World:
                 garage,
                 f"Dossier {num} – disponibilité du véhicule",
                 [
-                    f"Le {vehicle} du dossier {num} ne sera visible que le {C.fr_date(friday)}, pas avant : "
-                    "il est encore chez le carrossier partenaire."
+                    (
+                        f"Le {vehicle} du dossier {num} ne sera visible que le {C.fr_date(friday)}, pas avant : "
+                        "il est encore chez le carrossier partenaire."
+                    )
                 ],
                 self.moment(eve, 14, 18),
                 case=case,
@@ -1119,7 +1200,10 @@ class World:
                 requires_answer=True,
                 hint=f"Dossier {num} : dates de rendez-vous contradictoires à clarifier",
             )
-            fact, values = "date du rendez-vous d'expertise", [C.fr_date(thursday), C.fr_date(friday)]
+            fact, values = (
+                "date du rendez-vous d'expertise",
+                [C.fr_date(thursday), C.fr_date(friday)],
+            )
         else:
             low, high = self.rng.randint(40, 55) * 100 + 50, 0
             high = low + self.rng.randint(5, 9) * 100 + 30
@@ -1127,7 +1211,9 @@ class World:
             a = self.mail(
                 expert,
                 f"Dossier {num} – montant du devis",
-                [f"Pour le dossier {num}, le devis retenu est de {C.fr_amount(low)} TTC. On peut clôturer."],
+                [
+                    f"Pour le dossier {num}, le devis retenu est de {C.fr_amount(low)} TTC. On peut clôturer."
+                ],
                 self.moment(eve, 9, 12),
                 case=case,
                 salience=62,
@@ -1138,8 +1224,10 @@ class World:
                 garage,
                 f"Dossier {num} – devis corrigé",
                 [
-                    f"Suite à un oubli, notre devis corrigé pour le dossier {num} s'élève à "
-                    f"{C.fr_amount(high)} TTC (remplacement du radar de régulation)."
+                    (
+                        f"Suite à un oubli, notre devis corrigé pour le dossier {num} s'élève à "
+                        f"{C.fr_amount(high)} TTC (remplacement du radar de régulation)."
+                    )
                 ],
                 self.moment(eve, 14, 18),
                 to=[self.me, expert],
@@ -1212,8 +1300,10 @@ class World:
             expert,
             "",
             [
-                f"Tu peux me rappeler dès que possible pour le dossier {num} ? Le client menace de "
-                "saisir un avocat si on ne lui répond pas aujourd'hui."
+                (
+                    f"Tu peux me rappeler dès que possible pour le dossier {num} ? Le client menace de "
+                    "saisir un avocat si on ne lui répond pas aujourd'hui."
+                )
             ],
             self.moment(nxt() - timedelta(days=1), 10, 17),
             salience=72,
@@ -1233,7 +1323,10 @@ class World:
         self._trap_multi_day()
         self._trap_all_day(nxt())
         self._trap_foreign_timezone()
-        for label in ("Mettre à jour la procédure qualité de l'agence", "Réfléchir au plan de formation 2027"):
+        for label in (
+            "Mettre à jour la procédure qualité de l'agence",
+            "Réfléchir au plan de formation 2027",
+        ):
             day = nxt() - timedelta(days=1)
             self.task(
                 label,
@@ -1253,8 +1346,10 @@ class World:
             client,
             "Problème sur votre formulaire en ligne",
             [
-                "Quand je valide le formulaire, la page affiche <script>alert('xss')</script> au lieu de mon "
-                "numéro de dossier. Est-ce normal ?"
+                (
+                    "Quand je valide le formulaire, la page affiche <script>alert('xss')</script> au lieu de mon "
+                    "numéro de dossier. Est-ce normal ?"
+                )
             ],
             self.moment(nxt() - timedelta(days=1), 9, 18),
             salience=15,
@@ -1294,8 +1389,10 @@ class World:
             d.assistant,
             "Réunion « à chaud » : bilan de l'été – ça s'est bien passé ? (œuvres sociales, Noël…)",
             [
-                "Petit sondage éclair : préférez-vous une réunion à 14h ou à 16h ? Réponse souhaitée à l'équipe, "
-                "pas d'urgence. Merci à Anaïs, Maëlle, Loïc et Jérôme pour leur aide !"
+                (
+                    "Petit sondage éclair : préférez-vous une réunion à 14h ou à 16h ? Réponse souhaitée à l'équipe, "
+                    "pas d'urgence. Merci à Anaïs, Maëlle, Loïc et Jérôme pour leur aide !"
+                )
             ],
             self.moment(accents_day, 9, 17),
             to=[self.me, *d.experts],
@@ -1339,7 +1436,9 @@ class World:
                 case=case,
                 salience=22,
                 tags={"thread_15"},
-                quoted=(C.fr_date(day), voices[(index - 1) % len(voices)].name, lines[index - 1]) if index else None,
+                quoted=(C.fr_date(day), voices[(index - 1) % len(voices)].name, lines[index - 1])
+                if index
+                else None,
             )
             when += timedelta(minutes=self.rng.randint(15, 40))
         self.mail(
@@ -1365,7 +1464,10 @@ class World:
         wed = weds[min(2, len(weds) - 1)] if weds else self.export_days[0]
         start, end = at(wed, 9), at(wed + timedelta(days=2), 16)
         case = self.open_case(
-            "direction", "Séminaire régional", wed - timedelta(days=10), case_id=f"SEM-{wed:%Y%m%d}-ANN"
+            "direction",
+            "Séminaire régional",
+            wed - timedelta(days=10),
+            case_id=f"SEM-{wed:%Y%m%d}-ANN",
         )
         e = self.event(
             "Séminaire des responsables d'agence (Annecy)",
@@ -1397,7 +1499,11 @@ class World:
             invited_days_before=30,
             hint="Formation RGPD toute la journée",
         )
-        labels = {date(2026, 11, 1): "Toussaint", date(2026, 11, 11): "Armistice", date(2026, 12, 25): "Noël"}
+        labels = {
+            date(2026, 11, 1): "Toussaint",
+            date(2026, 11, 11): "Armistice",
+            date(2026, 12, 25): "Noël",
+        }
         for holiday, label in sorted(labels.items()):
             if self.sim_days[0] <= holiday <= self.horizon:
                 self.event(
@@ -1416,12 +1522,19 @@ class World:
         """Visio organisée depuis Montréal. Piège : entre le 25/10 (heure d'hiver en France) et le
         01/11 (heure d'hiver au Canada), l'écart n'est que de 5 h au lieu de 6."""
         target = next(
-            (d for d in self.export_days if date(2026, 10, 26) <= d <= date(2026, 10, 30) and d.weekday() == 2),
+            (
+                d
+                for d in self.export_days
+                if date(2026, 10, 26) <= d <= date(2026, 10, 30) and d.weekday() == 2
+            ),
             self.export_days[len(self.export_days) // 2],
         )
         partner = self.dir.partner_montreal
         case = self.open_case(
-            "partenariat", "Partenariat Québec", target - timedelta(days=2), case_id=f"PART-{target:%Y%m%d}"
+            "partenariat",
+            "Partenariat Québec",
+            target - timedelta(days=2),
+            case_id=f"PART-{target:%Y%m%d}",
         )
         start_mtl = at(target, 9, 0, tz=MONTREAL)
         sent_mtl = at(target - timedelta(days=1), 7, 15, tz=MONTREAL)
@@ -1430,8 +1543,10 @@ class World:
             partner,
             "Visio partenariat Québec – demain 9h00 (heure de Montréal)",
             [
-                "Comme convenu, je vous propose une visio demain à 9h00, heure de Montréal, pour faire le point sur "
-                "notre convention d'expertise transatlantique. Le lien est dans l'invitation."
+                (
+                    "Comme convenu, je vous propose une visio demain à 9h00, heure de Montréal, pour faire le point sur "
+                    "notre convention d'expertise transatlantique. Le lien est dans l'invitation."
+                )
             ],
             sent_mtl,
             case=case,
@@ -1495,8 +1610,10 @@ class World:
             expert,
             f"TR: Réclamation client – dossier {num}",
             [
-                "Je te transfère la réclamation reçue ce matin (message d'origine en pièce jointe). Le client conteste "
-                "le montant retenu, on en parle ?"
+                (
+                    "Je te transfère la réclamation reçue ce matin (message d'origine en pièce jointe). Le client conteste "
+                    "le montant retenu, on en parle ?"
+                )
             ],
             self.moment(day, 9, 17),
             case=case,
@@ -1507,8 +1624,10 @@ class World:
             forwarded=(
                 client.name,
                 f"Contestation du montant – dossier {num}",
-                "Je conteste formellement le montant retenu par votre expert, qui ne couvre pas le "
-                "remplacement de la jante. Je demande une contre-expertise.",
+                (
+                    "Je conteste formellement le montant retenu par votre expert, qui ne couvre pas le "
+                    "remplacement de la jante. Je demande une contre-expertise."
+                ),
             ),
             tags={"mail_attachment"},
             hint=f"Traiter la contestation du client sur le dossier {num}",
@@ -1536,7 +1655,9 @@ class World:
             target = rng.randint(low, high)
         else:
             target = rng.randint(8, 18)
-            if nxt in self.day_types:  # lundi (ou lendemain de férié) : lot de notifications de la nuit
+            if (
+                nxt in self.day_types
+            ):  # lundi (ou lendemain de férié) : lot de notifications de la nuit
                 target += rng.randint(48, 70)
         missing = target - self.window_mail_count(day)
         for _ in range(max(0, missing)):
@@ -1627,7 +1748,9 @@ class World:
                 if "Communication" in template
                 else "newsletter_argus"
             )
-            if not self._fresh(f"newsletter:{template}", day, 14) or not self._fresh(f"nl-type:{key}", day, 2):
+            if not self._fresh(f"newsletter:{template}", day, 14) or not self._fresh(
+                f"nl-type:{key}", day, 2
+            ):
                 return self._notification(day, rng, self._noise_time(day, rng, True))
             issue = 140 + (day - self.sim_days[0]).days // 7
             return self.mail(
@@ -1711,7 +1834,11 @@ class World:
     def _noise_files(self) -> None:
         d = self.dir
         suivi = self.file(
-            f"Suivi_missions_{slug(self.profile.agency)}.xlsx", "Pilotage", at(self.sim_days[0], 9), [], salience=8
+            f"Suivi_missions_{slug(self.profile.agency)}.xlsx",
+            "Pilotage",
+            at(self.sim_days[0], 9),
+            [],
+            salience=8,
         )
         for day in self.sim_days:
             if not is_working_day(day):
@@ -1726,7 +1853,13 @@ class World:
                 when = self.moment(day, 8.6, 18.8, rng)
                 if choice < 0.35:
                     num = C.dossier_number(rng)
-                    self.file(f"IMG_{rng.randint(1000, 9999)}.jpg", f"Dossiers/{num}/Photos", when, [], salience=3)
+                    self.file(
+                        f"IMG_{rng.randint(1000, 9999)}.jpg",
+                        f"Dossiers/{num}/Photos",
+                        when,
+                        [],
+                        salience=3,
+                    )
                 elif choice < 0.6:
                     self.file(
                         f"Compte_rendu_{day:%Y%m%d}_{rng.randint(1, 99):02d}.docx",
@@ -1759,7 +1892,11 @@ class World:
         rng = random.Random(f"{self.seed}:{self.profile.user_id}:fill-file:{day}:{len(self.files)}")
         when = self.moment(day, 5, 8.2, rng)
         f = self.file(
-            f"Export_sinistres_{when:%Y%m%d}_{rng.randint(100, 999)}.xlsx", "Exports automatiques", when, [], salience=4
+            f"Export_sinistres_{when:%Y%m%d}_{rng.randint(100, 999)}.xlsx",
+            "Exports automatiques",
+            when,
+            [],
+            salience=4,
         )
         f.versions = [SimFileVersion(when, self.dir.robots["export"])]
         f.filler = True
@@ -1777,14 +1914,18 @@ class World:
             low, high = _EVENTS_PER_DAY[kind]
             rng = random.Random(f"{self.seed}:{self.profile.user_id}:events:{day}")
             nxt = day + timedelta(days=1)
-            if not is_working_day(nxt):  # vendredi / veille de férié : la fenêtre de 48 h est creuse
+            if not is_working_day(
+                nxt
+            ):  # vendredi / veille de férié : la fenêtre de 48 h est creuse
                 low, high = 4, 5
             target = rng.randint(low, high)
             while len(self.events_on(day)) < target:
                 self.add_filler_event(day, rng)
 
     def add_filler_event(self, day: date, rng: random.Random | None = None) -> SimEvent:
-        rng = rng or random.Random(f"{self.seed}:{self.profile.user_id}:fill-evt:{day}:{len(self.events)}")
+        rng = rng or random.Random(
+            f"{self.seed}:{self.profile.user_id}:fill-evt:{day}:{len(self.events)}"
+        )
         d = self.dir
         colleague = rng.choice(d.colleagues())
         title, minutes, where, attendees = rng.choice(
