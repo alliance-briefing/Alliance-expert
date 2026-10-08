@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Connexion — Alliance Briefing{% endblock %}
+{% block content %}
+<h2>Connexion (démonstration)</h2>
+<p class="muted">Connexion provisoire sur données synthétiques : la connexion OAuth arrive avec L3.4.</p>
+{% if error %}
+<p class="box error" role="alert">Identifiant refusé : format attendu u_… (ex. u_demo_001).</p>
+{% endif %}
+<form method="post" action="/login" class="inline">
+  <div>
+    <label for="user_id">Identifiant utilisateur</label>
+    <input id="user_id" name="user_id" value="u_demo_001" required autocomplete="username">
+  </div>
+  <button type="submit">Se connecter</button>
+</form>
+{% endblock %}
