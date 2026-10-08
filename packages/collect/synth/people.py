@@ -67,7 +67,12 @@ PROFILES: dict[str, ManagerProfile] = {
         last_name="Mbemba",
         agency="Grenoble",
         code="dm2",
-        experts=(("Clémence", "Bérard"), ("Yanis", "Haddad"), ("Léa", "Perrin"), ("François", "Ødegaard")),
+        experts=(
+            ("Clémence", "Bérard"),
+            ("Yanis", "Haddad"),
+            ("Léa", "Perrin"),
+            ("François", "Ødegaard"),
+        ),
         assistant=("Inès", "Carvalho"),
     ),
 }
@@ -87,7 +92,10 @@ GARAGES = (
     ("Garage Saint-Exupéry", "Lyon 8e", "garage-st-exupery.test"),
     ("Carrosserie du Rhône", "Caluire-et-Cuire", "carrosserie-rhone.test"),
 )
-FLEETS = (("Transports Rhodaniens", "transports-rhodaniens.test"), ("Location Pro Dauphiné", "locpro-dauphine.test"))
+FLEETS = (
+    ("Transports Rhodaniens", "transports-rhodaniens.test"),
+    ("Location Pro Dauphiné", "locpro-dauphine.test"),
+)
 INSURER_CONTACTS = (
     ("Julie", "Marchand"),
     ("Olivier", "Da Silva"),
@@ -151,7 +159,9 @@ def _robot(key: str, name: str, email: str) -> Person:
 
 
 def build_directory(profile: ManagerProfile) -> Directory:
-    manager = _internal(profile.first_name, profile.last_name, "manager", f"Responsable d'agence {profile.agency}")
+    manager = _internal(
+        profile.first_name, profile.last_name, "manager", f"Responsable d'agence {profile.agency}"
+    )
     experts = [_internal(f, n, "expert", "Expert automobile") for f, n in profile.experts]
     assistant = _internal(*profile.assistant, "assistant", "Assistante d'agence")
 
@@ -160,19 +170,41 @@ def build_directory(profile: ManagerProfile) -> Directory:
         org, domain = INSURERS[index % len(INSURERS)]
         name = f"{first} {last}"
         insurers.append(
-            Person(slug(name), name, f"{slug(first)}.{slug(last)}@{domain}", "assureur", org, "Gestionnaire sinistres")
+            Person(
+                slug(name),
+                name,
+                f"{slug(first)}.{slug(last)}@{domain}",
+                "assureur",
+                org,
+                "Gestionnaire sinistres",
+            )
         )
     garages = [
         Person(slug(g), f"Accueil {g}", f"contact@{domain}", "garage", g, f"Garage – {city}")
         for g, city, domain in GARAGES
     ]
     clients = [
-        Person(slug(f"{f} {n}"), f"{f} {n}", f"{slug(f)}.{slug(n)}@particulier.test", "client", "Particulier")
+        Person(
+            slug(f"{f} {n}"),
+            f"{f} {n}",
+            f"{slug(f)}.{slug(n)}@particulier.test",
+            "client",
+            "Particulier",
+        )
         for f, n in CLIENTS
     ]
-    fleets = [Person(slug(o), f"Service parc – {o}", f"parc@{d}", "client", o, "Gestion de flotte") for o, d in FLEETS]
+    fleets = [
+        Person(slug(o), f"Service parc – {o}", f"parc@{d}", "client", o, "Gestion de flotte")
+        for o, d in FLEETS
+    ]
     collectors = [
-        Person(slug(f"{f} {n}"), f"{f} {n}", f"{slug(f)}.{slug(n)}@collection.test", "client", "Particulier")
+        Person(
+            slug(f"{f} {n}"),
+            f"{f} {n}",
+            f"{slug(f)}.{slug(n)}@collection.test",
+            "client",
+            "Particulier",
+        )
         for f, n in COLLECTION_OWNERS
     ]
     montreal = Person(
@@ -189,21 +221,39 @@ def build_directory(profile: ManagerProfile) -> Directory:
         _internal("Arnaud", "Petitjean", "pair", "Responsable d'agence Valence"),
     ]
     robots = {
-        "missions": _robot("robot.missions", "Plateforme Missions", f"noreply-missions@{INTERNAL_DOMAIN}"),
-        "sharepoint": _robot("robot.sharepoint", "SharePoint", f"no-reply@sharepoint.{INTERNAL_DOMAIN}"),
-        "teams": _robot("robot.teams", "Microsoft Teams (démo)", f"noreply@teams.{INTERNAL_DOMAIN}"),
-        "reporting": _robot("robot.reporting", "Reporting automatique", f"noreply-reporting@{INTERNAL_DOMAIN}"),
-        "securite": _robot("robot.securite", "Service informatique", f"notifications-it@{INTERNAL_DOMAIN}"),
-        "newsletter_argus": _robot("robot.argus", "La Lettre de l'Expertise", "newsletter@lettre-expertise.test"),
-        "newsletter_fournisseur": _robot("robot.fournisseur", "PiècesAuto Pro", "newsletter@piecesauto-pro.test"),
-        "newsletter_interne": _robot("robot.interne", "Communication interne", f"newsletter@{INTERNAL_DOMAIN}"),
+        "missions": _robot(
+            "robot.missions", "Plateforme Missions", f"noreply-missions@{INTERNAL_DOMAIN}"
+        ),
+        "sharepoint": _robot(
+            "robot.sharepoint", "SharePoint", f"no-reply@sharepoint.{INTERNAL_DOMAIN}"
+        ),
+        "teams": _robot(
+            "robot.teams", "Microsoft Teams (démo)", f"noreply@teams.{INTERNAL_DOMAIN}"
+        ),
+        "reporting": _robot(
+            "robot.reporting", "Reporting automatique", f"noreply-reporting@{INTERNAL_DOMAIN}"
+        ),
+        "securite": _robot(
+            "robot.securite", "Service informatique", f"notifications-it@{INTERNAL_DOMAIN}"
+        ),
+        "newsletter_argus": _robot(
+            "robot.argus", "La Lettre de l'Expertise", "newsletter@lettre-expertise.test"
+        ),
+        "newsletter_fournisseur": _robot(
+            "robot.fournisseur", "PiècesAuto Pro", "newsletter@piecesauto-pro.test"
+        ),
+        "newsletter_interne": _robot(
+            "robot.interne", "Communication interne", f"newsletter@{INTERNAL_DOMAIN}"
+        ),
         "export": _robot("robot.export", "Robot d'export", f"noreply-export@{INTERNAL_DOMAIN}"),
     }
     return Directory(
         manager=manager,
         experts=experts,
         assistant=assistant,
-        directeur=_internal("Bernard", "Mercier", "directeur", "Directeur régional Auvergne-Rhône-Alpes"),
+        directeur=_internal(
+            "Bernard", "Mercier", "directeur", "Directeur régional Auvergne-Rhône-Alpes"
+        ),
         fraude=_internal("Hélène", "Dürr", "fraude", "Cellule anti-fraude"),
         rh=_internal("Gaël", "Kowalski", "rh", "Ressources humaines"),
         insurers=insurers,
