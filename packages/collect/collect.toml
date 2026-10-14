@@ -1,0 +1,5 @@
+# Configuration de la collecte (lot 1).
+# Toutes les sources trouvées dans connectors/ sont actives par défaut :
+# ajouter une source ne demande donc que son dossier. Pour en couper une, ajoutez son nom ici.
+[connectors]
+disabled = []
