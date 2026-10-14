@@ -27,12 +27,36 @@
     ol.entries { padding-left: 1.25rem; }
     ol.entries > li { margin-bottom: 1rem; overflow-wrap: anywhere; }
     .sources { margin: .25rem 0 0; padding-left: 1rem; }
+    /* Menu « Outils » : <details> natif, ouvrable au clavier sans JavaScript. */
+    .bar { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+    .tools { position: relative; }
+    .tools summary { cursor: pointer; display: flex; align-items: center; min-height: 2.75rem;
+                     padding: .25rem .75rem; border: 1px solid var(--line); border-radius: 4px; }
+    .tools summary:focus-visible { outline: 3px solid var(--link); outline-offset: 2px; }
+    .tools ul { position: absolute; right: 0; z-index: 1; width: min(18rem, calc(100vw - 2rem));
+                margin: .25rem 0 0; padding: .5rem 0; list-style: none; background: #fff;
+                border: 1px solid var(--line); border-radius: 4px; }
+    .tools li a { display: block; padding: .5rem 1rem; }
+    .tools li small { display: block; color: var(--muted); }
   </style>
 </head>
 <body>
   <header>
     <h1>Alliance Briefing</h1>
-    {% block nav %}{% endblock %}
+    <div class="bar">
+      {% block nav %}{% endblock %}
+      <details class="tools">
+        <summary>Outils</summary>
+        <ul>
+          <li><a href="/">Brief du jour<small>Interface manager</small></a></li>
+          <li><a href="/docs" target="_blank" rel="noopener">Swagger UI<small>Tester l'API (/docs)</small></a></li>
+          <li><a href="/redoc" target="_blank" rel="noopener">ReDoc<small>Documentation de l'API (/redoc)</small></a></li>
+          <li><a href="/openapi.json" target="_blank" rel="noopener">Schéma OpenAPI<small>JSON brut (/openapi.json)</small></a></li>
+          <li><a href="/me" target="_blank" rel="noopener">Session<small>Utilisateur connecté (/me)</small></a></li>
+          <li><a href="/health" target="_blank" rel="noopener">Santé<small>État du serveur (/health)</small></a></li>
+        </ul>
+      </details>
+    </div>
   </header>
   <main id="contenu">
     {% block content %}{% endblock %}

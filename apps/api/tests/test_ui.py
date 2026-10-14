@@ -104,6 +104,14 @@ def test_un_utilisateur_ne_voit_pas_le_brief_d_un_autre(client: TestClient) -> N
     assert f"{USER_A}-" not in page
 
 
+def test_menu_outils_mene_aux_autres_interfaces(client: TestClient) -> None:
+    for page in (client.get("/login").text, _logged_in(client).get(f"/?date={DAY}").text):
+        links = re.findall(r'<details class="tools">.*?</details>', page, flags=re.DOTALL)[0]
+        for path in ("/docs", "/redoc", "/openapi.json", "/me", "/health"):
+            assert f'href="{path}"' in links
+            assert client.get(path).status_code == 200
+
+
 def test_deconnexion_efface_le_cookie(client: TestClient) -> None:
     client = _logged_in(client)
     client.post("/logout")
