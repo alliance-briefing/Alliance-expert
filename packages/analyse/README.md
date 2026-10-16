@@ -23,6 +23,32 @@ brief = generate_brief(load_items("2026-10-07"), "u_demo_001", "2026-10-07")
 - Scores fixes par section (retards 70, actions 60, réunions 50) en attendant le score expliqué (L2.2).
 - `generator.llm = "rules"` : aucun LLM, aucun coût.
 
+## Agrégation en affaires (L2.1, niveaux 1 et 2)
+
+```python
+from packages.analyse.aggregate.cases import group_into_cases
+
+cases = group_into_cases(items)  # list[Case] : case_id, items, links
+```
+
+Deux items sont dans la même affaire s'ils partagent un lien ; les liens sont transitifs.
+
+| Niveau | Lien | Exemple de `links` |
+|---|---|---|
+| 1 | même `thread_id` | `fil:conv:dm1-conv-000024` |
+| 2 | même référence dans le **titre** | `dossier:2026-3025` |
+
+Le type d'une référence dépend du mot qui précède le numéro (`REFERENCE_KINDS`) :
+dossier, mission, rapport, devis → `dossier` ; facture → `facture` ; commande → `commande` ;
+tout autre mot ne crée aucun lien. Une facture et une commande au même numéro restent donc séparées.
+
+- Titre seulement : un extrait cite souvent d'autres dossiers et fusionnerait des affaires sans rapport.
+- Isolation : deux utilisateurs ne partagent jamais une affaire.
+- Déterminisme : `case_id = "case:" + plus petit item_id` ; affaires triées par `case_id`,
+  items par date de création.
+- Pas encore branché dans le brief ; le niveau 3 (sujet proche, embeddings) viendra si la
+  mesure du lot 3 montre un rappel insuffisant.
+
 ## Commandes
 
 ```bash
@@ -34,6 +60,7 @@ uv run ruff check . && uv run ruff format --check .     # style
 
 ```
 aggregate/rules.py   règles de sélection (fonctions pures)
+aggregate/cases.py   regroupement des items en affaires (L2.1)
 brief.py             generate_brief : assemble le Brief
 tests/               fabrique d'Item synthétiques + tests
 ```
