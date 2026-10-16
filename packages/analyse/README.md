@@ -2,7 +2,7 @@
 
 Transforme les `Item` d'un utilisateur (contrat A) en `Brief` (contrat B).
 
-## État actuel : brief à base de règles (L2.0)
+## État actuel : brief à base de règles (L2.0), par affaires (L2.1)
 
 ```python
 from contracts.demo_data import load_items
@@ -11,11 +11,15 @@ from packages.analyse import generate_brief
 brief = generate_brief(load_items("2026-10-07"), "u_demo_001", "2026-10-07")
 ```
 
-| Section | Règle | Ordre |
-|---|---|---|
-| `actions` | 5 mails non lus les plus récents | du plus récent au plus ancien |
-| `meetings` | événements qui occupent au moins une partie du jour | heure de début |
-| `overdue` | tâches en retard à l'heure de la collecte (`Item.is_overdue`) | échéance la plus ancienne d'abord |
+| Section | Règle | Une entrée = | Ordre |
+|---|---|---|---|
+| `actions` | mails non lus, 5 affaires au plus | les mails non lus d'une affaire | mail non lu le plus récent d'abord |
+| `meetings` | événements qui occupent au moins une partie du jour | une réunion (jamais fusionnée : une heure par entrée) | heure de début |
+| `overdue` | tâches en retard à l'heure de la collecte (`Item.is_overdue`) | les tâches en retard d'une affaire | échéance la plus ancienne d'abord |
+
+Si l'affaire contient d'autres éléments, l'entrée les annonce dans une deuxième raison
+(« dossier 2026-3025 : aussi 1 réunion, 1 tâche ») et les cite dans `source_item_ids` :
+aucune phrase sans source.
 
 - Isolation : seuls les items dont `owner_user_id` est l'utilisateur demandé sont lus ; les autres sont comptés dans `warnings`.
 - Déterminisme : même entrée, même brief, quel que soit l'ordre des items (hors `generated_at` et `stats.latency_ms`).
@@ -46,8 +50,8 @@ tout autre mot ne crée aucun lien. Une facture et une commande au même numéro
 - Isolation : deux utilisateurs ne partagent jamais une affaire.
 - Déterminisme : `case_id = "case:" + plus petit item_id` ; affaires triées par `case_id`,
   items par date de création.
-- Pas encore branché dans le brief ; le niveau 3 (sujet proche, embeddings) viendra si la
-  mesure du lot 3 montre un rappel insuffisant.
+- Le niveau 3 (sujet proche, embeddings) viendra si la mesure du lot 3 montre un rappel
+  insuffisant.
 
 ## Commandes
 
