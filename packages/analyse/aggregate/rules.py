@@ -17,8 +17,9 @@ UNREAD_MAILS_LIMIT = 5
 _ONE_MICROSECOND = timedelta(microseconds=1)
 
 
-def unread_mails(items: Sequence[Item], limit: int = UNREAD_MAILS_LIMIT) -> list[Item]:
-    """Les `limit` mails non lus les plus récents, du plus récent au plus ancien."""
+def unread_mails(items: Sequence[Item], limit: int | None = UNREAD_MAILS_LIMIT) -> list[Item]:
+    """Les `limit` mails non lus les plus récents (tous si `limit` est None), du plus récent
+    au plus ancien."""
     unread = [item for item in items if item.source == "mail" and item.is_read is False]
     unread.sort(key=lambda item: (-item.created_at.timestamp(), item.item_id))
     return unread[:limit]

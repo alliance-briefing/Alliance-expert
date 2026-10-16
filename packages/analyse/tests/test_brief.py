@@ -154,3 +154,121 @@ def test_mail_content_is_never_copied_into_the_brief() -> None:
     brief = generate_brief([mail], USER, DAY, now=NOW)
 
     assert injection not in brief.model_dump_json()
+
+
+# --- affaires (L2.1) ------------------------------------------------------------------------
+
+
+def test_unread_mails_of_one_thread_make_one_entry() -> None:
+    mails = [
+        make_mail(f"m{n}", f"2026-10-07T0{n}:00:00+02:00", title=f"RE{n}: Devis", thread_id="c1")
+        for n in range(1, 4)
+    ]
+
+    actions = generate_brief(mails, USER, DAY, now=NOW).sections[0]
+
+    assert len(actions.entries) == 1
+    entry = actions.entries[0]
+    assert entry.text == "3 mails non lus : RE3: Devis"
+    assert entry.priority_reasons == ["non lus, le plus récent reçu le 07/10 à 03:00"]
+    assert entry.source_item_ids == ["mail:m3", "mail:m2", "mail:m1"]
+
+
+def test_overdue_tasks_of_one_file_make_one_entry() -> None:
+    tasks = [
+        make_task("t1", "2026-10-03T12:00:00+02:00", title="Relancer le garage, dossier 2026-1111"),
+        make_task(
+            "t2", "2026-10-01T12:00:00+02:00", title="Affecter un expert au dossier 2026-1111"
+        ),
+    ]
+
+    overdue = generate_brief(tasks, USER, DAY, now=NOW).sections[2]
+
+    assert len(overdue.entries) == 1
+    entry = overdue.entries[0]
+    assert entry.text == "2 tâches en retard : Affecter un expert au dossier 2026-1111"
+    assert entry.priority_reasons == ["échéances dépassées, la plus ancienne le 01/10"]
+    assert entry.source_item_ids == ["task:t2", "task:t1"]
+
+
+def test_meetings_of_one_case_keep_one_entry_each() -> None:
+    events = [
+        make_event(
+            "e1",
+            "2026-10-07T09:00:00+02:00",
+            "2026-10-07T10:00:00+02:00",
+            title="Dossier 2026-1111",
+        ),
+        make_event(
+            "e2",
+            "2026-10-07T14:00:00+02:00",
+            "2026-10-07T15:00:00+02:00",
+            title="Dossier 2026-1111",
+        ),
+    ]
+
+    meetings = generate_brief(events, USER, DAY, now=NOW).sections[1]
+
+    assert [entry.source_item_ids for entry in meetings.entries] == [
+        ["calendar:e1", "calendar:e2"],
+        ["calendar:e2", "calendar:e1"],
+    ]
+    assert meetings.entries[0].priority_reasons == [
+        "réunion aujourd'hui",
+        "dossier 2026-1111 : aussi 1 réunion",
+    ]
+
+
+def test_other_items_of_the_case_are_announced_and_cited() -> None:
+    items = [
+        make_mail("non-lu", "2026-10-07T08:00:00+02:00", title="Dossier 2026-3025 : RAS"),
+        make_mail("lu", "2026-10-06T08:00:00+02:00", title="Dossier 2026-3025", is_read=True),
+        make_event(
+            "e1",
+            "2026-10-07T14:00:00+02:00",
+            "2026-10-07T15:00:00+02:00",
+            title="Expertise, dossier 2026-3025",
+        ),
+        make_task(
+            "t1", "2026-10-05T12:00:00+02:00", title="Affecter un expert au dossier 2026-3025"
+        ),
+    ]
+
+    brief = generate_brief(items, USER, DAY, now=NOW)
+
+    entry = brief.sections[0].entries[0]
+    assert entry.priority_reasons[1] == "dossier 2026-3025 : aussi 1 mail, 1 réunion, 1 tâche"
+    assert set(entry.source_item_ids) == {"mail:non-lu", "mail:lu", "calendar:e1", "task:t1"}
+    assert entry.source_item_ids[0] == "mail:non-lu"
+    assert brief.stats.items_out == 4
+
+
+def test_a_thread_without_file_number_is_named_by_its_thread() -> None:
+    items = [
+        make_mail("m1", "2026-10-07T08:00:00+02:00", title="Question", thread_id="c1"),
+        make_mail(
+            "m0", "2026-10-06T08:00:00+02:00", title="Question", thread_id="c1", is_read=True
+        ),
+    ]
+
+    entry = generate_brief(items, USER, DAY, now=NOW).sections[0].entries[0]
+
+    assert entry.priority_reasons[1] == "même fil : aussi 1 mail"
+
+
+def test_actions_limit_counts_cases_not_mails() -> None:
+    thread = [
+        make_mail(f"fil{n}", f"2026-10-07T07:0{n}:00+02:00", thread_id="c1") for n in range(6)
+    ]
+    singles = [make_mail(f"seul{n}", f"2026-10-06T0{n}:00:00+02:00") for n in range(5)]
+
+    actions = generate_brief(thread + singles, USER, DAY, now=NOW).sections[0]
+
+    assert len(actions.entries) == 5
+    assert len(actions.entries[0].source_item_ids) == 6
+    assert [entry.source_item_ids for entry in actions.entries[1:]] == [
+        ["mail:seul4"],
+        ["mail:seul3"],
+        ["mail:seul2"],
+        ["mail:seul1"],
+    ]
