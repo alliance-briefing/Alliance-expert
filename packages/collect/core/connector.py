@@ -5,14 +5,15 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime, timedelta
 
 from contracts.models import Item
+from packages.collect.core.paris_time import paris_time
 
 
 @dataclass(frozen=True)
 class Window:
-    """Période de collecte : de `start` à `end`, avec fuseau horaire obligatoire."""
+    """Période de collecte, avec fuseau obligatoire. `end` est l'heure de la collecte (« maintenant »)."""
 
     start: datetime
     end: datetime
@@ -22,6 +23,12 @@ class Window:
             raise ValueError("Window : les dates doivent avoir un fuseau horaire")
         if self.end < self.start:
             raise ValueError("Window : end est avant start")
+
+
+def collection_window(day: date, hour: int = 8, minute: int = 30) -> Window:
+    """Fenêtre d'une collecte du matin : les 24 h qui précèdent `day` à 8h30, heure de Paris."""
+    end = paris_time(day, hour, minute)
+    return Window(end - timedelta(hours=24), end)
 
 
 @dataclass(frozen=True)

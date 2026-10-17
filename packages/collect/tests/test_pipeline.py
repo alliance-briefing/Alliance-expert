@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
@@ -12,7 +12,7 @@ from contracts.demo_data import available_days
 from contracts.models import Item
 from packages.collect.cli import main
 from packages.collect.connectors.demo_fixtures import DemoFixturesConnector
-from packages.collect.core.connector import Connector, Health, Window
+from packages.collect.core.connector import Connector, Health, Window, collection_window
 from packages.collect.core.registry import discover, enabled_connectors
 from packages.collect.core.runner import run
 
@@ -20,8 +20,7 @@ USER = "u_demo_001"
 
 
 def _window(day: str) -> Window:
-    start = datetime.fromisoformat(f"{day}T00:00:00+00:00")
-    return Window(start, start + timedelta(days=1))
+    return collection_window(date.fromisoformat(day))
 
 
 class Crashing(Connector):
@@ -77,6 +76,17 @@ def test_window_requires_a_timezone() -> None:
         Window(datetime(2026, 10, 5), datetime(2026, 10, 6))  # noqa: DTZ001 (voulu)
     with pytest.raises(ValueError):
         Window(datetime(2026, 10, 6, tzinfo=UTC), datetime(2026, 10, 5, tzinfo=UTC))
+
+
+def test_collection_window_is_8h30_in_paris_the_24h_before() -> None:
+    window = collection_window(date(2026, 10, 26))  # lendemain du changement d'heure
+    assert window.end.isoformat() == "2026-10-26T08:30:00+01:00"
+    assert (window.end - window.start).total_seconds() == 24 * 3600
+
+
+def test_cli_can_run_a_single_source(capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["--user", USER, "--day", available_days()[0], "--source", "demo"]) == 0
+    assert capsys.readouterr().out.strip()
 
 
 def test_cli_prints_one_json_line_per_item(capsys: pytest.CaptureFixture[str]) -> None:
