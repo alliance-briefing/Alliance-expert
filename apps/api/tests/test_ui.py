@@ -68,16 +68,37 @@ def test_chaque_entree_affichee_a_un_lien_source(client: TestClient) -> None:
     assert all('href="https://' in entry and "Voir la source" in entry for entry in entries)
 
 
-def test_entree_sans_source_resoluble_masquee_et_signalee(data_root: Path) -> None:
-    # Un item cité, puis disparu du store (ou d'un autre propriétaire) : on masque l'entrée.
+def _forgetful_page(root: Path, lost: str) -> str:
+    """Brief affiché quand l'item `lost` a disparu du store (ou a changé de propriétaire)."""
+
     class Forgetful(DemoItemStore):
         def find(self, item_id: str) -> Item | None:
-            return None if item_id.endswith("-1") else super().find(item_id)
+            return None if item_id == lost else super().find(item_id)
 
-    client = TestClient(create_app(item_store=Forgetful(data_root), auth_mode="demo"))
-    page = _brief_page(_logged_in(client))
+    client = TestClient(create_app(item_store=Forgetful(root), auth_mode="demo"))
+    return _brief_page(_logged_in(client))
+
+
+# Deux affaires : les mails 1 et 2 partagent fil et dossier (une entrée), le 3 est à part.
+OTHER_CASE = {"thread_id": "conv:3", "title": "Expertise 2026-0999"}
+
+
+def test_entree_sans_source_resoluble_masquee_et_signalee(tmp_path: Path) -> None:
+    write_day(tmp_path, USER_A, DAY, [make_item(USER_A, 1), make_item(USER_A, 3, **OTHER_CASE)])
+    page = _forgetful_page(tmp_path, f"mail:{USER_A}-1")
     assert "1 entrée(s) masquée(s)" in page
     assert f"{USER_A}-1" not in page
+    assert f"{USER_A}-3" in page
+
+
+def test_entree_masquee_si_un_item_de_son_affaire_est_introuvable(tmp_path: Path) -> None:
+    # L2.1 : une entrée cite tous les items de son affaire ; il suffit qu'un manque.
+    items = [make_item(USER_A, 1), make_item(USER_A, 2), make_item(USER_A, 3, **OTHER_CASE)]
+    write_day(tmp_path, USER_A, DAY, items)
+    page = _forgetful_page(tmp_path, f"mail:{USER_A}-2")
+    assert "1 entrée(s) masquée(s)" in page
+    assert f"{USER_A}-1" not in page and f"{USER_A}-2" not in page
+    assert f"{USER_A}-3" in page
 
 
 def test_warnings_du_brief_visibles(data_root: Path) -> None:
