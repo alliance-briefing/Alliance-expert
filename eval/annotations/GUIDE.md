@@ -62,3 +62,8 @@ du jeu de dev** de profils différents (calme, conflit, surchargée…), pas sur
 3. `uv run python -m eval.annotate verifie` → corriger jusqu'à « OK ».
 4. 20 % des journées (1 sur 5 en v0) sont annotées par deux personnes :
    `uv run python -m eval.annotate accord <date>` → kappa ≥ 0,60, sinon préciser ce guide et ré-annoter.
+   Si les deux ont noté les affaires, `accord` donne aussi leur F1 par paires (viser ≥ 0,80).
+5. Affaires : `uv run python -m eval.annotate regroupement` → précision et rappel par paires
+   du regroupement L2.1 (critère : précision ≥ 0,9, rappel ≥ 0,8 sur le cumul des journées).
+   Jeu caché : `--annotations <dossier hors dépôt> --items eval/hidden` ; ne transmettre au
+   lot 2 que la ligne « total ».
