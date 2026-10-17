@@ -11,3 +11,5 @@ node_modules/
 *.zip
 # Fiches dérivées des items (régénérables)
 eval/annotations/fiches/
+# Jeu de test caché (L3.5) et ses annotations : jamais versionnés, le lot 2 ne doit pas les voir
+eval/hidden/
