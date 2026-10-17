@@ -4,6 +4,7 @@ uv run python -m eval.annotate fiche 2026-10-07               # fiche lisible de
 uv run python -m eval.annotate modele 2026-10-07 --annotateur guillaume
 uv run python -m eval.annotate verifie                        # contrôle toutes les annotations
 uv run python -m eval.annotate accord 2026-10-07              # kappa entre deux annotateurs
+uv run python -m eval.annotate regroupement                   # affaires L2.1 contre cases
 """
 
 from __future__ import annotations
@@ -15,9 +16,11 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from contracts.demo_data import DEFAULT_USER, load_items
+from contracts.demo_data import DEFAULT_USER, DEMO_DIR, load_items
 from contracts.models import Item
 from eval.annotation import ANNOTATION_SCHEMA, Annotation, check_against_day, cohen_kappa
+from eval.cases_metric import THRESHOLDS, PairScore, b_cubed, predicted_cases, score_day
+from eval.cases_metric import agreement as cases_agreement
 
 ROOT = Path(__file__).parent / "annotations"
 PARIS = ZoneInfo("Europe/Paris")
@@ -111,12 +114,44 @@ def verify(root: Path = ROOT) -> list[str]:
     return problems
 
 
-def agreement(day: str, root: Path = ROOT) -> float:
+def _two_annotations(day: str, root: Path) -> tuple[Annotation, Annotation]:
     paths = sorted(root.glob(f"*/{day}.*.json"))
     if len(paths) != 2:
         raise SystemExit(f"il faut exactement 2 annotations du {day}, trouvé {len(paths)}")
     a, b = (Annotation.model_validate_json(p.read_text(encoding="utf-8")) for p in paths)
+    return a, b
+
+
+def agreement(day: str, root: Path = ROOT) -> float:
+    a, b = _two_annotations(day, root)
     return cohen_kappa(a, b, load_items(day, a.user_id))
+
+
+def _ratio(value: float | None) -> str:
+    return "n/a" if value is None else f"{value:.2f}"
+
+
+def grouping(
+    annotations: Path = ROOT / DEV_SET, items_root: Path = DEMO_DIR
+) -> tuple[list[str], PairScore]:
+    """Score du regroupement par fichier annoté (`cases` renseigné), et cumul des paires.
+    N'affiche que des comptes, jamais les paires : utilisable sur le jeu caché."""
+    lines, total = [], PairScore(0, 0, 0)
+    for path in sorted(annotations.glob("*.json")):
+        annotation = Annotation.model_validate_json(path.read_text(encoding="utf-8"))
+        if annotation.cases is None:
+            continue
+        items = load_items(annotation.date.isoformat(), annotation.user_id, items_root)
+        score = score_day(annotation, items)
+        ids = [item.item_id for item in items]
+        bp, br = b_cubed(predicted_cases(items), annotation.cases, ids)
+        total += score
+        lines.append(
+            f"{path.name} : précision {_ratio(score.precision)} ({score.common}/{score.predicted})"
+            f", rappel {_ratio(score.recall)} ({score.common}/{score.expected})"
+            f" · B³ {bp:.2f}/{br:.2f}"
+        )
+    return lines, total
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -128,6 +163,9 @@ def main(argv: list[str] | None = None) -> int:
         if name == "modele":
             cmd.add_argument("--annotateur", required=True)
     sub.add_parser("verifie")
+    cmd = sub.add_parser("regroupement")
+    cmd.add_argument("--annotations", type=Path, default=ROOT / DEV_SET)
+    cmd.add_argument("--items", type=Path, default=DEMO_DIR, help="ex. eval/hidden")
     args = parser.parse_args(argv)
 
     if args.cmd == "fiche":
@@ -147,8 +185,24 @@ def main(argv: list[str] | None = None) -> int:
         problems = verify()
         print("\n".join(problems) or f"OK : {len(annotation_files())} annotation(s) valide(s)")
         return 1 if problems else 0
+    elif args.cmd == "regroupement":
+        lines, total = grouping(args.annotations, args.items)
+        if not lines:
+            raise SystemExit(f"aucune annotation avec des affaires dans {args.annotations}")
+        criterion = (
+            f"précision ≥ {THRESHOLDS['precision']:.2f}, rappel ≥ {THRESHOLDS['recall']:.2f}"
+        )
+        print("\n".join(lines))
+        print(
+            f"total : précision {_ratio(total.precision)}, rappel {_ratio(total.recall)}"
+            f" — critère L2.1 ({criterion}) {'atteint' if total.passes() else 'NON atteint'}"
+        )
+        return 0 if total.passes() else 1
     else:
         print(f"kappa de Cohen ({args.date}) : {agreement(args.date):.2f} (attendu ≥ 0,60)")
+        a, b = _two_annotations(args.date, ROOT)
+        if a.cases is not None and b.cases is not None:
+            print(f"accord sur les affaires (F1 par paires) : {_ratio(cases_agreement(a, b))}")
     return 0
 
 
