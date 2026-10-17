@@ -3,6 +3,9 @@
 Une annotation = un fichier JSON par journée et par annotateur :
 eval/annotations/<jeu>/<AAAA-MM-JJ>.<annotateur>.json. Elle est écrite à la main, à partir
 des seuls Item de la journée, sans jamais lire truth.json (évaluation indépendante).
+
+Schéma 1.1 : ajoute `cases`, les affaires de la journée (mesure du regroupement L2.1).
+Un fichier 1.0 reste valide ; il ne peut simplement pas contenir `cases`.
 """
 
 from __future__ import annotations
@@ -15,7 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from contracts.models import Item
 from contracts.models.brief import SectionKind
 
-ANNOTATION_SCHEMA = "annotation/1.0"
+ANNOTATION_SCHEMA = "annotation/1.1"
 
 
 class _Strict(BaseModel):
@@ -32,13 +35,17 @@ class Expected(_Strict):
 
 
 class Annotation(_Strict):
-    schema_: Literal["annotation/1.0"] = Field(ANNOTATION_SCHEMA, alias="schema")
+    schema_: Literal["annotation/1.0", "annotation/1.1"] = Field(ANNOTATION_SCHEMA, alias="schema")
     user_id: str
     date: Date
     annotator: str = Field(pattern=r"^[a-z0-9_-]{2,40}$", description="pseudo, pas d'e-mail")
     annotated_at: Date
     must_include: list[Expected] = Field(min_length=3, max_length=7)
     must_exclude: list[str] = Field(default_factory=list, description="pièges à ne pas citer")
+    cases: list[list[str]] | None = Field(
+        default=None,
+        description="affaires d'au moins 2 items, toute la journée ; None = non annotées",
+    )
     notes: str = ""
 
     @model_validator(mode="after")
@@ -51,7 +58,24 @@ class Annotation(_Strict):
             raise ValueError(
                 f"items à la fois inclus et exclus : {sorted(included & set(self.must_exclude))}"
             )
+        if self.cases is not None:
+            self._check_cases(self.cases)
         return self
+
+    def _check_cases(self, cases: list[list[str]]) -> None:
+        if self.schema_ == "annotation/1.0":
+            raise ValueError("cases demande le schéma annotation/1.1")
+        if any(len(case) < 2 for case in cases):
+            raise ValueError(
+                "une affaire réunit au moins 2 items (les items seuls sont implicites)"
+            )
+        ids = [item_id for case in cases for item_id in case]
+        repeated = sorted({item_id for item_id in ids if ids.count(item_id) > 1})
+        if repeated:
+            raise ValueError(f"items cités deux fois dans les affaires : {repeated}")
+
+    def case_ids(self) -> set[str]:
+        return {item_id for case in self.cases or [] for item_id in case}
 
     def included_ids(self) -> set[str]:
         return {item_id for e in self.must_include for item_id in e.item_ids}
@@ -61,7 +85,8 @@ def check_against_day(annotation: Annotation, items: list[Item]) -> list[str]:
     """Problèmes de l'annotation par rapport aux items réels de la journée (vide = OK)."""
     known = {item.item_id for item in items}
     problems = []
-    for item_id in sorted((annotation.included_ids() | set(annotation.must_exclude)) - known):
+    cited = annotation.included_ids() | set(annotation.must_exclude) | annotation.case_ids()
+    for item_id in sorted(cited - known):
         problems.append(f"{item_id} n'existe pas dans la journée du {annotation.date}")
     owners = {item.owner_user_id for item in items}
     if owners and owners != {annotation.user_id}:

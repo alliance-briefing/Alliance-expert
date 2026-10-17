@@ -1,6 +1,6 @@
 # Guide d'annotation — jeu d'évaluation du brief (L3.5)
 
-Version 0.1 · 2026-10-08 · brouillon à valider par le lot 3
+Version 0.2 · 2026-10-17 · brouillon à valider par le lot 3 (ajout : affaires, schéma 1.1)
 
 ## But
 Pour chaque journée, dire ce qu'un **manager d'agence d'expertise** doit voir dans son brief
@@ -39,7 +39,24 @@ On annote ce que *devrait* dire un bon brief, pas ce que dit le système actuel.
 - Deux urgences à la même heure (journée « conflit ») → inclure les deux, la plus grave en premier.
 - Mail lu mais demande toujours ouverte → peut figurer : « lu » ne veut pas dire « traité ».
 
-## Procédure (≈ 45 min par journée)
+## Affaires (`cases`, schéma `annotation/1.1`, facultatif)
+Sert à mesurer le regroupement par affaires du brief (L2.1). À faire sur **3 à 5 journées
+du jeu de dev** de profils différents (calme, conflit, surchargée…), pas sur toutes.
+- Une affaire = des items qui parlent du **même dossier, sinistre ou sujet concret**.
+  Juger sur le titre **et** l'extrait, comme un manager : même fil ou même numéro ne
+  suffit pas (un « voir aussi dossier X » ne lie pas deux affaires), et deux items sans
+  numéro commun peuvent être la même affaire.
+- `cases` = la liste des affaires d'**au moins 2 items** ; un item seul n'est pas noté.
+  Un item est dans **une seule** affaire.
+- Annoter **toute la journée**, pas seulement les éléments de `must_include` : une
+  affaire oubliée compterait comme une erreur du système.
+- `"cases": null` (valeur du modèle) = affaires non annotées ; `"cases": []` = annotées,
+  aucune affaire de plusieurs items.
+- Ne pas regarder le code de regroupement (`packages/analyse/aggregate/cases.py`) ni les
+  affaires du brief avant d'avoir fini : on mesurerait la règle contre elle-même.
+- Les affaires du jeu de test caché restent hors du dépôt (`eval/hidden/`, non versionné).
+
+## Procédure (≈ 45 min par journée, + 30 min avec les affaires)
 1. `uv run python -m eval.annotate fiche <date>` → lire `eval/annotations/fiches/<date>.md`.
 2. `uv run python -m eval.annotate modele <date> --annotateur <pseudo>` → remplir le JSON.
 3. `uv run python -m eval.annotate verifie` → corriger jusqu'à « OK ».

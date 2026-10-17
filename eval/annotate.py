@@ -17,7 +17,7 @@ from zoneinfo import ZoneInfo
 
 from contracts.demo_data import DEFAULT_USER, load_items
 from contracts.models import Item
-from eval.annotation import Annotation, check_against_day, cohen_kappa
+from eval.annotation import ANNOTATION_SCHEMA, Annotation, check_against_day, cohen_kappa
 
 ROOT = Path(__file__).parent / "annotations"
 PARIS = ZoneInfo("Europe/Paris")
@@ -80,13 +80,14 @@ def sheet(day: str, user: str = DEFAULT_USER) -> str:
 def template(day: str, annotator: str, user: str = DEFAULT_USER) -> dict:
     example = {"rank": 1, "section": "actions", "item_ids": ["mail:..."], "why": "..."}
     return {
-        "schema": "annotation/1.0",
+        "schema": ANNOTATION_SCHEMA,
         "user_id": user,
         "date": day,
         "annotator": annotator,
         "annotated_at": datetime.now(PARIS).date().isoformat(),
         "must_include": [example, {**example, "rank": 2}, {**example, "rank": 3}],
         "must_exclude": [],
+        "cases": None,
         "notes": "",
     }
 
