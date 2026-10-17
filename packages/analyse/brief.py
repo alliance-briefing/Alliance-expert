@@ -15,12 +15,12 @@ from collections import Counter
 from collections.abc import Callable, Sequence
 from datetime import date as Date
 from datetime import datetime
-from datetime import time as Time
 
 from contracts.models import Brief, Entry, Generator, Item, Section, Stats
 from contracts.models.brief import SectionKind
 from packages.analyse.aggregate.cases import Case, group_into_cases
 from packages.analyse.aggregate.rules import meetings_of_day, overdue_tasks, unread_mails
+from packages.analyse.clock import PARIS, is_all_day, to_paris
 
 # Score fixe par section : le vrai barème arrive avec L2.2 (score de priorité expliqué).
 SCORES: dict[SectionKind, int] = {"overdue": 70, "actions": 60, "meetings": 50}
@@ -76,7 +76,7 @@ def generate_brief(
         brief_id=f"b_{day.isoformat()}_{user}",
         owner_user_id=user,
         date=day,
-        generated_at=now or datetime.now().astimezone(),
+        generated_at=to_paris(now or datetime.now(PARIS)),
         generator=Generator(llm="rules"),
         sections=sections,
         stats=Stats(
@@ -142,7 +142,7 @@ def _title(item: Item) -> str:
 
 def _mails_wording(mails: list[Item]) -> tuple[str, str]:
     """`mails` du plus récent au plus ancien ; le plus récent donne le titre et la date."""
-    received = mails[0].created_at.strftime("%d/%m à %H:%M")
+    received = to_paris(mails[0].created_at).strftime("%d/%m à %H:%M")
     if len(mails) == 1:
         return f"Mail non lu : {_title(mails[0])}", f"non lu, reçu le {received}"
     return (
@@ -159,10 +159,13 @@ def _required(value: datetime | None, item: Item) -> datetime:
 
 
 def _meeting_wording(event: Item, day: Date) -> tuple[str, str]:
-    start, end = _required(event.start_at, event), _required(event.end_at, event)
+    all_day = is_all_day(event)
+    # Une journée entière garde ses dates ; une réunion se lit en heure de Paris.
+    start = _required(event.start_at, event)
+    start = start if all_day else to_paris(start)
     if start.date() < day:
         when = f"en cours depuis le {start.strftime('%d/%m')}"
-    elif start.time() == Time(0) and end.time() == Time(0):
+    elif all_day:
         when = "toute la journée"
     else:
         when = f"à {start.strftime('%H:%M')}"
@@ -171,7 +174,7 @@ def _meeting_wording(event: Item, day: Date) -> tuple[str, str]:
 
 def _tasks_wording(tasks: list[Item]) -> tuple[str, str]:
     """`tasks` de l'échéance la plus ancienne à la plus récente ; la plus ancienne d'abord."""
-    due = _required(tasks[0].due_at, tasks[0]).strftime("%d/%m")
+    due = to_paris(_required(tasks[0].due_at, tasks[0])).strftime("%d/%m")
     if len(tasks) == 1:
         return f"Tâche en retard : {_title(tasks[0])}", f"échéance dépassée depuis le {due}"
     return (

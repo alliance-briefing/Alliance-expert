@@ -11,6 +11,7 @@ from collections.abc import Sequence
 from datetime import date, datetime, timedelta
 
 from contracts.models import Item
+from packages.analyse.clock import is_all_day, to_paris
 
 UNREAD_MAILS_LIMIT = 5
 
@@ -28,9 +29,9 @@ def unread_mails(items: Sequence[Item], limit: int | None = UNREAD_MAILS_LIMIT) 
 def meetings_of_day(items: Sequence[Item], day: date) -> list[Item]:
     """Les événements qui occupent au moins une partie de `day`, par heure de début.
 
-    Les dates sont lues dans le décalage horaire de chaque instant, que le lot 1
-    garantit en Europe/Paris (L1.4). La fin est exclue : un événement qui se termine
-    à 00:00 n'occupe pas la journée qui commence à cette heure-là.
+    Les jours sont lus en heure de Paris, quel que soit le décalage reçu ; une journée
+    entière (`is_all_day`) garde ses dates telles quelles. La fin est exclue : un
+    événement qui se termine à 00:00 n'occupe pas la journée qui commence à cette heure-là.
     """
     meetings = [item for item in items if item.source == "calendar" and _occupies(item, day)]
     return sorted(meetings, key=lambda item: (item.start_at, item.item_id))
@@ -46,6 +47,8 @@ def _occupies(event: Item, day: date) -> bool:
     start, end = event.start_at, event.end_at
     if start is None or end is None:  # impossible pour "calendar" (contrat A), utile au typage
         return False
+    if not is_all_day(event):
+        start, end = to_paris(start), to_paris(end)
     first_day = start.date()
     last_day = (end - _ONE_MICROSECOND).date() if end > start else first_day
     return first_day <= day <= last_day

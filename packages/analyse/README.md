@@ -24,6 +24,10 @@ aucune phrase sans source.
 - Isolation : seuls les items dont `owner_user_id` est l'utilisateur demandé sont lus ; les autres sont comptés dans `warnings`.
 - Déterminisme : même entrée, même brief, quel que soit l'ordre des items (hors `generated_at` et `stats.latency_ms`).
 - Les textes ne reprennent que les titres et les dates, jamais le contenu des mails.
+- Heure de Paris (`clock.py`) : toutes les dates sont lues en Europe/Paris quel que soit le décalage
+  reçu (un item en UTC venant de Graph est donc bien placé), `generated_at` compris. Exception :
+  un événement de minuit à minuit dans son propre décalage est une journée entière, dont les dates
+  se lisent telles quelles (le contrat A n'a pas de champ « toute la journée »).
 - Scores fixes par section (retards 70, actions 60, réunions 50) en attendant le score expliqué (L2.2).
 - `generator.llm = "rules"` : aucun LLM, aucun coût.
 
@@ -66,5 +70,6 @@ uv run ruff check . && uv run ruff format --check .     # style
 aggregate/rules.py   règles de sélection (fonctions pures)
 aggregate/cases.py   regroupement des items en affaires (L2.1)
 brief.py             generate_brief : assemble le Brief
+clock.py             heure de Paris et détection des journées entières
 tests/               fabrique d'Item synthétiques + tests
 ```
