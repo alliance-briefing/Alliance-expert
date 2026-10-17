@@ -1,6 +1,6 @@
 """Connecteur « demo » : renvoie les Items d'une journée factice au lieu d'appeler une API.
 
-Il relit contracts/fixtures/demo/ : la journée choisie est celle qui contient window.start.
+Il relit contracts/fixtures/demo/ : la journée choisie est celle de la collecte (window.end, heure de Paris).
 """
 
 from __future__ import annotations
@@ -11,6 +11,7 @@ from pathlib import Path
 from contracts.demo_data import DEMO_DIR, available_days, load_items
 from contracts.models import Item
 from packages.collect.core.connector import Connector, Health, Window
+from packages.collect.core.paris_time import to_paris
 
 
 class DemoFixturesConnector(Connector):
@@ -24,7 +25,7 @@ class DemoFixturesConnector(Connector):
         return []  # données locales et factices : aucune autorisation
 
     def collect(self, user: str, window: Window) -> Iterator[Item]:
-        day = window.start.date().isoformat()
+        day = to_paris(window.end).date().isoformat()
         if day not in available_days(user, self.root):
             return
         for item in load_items(day, user, self.root):
