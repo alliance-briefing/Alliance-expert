@@ -4,7 +4,9 @@ Deux items appartiennent à la même affaire s'ils partagent un lien :
 - niveau 1, même fil : même `thread_id` ;
 - niveau 1, même réunion : même `correlation_id` (contrat A 1.1), que le lot 1 donne à
   l'invitation reçue par mail et à l'événement du calendrier (L1.6) ;
-- niveau 2, même référence dans le titre : par exemple « dossier 2026-3025 ».
+- niveau 2, même référence dans le titre : par exemple « dossier 2026-3025 » ;
+- niveau 2, même document : le fichier et les notifications qui le citent
+  (« X a modifié « Planning_experts_S41.xlsx » »).
 Les liens sont transitifs (union-find) : un mail du fil T qui cite le dossier X réunit
 le fil T et tous les items du dossier X.
 
@@ -27,6 +29,7 @@ from contracts.models import Item
 REFERENCE_KINDS = {
     "dossier": "dossier",
     "mission": "dossier",
+    "expertise": "dossier",
     "rapport": "dossier",
     "devis": "dossier",
     "facture": "facture",
@@ -37,6 +40,13 @@ _REFERENCE = re.compile(
     r"(?P<word>[^\W\d_]+)(?:\s+préliminaire)?\s+(?:n°\s*)?(?P<number>\d{4}-\d{3,4})\b",
     re.IGNORECASE,
 )
+
+# Un nom de fichier, avec son extension (« Planning_experts_S41.xlsx »). Sans extension,
+# un texte entre guillemets est souvent un canal de discussion (« Expertises complexes ») :
+# il ne crée aucun lien.
+_FILE_NAME = r"[^«»\s][^«»]*\.[A-Za-z0-9]{2,5}"
+_QUOTED_FILE = re.compile(rf"«\s*({_FILE_NAME})\s*»")
+_WHOLE_FILE_NAME = re.compile(rf"{_FILE_NAME}")
 
 
 @dataclass(frozen=True)
@@ -53,13 +63,26 @@ class Case:
 
 
 def references(title: str) -> set[str]:
-    """Les références d'un titre, normalisées : « Rapport 2026-2367 » → {"dossier:2026-2367"}."""
+    """Les références d'un titre, normalisées : « Rapport 2026-2367 » → {"dossier:2026-2367"}.
+
+    Les « _ » des noms de fichiers comptent comme des espaces :
+    « Rapport_expertise_2026-2367.docx » → {"dossier:2026-2367"}.
+    """
     found = set()
-    for match in _REFERENCE.finditer(title):
+    for match in _REFERENCE.finditer(title.replace("_", " ")):
         kind = REFERENCE_KINDS.get(match["word"].lower())
         if kind:
             found.add(f"{kind}:{match['number']}")
     return found
+
+
+def documents(item: Item) -> set[str]:
+    """Les documents dont parle un item : le fichier lui-même, ou ceux qu'un titre cite
+    entre guillemets (« X a modifié « Planning_experts_S41.xlsx » »). Nom exact."""
+    if item.source == "file":
+        name = item.title.strip()
+        return {name} if _WHOLE_FILE_NAME.fullmatch(name) else set()
+    return set(_QUOTED_FILE.findall(item.title))
 
 
 def group_into_cases(items: Sequence[Item]) -> list[Case]:
@@ -102,6 +125,7 @@ def _links(item: Item) -> set[str]:
         links.add(f"fil:{item.thread_id}")
     if item.correlation_id:
         links.add(f"réunion:{item.correlation_id}")
+    links.update(f"document:{name}" for name in documents(item))
     return links
 
 
