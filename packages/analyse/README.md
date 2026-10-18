@@ -59,6 +59,27 @@ tout autre mot ne crée aucun lien. Une facture et une commande au même numéro
 - Le niveau 3 (sujet proche, embeddings) viendra si la mesure du lot 3 montre un rappel
   insuffisant.
 
+## Embeddings (L2.6, en cours)
+
+`rag/embeddings.py` : vecteurs de sens des items, base du futur niveau 3 de L2.1 et du RAG.
+Pas encore utilisé par le brief.
+
+```python
+from packages.analyse.rag.embeddings import FastEmbedder, embed_items, similarities
+
+vectors = embed_items(items, FastEmbedder())  # {item_id: vecteur normalisé}
+```
+
+- `Embedder` remplaçable : `FastEmbedder` (fastembed, `paraphrase-multilingual-MiniLM-L12-v2`,
+  384 dimensions, 0,22 Go, local, sans PyTorch) ou `HashEmbedder` (faux modèle des tests).
+- Texte vectorisé (`item_text`) : titre sans « RE: », « TR : »…, puis extrait.
+- Cache par (modèle, propriétaire, item_id, updated_at) : un item n'est jamais recalculé.
+- Dépendance optionnelle, absente de la CI et de l'image Docker :
+  `uv sync --all-packages --group embeddings`. Le modèle est téléchargé au premier appel ;
+  sans fastembed, le test du vrai modèle est ignoré.
+- Mesure locale (CPU) : chargement 2,6 s, puis 500 textes en 1,4 s ; similarité d'une paraphrase
+  française 0,71 contre 0,16 pour un texte sans rapport.
+
 ## Commandes
 
 ```bash
@@ -73,5 +94,6 @@ aggregate/rules.py   règles de sélection (fonctions pures)
 aggregate/cases.py   regroupement des items en affaires (L2.1)
 brief.py             generate_brief : assemble le Brief
 clock.py             heure de Paris et détection des journées entières
+rag/embeddings.py    vecteurs de sens des items (L2.6)
 tests/               fabrique d'Item synthétiques + tests
 ```
