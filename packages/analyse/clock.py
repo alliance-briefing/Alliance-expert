@@ -23,13 +23,16 @@ def to_paris(value: datetime) -> datetime:
 
 
 def is_all_day(event: Item) -> bool:
-    """Événement sur des journées entières : début et fin à minuit dans son propre décalage.
+    """Événement sur des journées entières, dont les dates se lisent telles quelles.
 
-    Graph envoie une journée entière de minuit UTC à minuit UTC ; lue en heure de Paris,
-    elle irait de 02:00 à 02:00 et déborderait sur le lendemain. Le contrat A n'a pas de
-    champ « toute la journée » : on le déduit, et ses dates se lisent telles quelles
-    (le 07/10 reste le 07/10, quel que soit le décalage).
+    Contrat A 1.1 : le lot 1 le dit dans `attributes.calendar.is_all_day`, et on le croit.
+    Sans ce bloc (items 1.0), on le déduit : début et fin à minuit dans son propre
+    décalage. Graph envoie une journée entière de minuit UTC à minuit UTC ; lue en heure
+    de Paris, elle irait de 02:00 à 02:00 et déborderait sur le lendemain.
     """
+    calendar = event.attributes.calendar if event.attributes else None
+    if calendar is not None:
+        return calendar.is_all_day
     start, end = event.start_at, event.end_at
     return (
         start is not None
