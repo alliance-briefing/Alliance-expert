@@ -61,9 +61,10 @@ def test_a_crashing_connector_does_not_stop_the_others(caplog: pytest.LogCapture
 
 
 def test_unknown_day_or_other_user_gives_nothing() -> None:
-    demo = [DemoFixturesConnector()]
-    assert run(USER, _window("1999-01-01"), demo).items == []
-    assert run("u_inconnu", _window(available_days()[0]), demo).items == []
+    """Isolation (L1.7) : vérifié sur TOUS les connecteurs actifs, pas seulement demo."""
+    assert run(USER, _window("1999-01-01")).items == []
+    assert run("u_inconnu", _window(available_days()[0])).items == []
+    assert run("u_inconnu", _window("2026-10-21")).items == []  # jour où notes_demo a une note
 
 
 def test_demo_health_and_scopes() -> None:
