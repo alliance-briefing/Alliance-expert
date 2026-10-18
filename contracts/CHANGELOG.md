@@ -5,11 +5,14 @@ Règle (guide §2.5) : versionnement semver.
 - Renommage, suppression, changement de type ou champ rendu obligatoire → version majeure (1.x → 2.0).
 - Toute modification passe par une PR avec l'étiquette `contract-change` et 3 approbations de référents.
 
-## [Non publié]
+## Contrat A — Item 1.1 (2026-10-16, en attente des 3 approbations)
 
-Propositions en attente du comité technique, rien n'est appliqué :
-- ADR-0001 : champs optionnels `correlation_id` et `attributes` dans le contrat A (→ 1.1).
-- ADR-0002 : la « source n°5 » de la preuve L1.1 réutilise `source = "file"` (aucun changement de contrat).
+Décision : `docs/adr/0002-contrat-A-1.1.md`. Ajout de champs **optionnels** uniquement (version mineure).
+- `correlation_id` (texte ou `null`) : identique sur les Item d'une même réunion (invitation reçue par mail + événement), rempli par la normalisation L1.6.
+- `attributes` (`null` par défaut) : un bloc par source, seul le bloc de la source de l'Item est accepté. En 1.1 : `attributes.calendar` = `location`, `online_url` (https), `is_all_day`, `is_cancelled`, `response` (`none`, `organizer`, `accepted`, `tentative`, `declined`), `series_id`. Clé inconnue refusée.
+- `schema_version` accepte `"1.0"` et `"1.1"` (valeur par défaut : `"1.1"`). Les fixtures 1.0 restent valides sans régénération. Les deux nouveaux champs exigent `"1.1"`.
+- Fixtures : `valid/item-calendar-1.1.json` ; `invalid/22` à `28` (7 nouveaux cas rejetés, 28 au total).
+- La « source n°5 » de la preuve L1.1 (`notes_demo`) réutilise `source = "file"` : aucun changement de contrat.
 
 ## Contrat A — Item 1.0 (2026-10-07)
 
@@ -36,7 +39,7 @@ Propositions en attente du comité technique, rien n'est appliqué :
 
 ## Fixtures
 
-- `contracts/fixtures/valid/` : 3 exemples d'Item valides ; `contracts/fixtures/invalid/` : 21 cas rejetés (exigence L3.1 : au moins 15).
+- `contracts/fixtures/valid/` : 3 exemples d'Item valides ; `contracts/fixtures/invalid/` : 28 cas rejetés (exigence L3.1 : au moins 15).
 - `contracts/demo_data.py` : lecture des journées de démonstration pour le lot 2 (`load_items`, `available_days`).
 - `contracts/tests/` : tests propres au dossier, sans dépendance aux lots.
 - `contracts/fixtures/demo/` : 30 journées du manager `u_demo_001`, graine 42, générées par `uv run synth`. Toute régénération doit garder `uv run python -m contracts.validate_fixtures` au vert.

@@ -101,6 +101,67 @@ def test_invalid_items_are_rejected(payload: dict) -> None:
         Item.model_validate(payload)
 
 
+VALID_EVENT_11 = VALID_EVENT | {
+    "schema_version": "1.1",
+    "correlation_id": "meet:comite:2026-10-01T07:00Z",
+    "attributes": {
+        "calendar": {
+            "location": "Salle Atlas",
+            "online_url": "https://teams.example/meet/123",
+            "is_all_day": False,
+            "is_cancelled": True,
+            "response": "accepted",
+            "series_id": None,
+        }
+    },
+}
+
+
+def test_contract_1_1_calendar_attributes() -> None:
+    item = Item.model_validate(VALID_EVENT_11)
+    assert item.attributes.calendar.is_cancelled
+    assert item.correlation_id == "meet:comite:2026-10-01T07:00Z"
+
+
+def test_contract_1_1_is_backward_compatible() -> None:
+    """Un Item 1.0 reste valide ; les nouveaux champs valent None par défaut."""
+    item = Item.model_validate(VALID_MAIL)
+    assert item.schema_version == "1.0"
+    assert item.correlation_id is None and item.attributes is None
+
+
+def test_correlation_id_on_a_mail() -> None:
+    """L1.6 : l'invitation reçue par mail porte le même correlation_id que l'événement."""
+    mail = Item.model_validate(
+        _with(VALID_MAIL, schema_version="1.1", correlation_id=VALID_EVENT_11["correlation_id"])
+    )
+    event = Item.model_validate(VALID_EVENT_11)
+    assert mail.correlation_id == event.correlation_id
+
+
+INVALID_1_1 = {
+    "bloc calendar sur un mail": _with(
+        VALID_MAIL, schema_version="1.1", attributes={"calendar": {"location": "Atlas"}}
+    ),
+    "clé inconnue dans attributes": _with(
+        VALID_EVENT_11, attributes={"calendar": {"couleur": "rouge"}}
+    ),
+    "nouveaux champs en 1.0": _with(VALID_EVENT_11, schema_version="1.0"),
+    "visio en http": _with(
+        VALID_EVENT_11, attributes={"calendar": {"online_url": "http://x.test"}}
+    ),
+    "réponse inconnue": _with(VALID_EVENT_11, attributes={"calendar": {"response": "peut-etre"}}),
+    "attributes vide": _with(VALID_EVENT_11, attributes={}),
+    "correlation_id vide": _with(VALID_EVENT_11, correlation_id=""),
+}
+
+
+@pytest.mark.parametrize("payload", INVALID_1_1.values(), ids=INVALID_1_1.keys())
+def test_invalid_1_1_items_are_rejected(payload: dict) -> None:
+    with pytest.raises(ValidationError):
+        Item.model_validate(payload)
+
+
 def test_items_are_immutable() -> None:
     item = Item.model_validate(VALID_MAIL)
     with pytest.raises(ValidationError):

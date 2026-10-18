@@ -18,6 +18,101 @@
       "title": "Acl",
       "type": "object"
     },
+    "Attributes": {
+      "additionalProperties": false,
+      "description": "Un bloc par source ; seul le bloc de la source de l'Item est autorisé (1.1 : calendar).",
+      "properties": {
+        "calendar": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CalendarAttributes"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "Attributes",
+      "type": "object"
+    },
+    "CalendarAttributes": {
+      "additionalProperties": false,
+      "description": "Détails d'un événement (contrat 1.1, ADR-0002). Toutes les clés sont fixées.",
+      "properties": {
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Location"
+        },
+        "online_url": {
+          "anyOf": [
+            {
+              "format": "uri",
+              "maxLength": 2083,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Online Url"
+        },
+        "is_all_day": {
+          "default": false,
+          "title": "Is All Day",
+          "type": "boolean"
+        },
+        "is_cancelled": {
+          "default": false,
+          "title": "Is Cancelled",
+          "type": "boolean"
+        },
+        "response": {
+          "anyOf": [
+            {
+              "enum": [
+                "none",
+                "organizer",
+                "accepted",
+                "tentative",
+                "declined"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Response"
+        },
+        "series_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Series Id"
+        }
+      },
+      "title": "CalendarAttributes",
+      "type": "object"
+    },
     "ConnectorInfo": {
       "additionalProperties": false,
       "properties": {
@@ -77,8 +172,11 @@
   "description": "Un élément collecté (mail, événement, tâche, fichier) sous forme normalisée.",
   "properties": {
     "schema_version": {
-      "const": "1.0",
-      "default": "1.0",
+      "default": "1.1",
+      "enum": [
+        "1.0",
+        "1.1"
+      ],
       "title": "Schema Version",
       "type": "string"
     },
@@ -215,6 +313,20 @@
       "default": null,
       "title": "Thread Id"
     },
+    "correlation_id": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "1.1 : identique sur les Item d'une même réunion (invitation + événement)",
+      "title": "Correlation Id"
+    },
     "native_importance": {
       "anyOf": [
         {
@@ -261,6 +373,18 @@
     },
     "connector": {
       "$ref": "#/$defs/ConnectorInfo"
+    },
+    "attributes": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Attributes"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "1.1 : détails propres à la source (ADR-0002)"
     }
   },
   "required": [
