@@ -18,14 +18,19 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
-from collect.synth.people import PROFILES
-from collect.synth.repair import repair
-from collect.synth.truth import build_truth
-from collect.synth.window import CONNECTOR_VERSION, snapshot, to_items
-from collect.synth.world import World
+from packages.collect.synth.people import PROFILES
+from packages.collect.synth.repair import repair
+from packages.collect.synth.truth import build_truth
+from packages.collect.synth.window import CONNECTOR_VERSION, snapshot, to_items
+from packages.collect.synth.world import World
 
 GENERATOR_VERSION = CONNECTOR_VERSION
 DEFAULT_START = date(2026, 10, 5)
+
+
+# Champs ajoutés par le contrat A 1.1 (ADR-0002) : absents des fixtures 1.0, qui restent figées
+# (le lot 3 cite leurs item_id). Exclure un champ qui n'existe pas encore est sans effet.
+CONTRACT_1_1_FIELDS = {"correlation_id", "attributes"}
 
 
 @dataclass(frozen=True)
@@ -69,7 +74,11 @@ def generate(out_dir: Path, params: Params | None = None) -> dict:
             truth = build_truth(world, snap, items, index)
             folder = out_dir / user_id / day.isoformat()
             lines = "".join(
-                json.dumps(it.model_dump(mode="json"), ensure_ascii=False) + "\n" for it in items
+                json.dumps(
+                    it.model_dump(mode="json", exclude=CONTRACT_1_1_FIELDS), ensure_ascii=False
+                )
+                + "\n"
+                for it in items
             )
             rel = f"{user_id}/{day.isoformat()}"
             checksums[f"{rel}/items.jsonl"] = _write(folder / "items.jsonl", lines)

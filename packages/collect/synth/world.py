@@ -16,8 +16,8 @@ from collections import defaultdict
 from collections.abc import Callable
 from datetime import date, datetime, timedelta
 
-from collect.synth import content as C
-from collect.synth.clock import (
+from packages.collect.synth import content as C
+from packages.collect.synth.clock import (
     MONTREAL,
     PARIS,
     add_working_days,
@@ -26,8 +26,16 @@ from collect.synth.clock import (
     is_working_day,
     working_days,
 )
-from collect.synth.model import Case, SimEvent, SimFile, SimFileVersion, SimMail, SimTask, TruthNote
-from collect.synth.people import Directory, ManagerProfile, Person, build_directory, slug
+from packages.collect.synth.model import (
+    Case,
+    SimEvent,
+    SimFile,
+    SimFileVersion,
+    SimMail,
+    SimTask,
+    TruthNote,
+)
+from packages.collect.synth.people import Directory, ManagerProfile, Person, build_directory, slug
 
 DAY_TYPES = ("calme", "normale", "surchargee", "conflit", "contradictoire", "injection")
 _TYPE_SHARE = {
