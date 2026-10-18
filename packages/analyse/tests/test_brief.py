@@ -256,6 +256,26 @@ def test_a_thread_without_file_number_is_named_by_its_thread() -> None:
     assert entry.priority_reasons[1] == "même fil : aussi 1 mail"
 
 
+def test_an_invitation_and_its_meeting_are_named_by_the_meeting() -> None:
+    meeting = "meet:point-flash:2026-10-07T12:00Z"
+    items = [
+        make_mail("invit", "2026-10-07T08:00:00+02:00", title="Invitation", correlation_id=meeting),
+        make_event(
+            "e1",
+            "2026-10-07T14:00:00+02:00",
+            "2026-10-07T15:00:00+02:00",
+            title="Point flash",
+            correlation_id=meeting,
+        ),
+    ]
+
+    actions, meetings, _ = generate_brief(items, USER, DAY, now=NOW).sections
+
+    assert actions.entries[0].priority_reasons[1] == "même réunion : aussi 1 réunion"
+    assert meetings.entries[0].priority_reasons[1] == "même réunion : aussi 1 mail"
+    assert meetings.entries[0].source_item_ids == ["calendar:e1", "mail:invit"]
+
+
 def test_actions_limit_counts_cases_not_mails() -> None:
     thread = [
         make_mail(f"fil{n}", f"2026-10-07T07:0{n}:00+02:00", thread_id="c1") for n in range(6)

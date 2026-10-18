@@ -2,6 +2,8 @@
 
 Deux items appartiennent à la même affaire s'ils partagent un lien :
 - niveau 1, même fil : même `thread_id` ;
+- niveau 1, même réunion : même `correlation_id` (contrat A 1.1), que le lot 1 donne à
+  l'invitation reçue par mail et à l'événement du calendrier (L1.6) ;
 - niveau 2, même référence dans le titre : par exemple « dossier 2026-3025 ».
 Les liens sont transitifs (union-find) : un mail du fil T qui cite le dossier X réunit
 le fil T et tous les items du dossier X.
@@ -98,6 +100,8 @@ def _links(item: Item) -> set[str]:
     links = references(item.title)
     if item.thread_id:
         links.add(f"fil:{item.thread_id}")
+    if item.correlation_id:
+        links.add(f"réunion:{item.correlation_id}")
     return links
 
 
