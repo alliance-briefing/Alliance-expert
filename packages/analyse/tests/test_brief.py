@@ -19,6 +19,7 @@ from packages.analyse.tests.factories import (
     USER,
     at,
     make_event,
+    make_item,
     make_mail,
     make_task,
 )
@@ -292,3 +293,15 @@ def test_actions_limit_counts_cases_not_mails() -> None:
         ["mail:seul2"],
         ["mail:seul1"],
     ]
+
+
+def test_a_file_and_its_notification_are_named_by_the_document() -> None:
+    items = [
+        make_mail("n1", "2026-10-07T08:00:00+02:00", title="X a modifié « Planning_S41.xlsx »"),
+        make_item("file", "f1", title="Planning_S41.xlsx"),
+    ]
+
+    entry = generate_brief(items, USER, DAY, now=NOW).sections[0].entries[0]
+
+    assert entry.priority_reasons[1] == "document Planning_S41.xlsx : aussi 1 fichier"
+    assert entry.source_item_ids == ["mail:n1", "file:f1"]

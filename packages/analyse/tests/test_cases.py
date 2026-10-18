@@ -9,7 +9,13 @@ import pytest
 
 from contracts.demo_data import available_days, load_items
 from packages.analyse.aggregate.cases import Case, group_into_cases, references
-from packages.analyse.tests.factories import OTHER_USER, make_event, make_mail, make_task
+from packages.analyse.tests.factories import (
+    OTHER_USER,
+    make_event,
+    make_item,
+    make_mail,
+    make_task,
+)
 
 MORNING = "2026-10-07T08:00:00+02:00"
 
@@ -31,6 +37,8 @@ def groups(cases: list[Case]) -> list[list[str]]:
         ("Devis 2026-4900 au-dessus du seuil", {"dossier:2026-4900"}),
         ("RE : Question sur la facture 2026-0412", {"facture:2026-0412"}),
         ("Confirmation de commande n° 2026-0412", {"commande:2026-0412"}),
+        ("Rapport_expertise_2026-2367.docx", {"dossier:2026-2367"}),  # « _ » = espace
+        ("Export_sinistres_20261005_755.xlsx", set()),
         ("Budget 2027 — arbitrages", set()),  # pas un numéro de référence
         ("Plan 2026-1234", set()),  # mot hors de la table : aucun lien
         ("", set()),
@@ -194,6 +202,67 @@ def test_a_number_only_in_the_snippet_creates_no_link() -> None:
     ]
 
     assert groups(group_into_cases(items)) == [["mail:m1"], ["mail:m2"]]
+
+
+# --- niveau 2 : même document --------------------------------------------------------------
+
+PLANNING = "Planning_experts_S41.xlsx"
+
+
+def test_a_file_and_the_notifications_about_it_are_one_case() -> None:
+    items = [
+        make_item("file", "f1", title=PLANNING),
+        make_mail("n1", MORNING, title=f"Jérôme Faure a modifié « {PLANNING} »"),
+        make_mail("n2", MORNING, title=f"Karim Benali a modifié «{PLANNING}»"),
+    ]
+
+    cases = group_into_cases(items)
+
+    assert len(cases) == 1
+    assert cases[0].links == (f"document:{PLANNING}",)
+
+
+def test_a_quoted_name_without_extension_is_a_channel_not_a_document() -> None:
+    items = [
+        make_mail("m1", MORNING, title="Loïc Ngoma vous a mentionné dans « Expertises complexes »"),
+        make_mail(
+            "m2", MORNING, title="Sophie Nguyen vous a mentionné dans « Expertises complexes »"
+        ),
+    ]
+
+    assert groups(group_into_cases(items)) == [["mail:m1"], ["mail:m2"]]
+
+
+def test_different_files_stay_apart() -> None:
+    items = [
+        make_item("file", "s41", title=PLANNING),
+        make_item("file", "s42", title="Planning_experts_S42.xlsx"),
+        make_mail("n1", MORNING, title="X a modifié « Planning_experts_S42.xlsx »"),
+    ]
+
+    assert groups(group_into_cases(items)) == [["file:s41"], ["file:s42", "mail:n1"]]
+
+
+def test_a_file_whose_title_is_not_a_file_name_creates_no_link() -> None:
+    # La « source n°5 » (notes) utilise source = "file" avec des titres libres.
+    items = [
+        make_item("file", "note1", title="Compte rendu"),
+        make_item("file", "note2", title="Compte rendu"),
+    ]
+
+    assert groups(group_into_cases(items)) == [["file:note1"], ["file:note2"]]
+
+
+def test_a_report_file_joins_its_file_number() -> None:
+    items = [
+        make_mail("m1", MORNING, title="Mission d'expertise – dossier 2026-4900"),
+        make_item("file", "r1", title="Rapport_expertise_2026-4900.docx"),
+    ]
+
+    cases = group_into_cases(items)
+
+    assert len(cases) == 1
+    assert cases[0].links == ("dossier:2026-4900",)
 
 
 # --- transitivité, isolation, déterminisme -------------------------------------------------

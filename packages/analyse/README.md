@@ -47,17 +47,23 @@ Deux items sont dans la même affaire s'ils partagent un lien ; les liens sont t
 | 1 | même `thread_id` | `fil:conv:dm1-conv-000024` |
 | 1 | même `correlation_id` (contrat A 1.1 : invitation reçue par mail + événement, rempli par le lot 1) | `réunion:meet:point-flash:2026-10-21T07:00Z` |
 | 2 | même référence dans le **titre** | `dossier:2026-3025` |
+| 2 | même document : le fichier et les titres qui le citent entre « » (nom avec extension) | `document:Planning_experts_S41.xlsx` |
 
 Le type d'une référence dépend du mot qui précède le numéro (`REFERENCE_KINDS`) :
-dossier, mission, rapport, devis → `dossier` ; facture → `facture` ; commande → `commande` ;
+dossier, mission, expertise, rapport, devis → `dossier` ; facture → `facture` ; commande → `commande` ;
 tout autre mot ne crée aucun lien. Une facture et une commande au même numéro restent donc séparées.
+Les « _ » comptent comme des espaces : `Rapport_expertise_2026-2367.docx` rejoint le dossier 2026-2367.
+Un texte entre guillemets sans extension (« Expertises complexes ») est un canal de discussion :
+il ne crée aucun lien.
 
 - Titre seulement : un extrait cite souvent d'autres dossiers et fusionnerait des affaires sans rapport.
 - Isolation : deux utilisateurs ne partagent jamais une affaire.
 - Déterminisme : `case_id = "case:" + plus petit item_id` ; affaires triées par `case_id`,
   items par date de création.
 - Le niveau 3 (sujet proche, embeddings) viendra si la mesure du lot 3 montre un rappel
-  insuffisant.
+  insuffisant, derrière un veto « références différentes » : l'exploration (`rag/explore.py`)
+  montre que les messages-types (« Dossier 2026-5394 : RAS » / « Dossier 2026-4752 : RAS »)
+  sont presque identiques pour le modèle.
 
 ## Embeddings (L2.6, en cours)
 
