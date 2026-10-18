@@ -27,13 +27,19 @@ def unread_mails(items: Sequence[Item], limit: int | None = UNREAD_MAILS_LIMIT) 
 
 
 def meetings_of_day(items: Sequence[Item], day: date) -> list[Item]:
-    """Les événements qui occupent au moins une partie de `day`, par heure de début.
+    """Les événements non annulés qui occupent au moins une partie de `day`, par heure de début.
 
     Les jours sont lus en heure de Paris, quel que soit le décalage reçu ; une journée
     entière (`is_all_day`) garde ses dates telles quelles. La fin est exclue : un
     événement qui se termine à 00:00 n'occupe pas la journée qui commence à cette heure-là.
+    Un événement annulé (contrat A 1.1, `attributes.calendar.is_cancelled`) n'est pas une
+    réunion du jour.
     """
-    meetings = [item for item in items if item.source == "calendar" and _occupies(item, day)]
+    meetings = [
+        item
+        for item in items
+        if item.source == "calendar" and not _is_cancelled(item) and _occupies(item, day)
+    ]
     return sorted(meetings, key=lambda item: (item.start_at, item.item_id))
 
 
@@ -41,6 +47,11 @@ def overdue_tasks(items: Sequence[Item], now: datetime) -> list[Item]:
     """Les tâches en retard à `now`, de l'échéance la plus ancienne à la plus récente."""
     overdue = [item for item in items if item.is_overdue(now)]
     return sorted(overdue, key=lambda item: (item.due_at, item.item_id))
+
+
+def _is_cancelled(event: Item) -> bool:
+    calendar = event.attributes.calendar if event.attributes else None
+    return calendar is not None and calendar.is_cancelled
 
 
 def _occupies(event: Item, day: date) -> bool:
