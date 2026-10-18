@@ -80,6 +80,19 @@ vectors = embed_items(items, FastEmbedder())  # {item_id: vecteur normalisé}
 - Mesure locale (CPU) : chargement 2,6 s, puis 500 textes en 1,4 s ; similarité d'une paraphrase
   française 0,71 contre 0,16 pour un texte sans rapport.
 
+### Exploration (`rag/explore.py`)
+
+Ce que trouverait un niveau 3 de L2.1 : distribution des similarités (paires déjà reliées par les
+niveaux 1-2 contre les autres) et paires les plus proches non reliées, à juger à la main.
+
+```bash
+uv run python -m packages.analyse.rag.explore 2026-10-07                 # titre + extrait
+uv run python -m packages.analyse.rag.explore 2026-10-07 --texte titre --top 40
+uv run python -m packages.analyse.rag.explore 2026-10-07 --modele hash   # faux modèle, instantané
+uv run --with model2vec python -m packages.analyse.rag.explore 2026-10-07 --modele model2vec
+uv run python -m packages.analyse.rag.explore <jour> --dossier <DATA_DIR> --utilisateur <id>
+```
+
 ## Commandes
 
 ```bash
@@ -95,5 +108,6 @@ aggregate/cases.py   regroupement des items en affaires (L2.1)
 brief.py             generate_brief : assemble le Brief
 clock.py             heure de Paris et détection des journées entières
 rag/embeddings.py    vecteurs de sens des items (L2.6)
+rag/explore.py       outil d'exploration des embeddings sur une journée
 tests/               fabrique d'Item synthétiques + tests
 ```
