@@ -1,0 +1,480 @@
+{
+  "value": [
+    {
+      "id": "AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAENAABT6-uZh-7_3Elo6M4h5X2-AAG21sy_AAA=",
+      "createdDateTime": "2026-10-04T00:00:00.1241914Z",
+      "lastModifiedDateTime": "2026-10-05T04:02:00.5339928Z",
+      "changeKey": "tTAo+Rc8QlK1URn0xTZwBNAB1CsHiE==",
+      "categories": [],
+      "transactionId": null,
+      "originalStartTimeZone": "Romance Standard Time",
+      "originalEndTimeZone": "Romance Standard Time",
+      "iCalUId": "040000008200E00074C5B7101A82E00800000000736089B868EBC51700000000000000001000000080913258174972CBCA5DCFF8BA19F172",
+      "uid": "040000008200E00074C5B7101A82E00800000000736089B868EBC51700000000000000001000000080913258174972CBCA5DCFF8BA19F172",
+      "reminderMinutesBeforeStart": 15,
+      "isReminderOn": true,
+      "hasAttachments": false,
+      "subject": "Revue des risques — Déménagement des bureaux de Lyon",
+      "bodyPreview": "________________________________________________________________________________\r\nRéunion Microsoft Teams\r\nRejoindre : https://teams.microsoft.com/meet/7322224582908528?p=_pjlCGDyHCZQoQcMTl\r\nNuméro de réunion : 732 222 458 290 852 8\r\nCode secret : HGPKRBV",
+      "importance": "normal",
+      "sensitivity": "normal",
+      "isAllDay": false,
+      "isCancelled": false,
+      "isOrganizer": false,
+      "responseRequested": true,
+      "seriesMasterId": null,
+      "showAs": "busy",
+      "type": "singleInstance",
+      "webLink": "https://outlook.office365.com/owa/?itemid=AAMkADPoNc1%2F4eAKOkM5B%2FoaygstwJrLlk6SnDvu72Lz%2BO2%2Fyh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6%2FuZh%2F7%2B3Elo6M4h5X2%2FAAAAAAENAABT6%2FuZh%2F7%2B3Elo6M4h5X2%2FAAG21sy%2BAAA%3D&exvsurl=1&path=/calendar/item",
+      "onlineMeetingUrl": null,
+      "isOnlineMeeting": true,
+      "onlineMeetingProvider": "teamsForBusiness",
+      "allowNewTimeProposals": true,
+      "occurrenceId": null,
+      "isDraft": false,
+      "hideAttendees": false,
+      "responseStatus": {
+        "response": "accepted",
+        "time": "2026-10-04T13:00:00Z"
+      },
+      "body": {
+        "contentType": "text",
+        "content": "\r\n________________________________________________________________________________\r\nRéunion Microsoft Teams\r\nRejoindre : https://teams.microsoft.com/meet/7322224582908528?p=_pjlCGDyHCZQoQcMTl\r\nNuméro de réunion : 732 222 458 290 852 8\r\nCode secret : HGPKRBVP\r\n________________________________\r\nBesoin d'aide ?<https://aka.ms/JoinTeamsMeeting?omkt=fr-FR> | Référence système<https://teams.microsoft.com/l/meetup-join/19%3ameeting_Xmk3maOjdlnDFVBKEmrkK_jJmtLXZJbLyuyMWQeqN-YF%40thread.v2/0?context=%7b%22Tid%22%3a%220d26efa0-12cc-46e3-a344-f1c363ac4f14%22%2c%22Oid%22%3a%229f851fff-fd9a-4bb5-8367-388150686d33%22%7d>\r\nParticiper par téléphone\r\n+33 1 88 88 33 50,,97630066#<tel:+33188883350,,97630066#> France, All locations\r\nTrouver un numéro local<https://dialin.teams.cloud.microsoft/1884cb7d-90d3-4bea-b685-fd5608a6c109?id=97630066>\r\nNuméro de conférence téléphonique : 976 300 66#\r\nPour les organisateurs : Options de réunion<https://teams.microsoft.com/meetingOptions/?organizerId=9f851fff-fd9a-4bb5-8367-388150686d33&tenantId=0d26efa0-12cc-46e3-a344-f1c363ac4f14&threadId=19_meeting_Xmk3maOjdlnDFVBKEmrkK_jJmtLXZJbLyuyMWQeqN-YF@thread.v2&messageId=0&language=fr-FR> | Réinitialiser le code PIN d'appel<https://dialin.teams.cloud.microsoft/usp/pstnconferencing>\r\n[Company Logo]\r\n________________________________________________________________________________\r\n"
+      },
+      "start": {
+        "dateTime": "2026-10-07T06:00:00.0000000",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2026-10-07T06:30:00.0000000",
+        "timeZone": "UTC"
+      },
+      "location": {
+        "displayName": "",
+        "locationType": "default",
+        "uniqueIdType": "unknown"
+      },
+      "locations": [],
+      "recurrence": null,
+      "attendees": [
+        {
+          "type": "required",
+          "status": {
+            "response": "accepted",
+            "time": "0001-01-01T00:00:00Z"
+          },
+          "emailAddress": {
+            "name": "Hugo LAMBERT",
+            "address": "hugo.lambert@verdier-expertises.example"
+          }
+        },
+        {
+          "type": "required",
+          "status": {
+            "response": "accepted",
+            "time": "0001-01-01T00:00:00Z"
+          },
+          "emailAddress": {
+            "name": "Hélène MARCHAND",
+            "address": "helene.marchand@verdier-expertises.example"
+          }
+        },
+        {
+          "type": "required",
+          "status": {
+            "response": "accepted",
+            "time": "0001-01-01T00:00:00Z"
+          },
+          "emailAddress": {
+            "name": "Antoine PERRIN",
+            "address": "antoine.perrin@verdier-expertises.example"
+          }
+        }
+      ],
+      "organizer": {
+        "emailAddress": {
+          "name": "Hugo LAMBERT",
+          "address": "hugo.lambert@verdier-expertises.example"
+        }
+      },
+      "onlineMeeting": {
+        "joinUrl": "https://teams.microsoft.com/l/meetup-join/19%3ameeting_Xmk3maOjdlnDFVBKEmrkK_jJmtLXZJbLyuyMWQeqN-YF%40thread.v2/0?context=%7b%22Tid%22%3a%220d26efa0-12cc-46e3-a344-f1c363ac4f14%22%2c%22Oid%22%3a%229f851fff-fd9a-4bb5-8367-388150686d33%22%7d",
+        "conferenceId": "97630066",
+        "tollNumber": "+33 1 88 88 33 50"
+      }
+    },
+    {
+      "id": "AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcgFRAAgIVe_Gtdy7LfEB0xL4WVeVZrzjV7LCsJQf8TpW_ORAwL_1rtKCgeOwfmWnBDrW6Mf8U9OIQAnS0gC4lTwA4PMdp4Ixj44mg508loVNDAAEA==",
+      "createdDateTime": "2026-08-20T22:00:00.6313879Z",
+      "lastModifiedDateTime": "2026-08-21T21:52:00.1786848Z",
+      "changeKey": "tTAo+Rc8QlK1URn0xTZwBNABoPrz27==",
+      "categories": [],
+      "transactionId": null,
+      "originalStartTimeZone": "Romance Standard Time",
+      "originalEndTimeZone": "Romance Standard Time",
+      "iCalUId": "040000008200E00074C5B7101A82E008000000001D5D287D3B50498D00000000000000001000000037B2D28AD975D818E9D86E5B9893706A",
+      "uid": "040000008200E00074C5B7101A82E008000000001D5D287D3B50498D00000000000000001000000037B2D28AD975D818E9D86E5B9893706A",
+      "reminderMinutesBeforeStart": 15,
+      "isReminderOn": true,
+      "hasAttachments": false,
+      "subject": "Point flash opérations",
+      "bodyPreview": "________________________________________________________________________________\r\nRéunion Microsoft Teams\r\nRejoindre : https://teams.microsoft.com/meet/4635213629586398?p=mwhs5fWmEZmV3Q4w_H\r\nNuméro de réunion : 463 521 362 958 639 8\r\nCode secret : VCXV4QU",
+      "importance": "normal",
+      "sensitivity": "normal",
+      "isAllDay": false,
+      "isCancelled": false,
+      "isOrganizer": false,
+      "responseRequested": true,
+      "seriesMasterId": "AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAENAABT6-uZh-7_3Elo6M4h5X2-AAGbliQMAAA=",
+      "showAs": "busy",
+      "type": "occurrence",
+      "webLink": "https://outlook.office365.com/owa/?itemid=AAMkADPoNc1%2F4eAKOkM5B%2FoaygstwJrLlk6SnDvu72Lz%2BO2%2Fyh19DcgFRAAgIVe%2BGtdy7LfEB0xL4WVeVZrzjV7LCsJQf8TpW%2BORAwL%2B1rtKCgeOwfmWnBDrW6Mf8U9OIQAnS0gC4lTwA4PMdp4Ixj44mg508loVNDAAEA%3D%3D&exvsurl=1&path=/calendar/item",
+      "onlineMeetingUrl": null,
+      "isOnlineMeeting": true,
+      "onlineMeetingProvider": "teamsForBusiness",
+      "allowNewTimeProposals": true,
+      "occurrenceId": "OID.AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAENAABT6-uZh-7_3Elo6M4h5X2-AAGbliQMAAA=.2026-10-07",
+      "isDraft": false,
+      "hideAttendees": false,
+      "responseStatus": {
+        "response": "accepted",
+        "time": "2026-08-21T02:00:00Z"
+      },
+      "body": {
+        "contentType": "text",
+        "content": "\r\n________________________________________________________________________________\r\nRéunion Microsoft Teams\r\nRejoindre : https://teams.microsoft.com/meet/4635213629586398?p=mwhs5fWmEZmV3Q4w_H\r\nNuméro de réunion : 463 521 362 958 639 8\r\nCode secret : VCXV4QUY\r\n________________________________\r\nBesoin d'aide ?<https://aka.ms/JoinTeamsMeeting?omkt=fr-FR> | Référence système<https://teams.microsoft.com/l/meetup-join/19%3ameeting_xufwtDNebW-y8U3YvDKMObyP6sM1epnAMIrT60MNY-rX%40thread.v2/0?context=%7b%22Tid%22%3a%220d26efa0-12cc-46e3-a344-f1c363ac4f14%22%2c%22Oid%22%3a%223c981c11-58af-4cb8-962b-1b921fe6bb9b%22%7d>\r\nParticiper par téléphone\r\n+33 1 88 88 33 50,,56830686#<tel:+33188883350,,56830686#> France, All locations\r\nTrouver un numéro local<https://dialin.teams.cloud.microsoft/f354230d-775c-4cba-b180-131f263ef4fc?id=56830686>\r\nNuméro de conférence téléphonique : 568 306 86#\r\nPour les organisateurs : Options de réunion<https://teams.microsoft.com/meetingOptions/?organizerId=3c981c11-58af-4cb8-962b-1b921fe6bb9b&tenantId=0d26efa0-12cc-46e3-a344-f1c363ac4f14&threadId=19_meeting_xufwtDNebW-y8U3YvDKMObyP6sM1epnAMIrT60MNY-rX@thread.v2&messageId=0&language=fr-FR> | Réinitialiser le code PIN d'appel<https://dialin.teams.cloud.microsoft/usp/pstnconferencing>\r\n[Company Logo]\r\n________________________________________________________________________________\r\n"
+      },
+      "start": {
+        "dateTime": "2026-10-07T07:00:00.0000000",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2026-10-07T07:15:00.0000000",
+        "timeZone": "UTC"
+      },
+      "location": {
+        "displayName": "",
+        "locationType": "default",
+        "uniqueIdType": "unknown"
+      },
+      "locations": [],
+      "recurrence": null,
+      "attendees": [
+        {
+          "type": "required",
+          "status": {
+            "response": "accepted",
+            "time": "0001-01-01T00:00:00Z"
+          },
+          "emailAddress": {
+            "name": "Hélène MARCHAND",
+            "address": "helene.marchand@verdier-expertises.example"
+          }
+        },
+        {
+          "type": "required",
+          "status": {
+            "response": "declined",
+            "time": "0001-01-01T00:00:00Z"
+          },
+          "emailAddress": {
+            "name": "Thomas LEROY",
+            "address": "thomas.leroy@verdier-expertises.example"
+          }
+        },
+        {
+          "type": "required",
+          "status": {
+            "response": "notResponded",
+            "time": "0001-01-01T00:00:00Z"
+          },
+          "emailAddress": {
+            "name": "Julie FONTAINE",
+            "address": "julie.fontaine@verdier-expertises.example"
+          }
+        },
+        {
+          "type": "required",
+          "status": {
+            "response": "accepted",
+            "time": "0001-01-01T00:00:00Z"
+          },
+          "emailAddress": {
+            "name": "Antoine PERRIN",
+            "address": "antoine.perrin@verdier-expertises.example"
+          }
+        },
+        {
+          "type": "optional",
+          "status": {
+            "response": "accepted",
+            "time": "0001-01-01T00:00:00Z"
+          },
+          "emailAddress": {
+            "name": "Léa GIRAUD",
+            "address": "lea.giraud@verdier-expertises.example"
+          }
+        },
+        {
+          "type": "required",
+          "status": {
+            "response": "accepted",
+            "time": "0001-01-01T00:00:00Z"
+          },
+          "emailAddress": {
+            "name": "Marc DUVAL",
+            "address": "marc.duval@verdier-expertises.example"
+          }
+        },
+        {
+          "type": "required",
+          "status": {
+            "response": "accepted",
+            "time": "0001-01-01T00:00:00Z"
+          },
+          "emailAddress": {
+            "name": "Nadia HADDAD",
+            "address": "nadia.haddad@verdier-expertises.example"
+          }
+        }
+      ],
+      "organizer": {
+        "emailAddress": {
+          "name": "Thomas LEROY",
+          "address": "thomas.leroy@verdier-expertises.example"
+        }
+      },
+      "onlineMeeting": {
+        "joinUrl": "https://teams.microsoft.com/l/meetup-join/19%3ameeting_xufwtDNebW-y8U3YvDKMObyP6sM1epnAMIrT60MNY-rX%40thread.v2/0?context=%7b%22Tid%22%3a%220d26efa0-12cc-46e3-a344-f1c363ac4f14%22%2c%22Oid%22%3a%223c981c11-58af-4cb8-962b-1b921fe6bb9b%22%7d"
+      }
+    },
+    {
+      "id": "AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAENAABT6-uZh-7_3Elo6M4h5X2-AAGDvOlpAAA=",
+      "createdDateTime": "2026-09-30T05:54:00.4487593Z",
+      "lastModifiedDateTime": "2026-10-01T00:36:00.1348514Z",
+      "changeKey": "tTAo+Rc8QlK1URn0xTZwBNABMqWmVL==",
+      "categories": [],
+      "transactionId": null,
+      "originalStartTimeZone": "Romance Standard Time",
+      "originalEndTimeZone": "Romance Standard Time",
+      "iCalUId": "040000008200E00074C5B7101A82E00800000000CAB295E48F2C34DD00000000000000001000000051D2525FFEE6BA223D45258DC7A6FC4C",
+      "uid": "040000008200E00074C5B7101A82E00800000000CAB295E48F2C34DD00000000000000001000000051D2525FFEE6BA223D45258DC7A6FC4C",
+      "reminderMinutesBeforeStart": 15,
+      "isReminderOn": true,
+      "hasAttachments": false,
+      "subject": "Bloc de travail — focus",
+      "bodyPreview": "________________________________________________________________________________\r\nRéunion Microsoft Teams\r\nRejoindre : https://teams.microsoft.com/meet/5282076857014637?p=DtNWLmLD4MYBp-viMb\r\nNuméro de réunion : 528 207 685 701 463 7\r\nCode secret : Y4NVWXS",
+      "importance": "normal",
+      "sensitivity": "normal",
+      "isAllDay": false,
+      "isCancelled": false,
+      "isOrganizer": false,
+      "responseRequested": true,
+      "seriesMasterId": null,
+      "showAs": "tentative",
+      "type": "singleInstance",
+      "webLink": "https://outlook.office365.com/owa/?itemid=AAMkADPoNc1%2F4eAKOkM5B%2FoaygstwJrLlk6SnDvu72Lz%2BO2%2Fyh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6%2FuZh%2F7%2B3Elo6M4h5X2%2FAAAAAAENAABT6%2FuZh%2F7%2B3Elo6M4h5X2%2FAAGDvOlpAAA%3D&exvsurl=1&path=/calendar/item",
+      "onlineMeetingUrl": null,
+      "isOnlineMeeting": true,
+      "onlineMeetingProvider": "teamsForBusiness",
+      "allowNewTimeProposals": true,
+      "occurrenceId": null,
+      "isDraft": false,
+      "hideAttendees": false,
+      "responseStatus": {
+        "response": "tentativelyAccepted",
+        "time": "2026-09-30T16:54:00Z"
+      },
+      "body": {
+        "contentType": "text",
+        "content": "\r\n________________________________________________________________________________\r\nRéunion Microsoft Teams\r\nRejoindre : https://teams.microsoft.com/meet/5282076857014637?p=DtNWLmLD4MYBp-viMb\r\nNuméro de réunion : 528 207 685 701 463 7\r\nCode secret : Y4NVWXSZ\r\n________________________________\r\nBesoin d'aide ?<https://aka.ms/JoinTeamsMeeting?omkt=fr-FR> | Référence système<https://teams.microsoft.com/l/meetup-join/19%3ameeting_q9L_Q4V_m1SxVPsakn_RJw8dqE1qPCGoCchi3CkMHDcm%40thread.v2/0?context=%7b%22Tid%22%3a%220d26efa0-12cc-46e3-a344-f1c363ac4f14%22%2c%22Oid%22%3a%22cbbf8cac-fb97-4ec9-8f78-7ea7651717f2%22%7d>\r\nParticiper par téléphone\r\n+33 1 88 88 33 50,,56531904#<tel:+33188883350,,56531904#> France, All locations\r\nTrouver un numéro local<https://dialin.teams.cloud.microsoft/2c9e9aa4-e9c9-436b-aa44-fe20197d144f?id=56531904>\r\nNuméro de conférence téléphonique : 565 319 04#\r\nPour les organisateurs : Options de réunion<https://teams.microsoft.com/meetingOptions/?organizerId=cbbf8cac-fb97-4ec9-8f78-7ea7651717f2&tenantId=0d26efa0-12cc-46e3-a344-f1c363ac4f14&threadId=19_meeting_q9L_Q4V_m1SxVPsakn_RJw8dqE1qPCGoCchi3CkMHDcm@thread.v2&messageId=0&language=fr-FR> | Réinitialiser le code PIN d'appel<https://dialin.teams.cloud.microsoft/usp/pstnconferencing>\r\n[Company Logo]\r\n________________________________________________________________________________\r\n"
+      },
+      "start": {
+        "dateTime": "2026-10-07T08:00:00.0000000",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2026-10-07T09:30:00.0000000",
+        "timeZone": "UTC"
+      },
+      "location": {
+        "displayName": "",
+        "locationType": "default",
+        "uniqueIdType": "unknown"
+      },
+      "locations": [],
+      "recurrence": null,
+      "attendees": [
+        {
+          "type": "required",
+          "status": {
+            "response": "tentativelyAccepted",
+            "time": "0001-01-01T00:00:00Z"
+          },
+          "emailAddress": {
+            "name": "Hélène MARCHAND",
+            "address": "helene.marchand@verdier-expertises.example"
+          }
+        },
+        {
+          "type": "required",
+          "status": {
+            "response": "tentativelyAccepted",
+            "time": "0001-01-01T00:00:00Z"
+          },
+          "emailAddress": {
+            "name": "Olivier BLANC",
+            "address": "olivier.blanc@verdier-expertises.example"
+          }
+        }
+      ],
+      "organizer": {
+        "emailAddress": {
+          "name": "Olivier BLANC",
+          "address": "olivier.blanc@verdier-expertises.example"
+        }
+      },
+      "onlineMeeting": {
+        "joinUrl": "https://teams.microsoft.com/l/meetup-join/19%3ameeting_q9L_Q4V_m1SxVPsakn_RJw8dqE1qPCGoCchi3CkMHDcm%40thread.v2/0?context=%7b%22Tid%22%3a%220d26efa0-12cc-46e3-a344-f1c363ac4f14%22%2c%22Oid%22%3a%22cbbf8cac-fb97-4ec9-8f78-7ea7651717f2%22%7d",
+        "conferenceId": "56531904",
+        "tollNumber": "+33 1 88 88 33 50"
+      }
+    },
+    {
+      "id": "AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAENAABT6-uZh-7_3Elo6M4h5X2-AAGghRHpAAA=",
+      "createdDateTime": "2026-10-05T08:23:00.8224728Z",
+      "lastModifiedDateTime": "2026-10-05T10:02:00.4024640Z",
+      "changeKey": "tTAo+Rc8QlK1URn0xTZwBNAB3LSgjM==",
+      "categories": [],
+      "transactionId": null,
+      "originalStartTimeZone": "Romance Standard Time",
+      "originalEndTimeZone": "Romance Standard Time",
+      "iCalUId": "040000008200E00074C5B7101A82E0080000000094A54ECC9AA4D1200000000000000000100000004E600A9F03C6DD667EDFD499E4D43D35",
+      "uid": "040000008200E00074C5B7101A82E0080000000094A54ECC9AA4D1200000000000000000100000004E600A9F03C6DD667EDFD499E4D43D35",
+      "reminderMinutesBeforeStart": 15,
+      "isReminderOn": true,
+      "hasAttachments": false,
+      "subject": "Point budget",
+      "bodyPreview": "________________________________________________________________________________\r\nRéunion Microsoft Teams\r\nRejoindre : https://teams.microsoft.com/meet/4472856093521094?p=v2dOpc7Mz19TwDeAaq\r\nNuméro de réunion : 447 285 609 352 109 4\r\nCode secret : RXRBEN9",
+      "importance": "normal",
+      "sensitivity": "normal",
+      "isAllDay": false,
+      "isCancelled": false,
+      "isOrganizer": false,
+      "responseRequested": true,
+      "seriesMasterId": null,
+      "showAs": "busy",
+      "type": "singleInstance",
+      "webLink": "https://outlook.office365.com/owa/?itemid=AAMkADPoNc1%2F4eAKOkM5B%2FoaygstwJrLlk6SnDvu72Lz%2BO2%2Fyh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6%2FuZh%2F7%2B3Elo6M4h5X2%2FAAAAAAENAABT6%2FuZh%2F7%2B3Elo6M4h5X2%2FAAGghRHpAAA%3D&exvsurl=1&path=/calendar/item",
+      "onlineMeetingUrl": null,
+      "isOnlineMeeting": true,
+      "onlineMeetingProvider": "teamsForBusiness",
+      "allowNewTimeProposals": true,
+      "occurrenceId": null,
+      "isDraft": false,
+      "hideAttendees": false,
+      "responseStatus": {
+        "response": "accepted",
+        "time": "2026-10-05T13:23:00Z"
+      },
+      "body": {
+        "contentType": "text",
+        "content": "\r\n________________________________________________________________________________\r\nRéunion Microsoft Teams\r\nRejoindre : https://teams.microsoft.com/meet/4472856093521094?p=v2dOpc7Mz19TwDeAaq\r\nNuméro de réunion : 447 285 609 352 109 4\r\nCode secret : RXRBEN9K\r\n________________________________\r\nBesoin d'aide ?<https://aka.ms/JoinTeamsMeeting?omkt=fr-FR> | Référence système<https://teams.microsoft.com/l/meetup-join/19%3ameeting_8wjVS4SOY5aloZvRiN3qhtltlwdLNNLDvLfSmXcH1ymA%40thread.v2/0?context=%7b%22Tid%22%3a%220d26efa0-12cc-46e3-a344-f1c363ac4f14%22%2c%22Oid%22%3a%22e6432cb9-cf5b-4b81-bfd7-9b2ac6dd10f3%22%7d>\r\nParticiper par téléphone\r\n+33 1 88 88 33 50,,17322719#<tel:+33188883350,,17322719#> France, All locations\r\nTrouver un numéro local<https://dialin.teams.cloud.microsoft/e80543c2-9332-4eef-93d2-28aedd9efea0?id=17322719>\r\nNuméro de conférence téléphonique : 173 227 19#\r\nPour les organisateurs : Options de réunion<https://teams.microsoft.com/meetingOptions/?organizerId=e6432cb9-cf5b-4b81-bfd7-9b2ac6dd10f3&tenantId=0d26efa0-12cc-46e3-a344-f1c363ac4f14&threadId=19_meeting_8wjVS4SOY5aloZvRiN3qhtltlwdLNNLDvLfSmXcH1ymA@thread.v2&messageId=0&language=fr-FR> | Réinitialiser le code PIN d'appel<https://dialin.teams.cloud.microsoft/usp/pstnconferencing>\r\n[Company Logo]\r\n________________________________________________________________________________\r\n"
+      },
+      "start": {
+        "dateTime": "2026-10-07T13:15:00.0000000",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2026-10-07T14:45:00.0000000",
+        "timeZone": "UTC"
+      },
+      "location": {
+        "displayName": "",
+        "locationType": "default",
+        "uniqueIdType": "unknown"
+      },
+      "locations": [],
+      "recurrence": null,
+      "attendees": [
+        {
+          "type": "required",
+          "status": {
+            "response": "accepted",
+            "time": "0001-01-01T00:00:00Z"
+          },
+          "emailAddress": {
+            "name": "Karim BENALI",
+            "address": "karim.benali@verdier-expertises.example"
+          }
+        },
+        {
+          "type": "required",
+          "status": {
+            "response": "accepted",
+            "time": "0001-01-01T00:00:00Z"
+          },
+          "emailAddress": {
+            "name": "Léa GIRAUD",
+            "address": "lea.giraud@verdier-expertises.example"
+          }
+        },
+        {
+          "type": "required",
+          "status": {
+            "response": "accepted",
+            "time": "0001-01-01T00:00:00Z"
+          },
+          "emailAddress": {
+            "name": "Hélène MARCHAND",
+            "address": "helene.marchand@verdier-expertises.example"
+          }
+        },
+        {
+          "type": "required",
+          "status": {
+            "response": "accepted",
+            "time": "0001-01-01T00:00:00Z"
+          },
+          "emailAddress": {
+            "name": "Marc DUVAL",
+            "address": "marc.duval@verdier-expertises.example"
+          }
+        },
+        {
+          "type": "required",
+          "status": {
+            "response": "accepted",
+            "time": "0001-01-01T00:00:00Z"
+          },
+          "emailAddress": {
+            "name": "Camille ROCHE",
+            "address": "camille.roche@verdier-expertises.example"
+          }
+        },
+        {
+          "type": "optional",
+          "status": {
+            "response": "declined",
+            "time": "0001-01-01T00:00:00Z"
+          },
+          "emailAddress": {
+            "name": "Sandrine MOREAU",
+            "address": "sandrine.moreau@verdier-expertises.example"
+          }
+        }
+      ],
+      "organizer": {
+        "emailAddress": {
+          "name": "Karim BENALI",
+          "address": "karim.benali@verdier-expertises.example"
+        }
+      },
+      "onlineMeeting": {
+        "joinUrl": "https://teams.microsoft.com/l/meetup-join/19%3ameeting_8wjVS4SOY5aloZvRiN3qhtltlwdLNNLDvLfSmXcH1ymA%40thread.v2/0?context=%7b%22Tid%22%3a%220d26efa0-12cc-46e3-a344-f1c363ac4f14%22%2c%22Oid%22%3a%22e6432cb9-cf5b-4b81-bfd7-9b2ac6dd10f3%22%7d",
+        "conferenceId": "17322719",
+        "tollNumber": "+33 1 88 88 33 50"
+      }
+    }
+  ]
+}
