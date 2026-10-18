@@ -44,6 +44,7 @@ Deux items sont dans la même affaire s'ils partagent un lien ; les liens sont t
 | Niveau | Lien | Exemple de `links` |
 |---|---|---|
 | 1 | même `thread_id` | `fil:conv:dm1-conv-000024` |
+| 1 | même `correlation_id` (contrat A 1.1 : invitation reçue par mail + événement, rempli par le lot 1) | `réunion:meet:point-flash:2026-10-21T07:00Z` |
 | 2 | même référence dans le **titre** | `dossier:2026-3025` |
 
 Le type d'une référence dépend du mot qui précède le numéro (`REFERENCE_KINDS`) :

@@ -129,11 +129,16 @@ def _context(case: Case, others: list[Item]) -> str:
 
 
 def _case_name(case: Case) -> str:
+    """Le nom le plus parlant : une référence (« dossier 2026-3025 »), sinon le type de lien.
+
+    Les identifiants de fil et de réunion sont techniques : on ne les affiche pas.
+    """
+    kinds = {link.partition(":")[0] for link in case.links}
     for link in case.links:
         kind, _, reference = link.partition(":")
-        if kind != "fil":
+        if kind not in ("fil", "réunion"):
             return f"{kind} {reference}"
-    return "même fil"
+    return "même réunion" if "réunion" in kinds else "même fil"
 
 
 def _title(item: Item) -> str:

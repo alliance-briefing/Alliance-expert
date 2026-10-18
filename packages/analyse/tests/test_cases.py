@@ -70,6 +70,79 @@ def test_items_without_shared_link_stay_alone() -> None:
     assert all(case.links == () for case in cases)
 
 
+# --- niveau 1 : même réunion (correlation_id, contrat A 1.1) ---------------------------------
+
+MEETING = "meet:point-flash-operations:2026-10-07T07:00Z"
+
+
+def test_invitation_mail_and_its_event_are_one_case() -> None:
+    items = [
+        make_mail("invit", MORNING, title="Invitation : Point flash", correlation_id=MEETING),
+        make_event(
+            "e1",
+            "2026-10-07T09:00:00+02:00",
+            "2026-10-07T09:30:00+02:00",
+            title="Point flash",
+            correlation_id=MEETING,
+        ),
+    ]
+
+    cases = group_into_cases(items)
+
+    assert groups(cases) == [["calendar:e1", "mail:invit"]]
+    assert cases[0].links == (f"réunion:{MEETING}",)
+
+
+def test_two_occurrences_of_a_series_stay_apart() -> None:
+    # Le lot 1 met l'heure de début dans correlation_id : chaque occurrence est une réunion.
+    items = [
+        make_event(
+            "lundi",
+            "2026-10-05T09:00:00+02:00",
+            "2026-10-05T09:30:00+02:00",
+            title="Point flash",
+            correlation_id="meet:point-flash-operations:2026-10-05T07:00Z",
+        ),
+        make_event(
+            "mardi",
+            "2026-10-06T09:00:00+02:00",
+            "2026-10-06T09:30:00+02:00",
+            title="Point flash",
+            correlation_id="meet:point-flash-operations:2026-10-06T07:00Z",
+        ),
+    ]
+
+    assert groups(group_into_cases(items)) == [["calendar:lundi"], ["calendar:mardi"]]
+
+
+def test_invitation_reply_in_the_same_thread_joins_the_meeting() -> None:
+    # Transitivité : la réponse partage le fil de l'invitation, l'invitation la réunion.
+    items = [
+        make_mail("invit", MORNING, title="Invitation", thread_id="c1", correlation_id=MEETING),
+        make_mail("reponse", MORNING, title="RE: Invitation", thread_id="c1"),
+        make_event(
+            "e1",
+            "2026-10-07T09:00:00+02:00",
+            "2026-10-07T09:30:00+02:00",
+            correlation_id=MEETING,
+        ),
+    ]
+
+    cases = group_into_cases(items)
+
+    assert len(cases) == 1
+    assert cases[0].links == ("fil:c1", f"réunion:{MEETING}")
+
+
+def test_the_same_meeting_of_two_users_is_two_cases() -> None:
+    items = [
+        make_mail("moi", MORNING, correlation_id=MEETING),
+        make_mail("autre", MORNING, correlation_id=MEETING, owner_user_id=OTHER_USER),
+    ]
+
+    assert groups(group_into_cases(items)) == [["mail:autre"], ["mail:moi"]]
+
+
 # --- niveau 2 : même référence --------------------------------------------------------------
 
 
