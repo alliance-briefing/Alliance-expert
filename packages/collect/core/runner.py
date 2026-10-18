@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 
 from contracts.models import Item
 from packages.collect.core.connector import Connector, Window
+from packages.collect.core.normalize import deduplicate
 from packages.collect.core.registry import enabled_connectors
 
 logger = logging.getLogger("collect")
@@ -41,4 +42,8 @@ def run(user: str, window: Window, connectors: list[Connector] | None = None) ->
                 continue
             result.items.append(item)
         logger.info("connecteur %s : %d Items", connector.name, len(items))
+    collected = len(result.items)
+    result.items = deduplicate(result.items)  # L1.6 : un seul Item par item_id
+    if len(result.items) < collected:
+        result.warnings.append(f"{collected - len(result.items)} doublon(s) retiré(s)")
     return result
