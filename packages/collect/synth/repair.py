@@ -13,8 +13,8 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from collect.synth.clock import PARIS, is_working_day
-from collect.synth.window import snapshot
+from packages.collect.synth.clock import PARIS, is_working_day
+from packages.collect.synth.window import snapshot
 
 LIMITS = {"mail": (60, 250), "calendar": (4, 10), "task": (3, 12), "file": (5, 30)}
 
@@ -117,7 +117,7 @@ _FILLER_TASKS = (
 
 
 def _filler_task(world, day, index: int) -> None:
-    from collect.synth.clock import at
+    from packages.collect.synth.clock import at
 
     prev = day - timedelta(days=1)
     while not is_working_day(prev):

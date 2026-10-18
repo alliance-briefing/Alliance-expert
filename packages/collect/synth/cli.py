@@ -17,8 +17,8 @@ from collections import Counter
 from datetime import date
 from pathlib import Path
 
-from collect.synth.generator import DEFAULT_START, Params, generate
-from collect.synth.people import PROFILES
+from packages.collect.synth.generator import DEFAULT_START, Params, generate
+from packages.collect.synth.people import PROFILES
 
 SECTIONS = {
     "actions": "À traiter",

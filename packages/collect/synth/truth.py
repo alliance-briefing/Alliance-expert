@@ -11,10 +11,10 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import datetime
 
-from collect.synth import content as C
-from collect.synth.clock import PARIS, add_working_days
-from collect.synth.model import SimEvent, SimFile, SimMail, SimTask
-from collect.synth.window import Snapshot
+from packages.collect.synth import content as C
+from packages.collect.synth.clock import PARIS, add_working_days
+from packages.collect.synth.model import SimEvent, SimFile, SimMail, SimTask
+from packages.collect.synth.window import Snapshot
 
 TRUTH_SCHEMA = "truth/1.0"
 BRIEF_MIN, BRIEF_MAX, SALIENCE_THRESHOLD = 3, 7, 62

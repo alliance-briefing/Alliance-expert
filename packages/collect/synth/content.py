@@ -6,7 +6,7 @@ import html
 import random
 from datetime import date, datetime
 
-from collect.synth.people import Person
+from packages.collect.synth.people import Person
 
 JOURS = ("lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche")
 MOIS = (

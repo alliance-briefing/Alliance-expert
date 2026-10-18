@@ -18,12 +18,11 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from urllib.parse import quote
 
-from collect.core.text import make_snippet, truncate
-from collect.synth.clock import collect_time, to_paris
-from collect.synth.model import SimEvent, SimFile, SimFileVersion, SimMail, SimTask
-from collect.synth.people import INTERNAL_DOMAIN, Person, slug
-
 from contracts.models import Item
+from packages.collect.core.text import make_snippet, truncate
+from packages.collect.synth.clock import collect_time, to_paris
+from packages.collect.synth.model import SimEvent, SimFile, SimFileVersion, SimMail, SimTask
+from packages.collect.synth.people import INTERNAL_DOMAIN, Person, slug
 
 CONNECTOR_NAME = "demo"
 CONNECTOR_VERSION = "0.1.0"
@@ -132,6 +131,7 @@ def mail_item(world, m: SimMail, now: datetime) -> Item:
     people += [_participant(p, "cc") for p in m.cc]
     sent = to_paris(m.sent_at)
     return Item(
+        schema_version="1.0",  # le générateur produit le contrat A 1.0 (fixtures figées)
         **_base(world, "mail", m.native_id, now),
         title=m.subject,
         snippet=make_snippet(m.html),
@@ -150,6 +150,7 @@ def event_item(world, e: SimEvent, now: datetime) -> Item:
     people += [_participant(p, "attendee") for p in e.attendees if p != e.organizer]
     snippet = " – ".join(part for part in (e.location, e.description) if part)
     return Item(
+        schema_version="1.0",  # le générateur produit le contrat A 1.0 (fixtures figées)
         **_base(world, "calendar", e.native_id, now),
         title=e.title,
         snippet=truncate(snippet),
@@ -164,6 +165,7 @@ def event_item(world, e: SimEvent, now: datetime) -> Item:
 
 def task_item(world, t: SimTask, now: datetime) -> Item:
     return Item(
+        schema_version="1.0",  # le générateur produit le contrat A 1.0 (fixtures figées)
         **_base(world, "task", t.native_id, now),
         title=t.title,
         snippet=truncate(t.notes),
@@ -181,6 +183,7 @@ def file_item(world, f: SimFile, version: SimFileVersion, now: datetime) -> Item
     path = quote(f"{f.folder}/{f.name}", safe="/")
     snippet = truncate(f.excerpt) if f.extension in SNIPPET_FILE_TYPES else ""
     return Item(
+        schema_version="1.0",  # le générateur produit le contrat A 1.0 (fixtures figées)
         **_base(world, "file", f.native_id, now),
         title=f.name,
         snippet=snippet,
