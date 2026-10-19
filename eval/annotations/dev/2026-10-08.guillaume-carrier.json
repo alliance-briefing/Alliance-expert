@@ -1,0 +1,91 @@
+{
+  "schema": "annotation/1.1",
+  "user_id": "u_demo_001",
+  "date": "2026-10-08",
+  "annotator": "guillaume-carrier",
+  "annotated_at": "2026-10-19",
+  "must_include": [
+    {
+      "rank": 1,
+      "section": "actions",
+      "item_ids": [
+        "calendar:dm1-evt-000066"
+      ],
+      "why": "Traiter au plus vite les dossiers en attente pour ne pas prendre de retard"
+    },
+    {
+      "rank": 2,
+      "section": "actions",
+      "item_ids": [
+        "task:dm1-tsk-000034",
+        "task:dm1-tsk-000028"
+      ],
+      "why": "URGENT, tâche en retard"
+    },
+    {
+      "rank": 3,
+      "section": "meetings",
+      "item_ids": [
+        "calendar:dm1-evt-000069"
+      ],
+      "why": "Faire le point sur les données de la semaine passée, ventes, budgets, réclamations..."
+    },
+    {
+      "rank": 4,
+      "section": "meetings",
+      "item_ids": [
+        "calendar:dm1-evt-000067"
+      ],
+      "why": "Point avec un collaborateur"
+    }
+  ],
+  "must_exclude": [
+    "mail:dm1-msg-001496",
+    "mail:dm1-msg-001423",
+    "mail:dm1-msg-001448",
+    "mail:dm1-msg-001463",
+    "mail:dm1-msg-001504",
+    "mail:dm1-msg-001439",
+    "mail:dm1-msg-001505",
+    "mail:dm1-msg-001479",
+    "mail:dm1-msg-001466",
+    "mail:dm1-msg-001441",
+    "mail:dm1-msg-001486",
+    "mail:dm1-msg-001431",
+    "mail:dm1-msg-001494",
+    "mail:dm1-msg-001468",
+    "mail:dm1-msg-001443",
+    "mail:dm1-msg-001433",
+    "mail:dm1-msg-001511",
+    "mail:dm1-msg-001509",
+    "mail:dm1-msg-001436",
+    "mail:dm1-msg-001475",
+    "mail:dm1-msg-001461",
+    "mail:dm1-msg-001487",
+    "mail:dm1-msg-001477",
+    "mail:dm1-msg-001482",
+    "mail:dm1-msg-001438"
+  ],
+  "cases": [
+    [
+      "mail:dm1-msg-000041",
+      "calendar:dm1-evt-000006",
+      "task:dm1-tsk-000034"
+    ],
+    [
+      "mail:dm1-msg-000036",
+      "mail:dm1-msg-000035",
+      "task:dm1-tsk-000028"
+    ],
+    [
+      "mail:dm1-msg-000048",
+      "task:dm1-tsk-000040"
+    ],
+    [
+      "mail:dm1-msg-000033",
+      "mail:dm1-msg-000029",
+      "file:dm1-fil-000010"
+    ]
+  ],
+  "notes": ""
+}
