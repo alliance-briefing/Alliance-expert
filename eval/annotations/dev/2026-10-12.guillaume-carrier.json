@@ -1,0 +1,93 @@
+{
+  "schema": "annotation/1.1",
+  "user_id": "u_demo_001",
+  "date": "2026-10-12",
+  "annotator": "guillaume-carrier",
+  "annotated_at": "2026-10-19",
+  "must_include": [
+    {
+      "rank": 1,
+      "section": "meetings",
+      "item_ids": [
+        "calendar:dm1-ser-000001_20261012"
+      ],
+      "why": "Détail de tous les dossiers pour être à jour."
+    },
+    {
+      "rank": 2,
+      "section": "actions",
+      "item_ids": [
+        "task:dm1-tsk-000029",
+        "task:dm1-tsk-000012",
+        "task:dm1-tsk-000026",
+        "task:dm1-tsk-000032"
+      ],
+      "why": "URGENT, tâches en retard."
+    },
+    {
+      "rank": 3,
+      "section": "actions",
+      "item_ids": [
+        "calendar:dm1-evt-000073"
+      ],
+      "why": "Éviter un retard."
+    },
+    {
+      "rank": 4,
+      "section": "actions",
+      "item_ids": [
+        "task:dm1-tsk-000049"
+      ],
+      "why": "Éviter un retard."
+    },
+    {
+      "rank": 5,
+      "section": "actions",
+      "item_ids": [
+        "calendar:dm1-evt-000009"
+      ],
+      "why": "Préparer le RDV."
+    }
+  ],
+  "must_exclude": [
+    "mail:dm1-msg-001871",
+    "mail:dm1-msg-001849",
+    "mail:dm1-msg-001826",
+    "mail:dm1-msg-001866",
+    "mail:dm1-msg-001878",
+    "mail:dm1-msg-001860",
+    "mail:dm1-msg-001824",
+    "mail:dm1-msg-001873",
+    "mail:dm1-msg-001853",
+    "mail:dm1-msg-001839",
+    "mail:dm1-msg-001877",
+    "mail:dm1-msg-001859",
+    "mail:dm1-msg-001823",
+    "mail:dm1-msg-001847",
+    "mail:dm1-msg-001815",
+    "mail:dm1-msg-001834",
+    "mail:dm1-msg-001836",
+    "mail:dm1-msg-001828",
+    "mail:dm1-msg-001842",
+    "mail:dm1-msg-001864",
+    "mail:dm1-msg-001852",
+    "mail:dm1-msg-001876",
+    "mail:dm1-msg-001851",
+    "mail:dm1-msg-001858",
+    "mail:dm1-msg-001870",
+    "mail:dm1-msg-001845",
+    "mail:dm1-msg-001821",
+    "mail:dm1-msg-001838",
+    "mail:dm1-msg-001832",
+    "mail:dm1-msg-001872",
+    "mail:dm1-msg-001854"
+  ],
+  "cases": [
+    [
+      "mail:dm1-msg-000041",
+      "mail:dm1-msg-000042",
+      "mail:dm1-msg-000044"
+    ]
+  ],
+  "notes": ""
+}
