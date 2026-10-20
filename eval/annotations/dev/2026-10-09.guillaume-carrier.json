@@ -1,0 +1,138 @@
+{
+  "schema": "annotation/1.1",
+  "user_id": "u_demo_001",
+  "date": "2026-10-09",
+  "annotator": "guillaume-carrier",
+  "annotated_at": "2026-10-20",
+  "must_include": [
+    {
+      "rank": 1,
+      "section": "meetings",
+      "item_ids": [
+        "calendar:dm1-evt-000072"
+      ],
+      "why": "À préparer avant d'y aller."
+    },
+    {
+      "rank": 2,
+      "section": "actions",
+      "item_ids": [
+        "task:dm1-tsk-000032"
+      ],
+      "why": "Pour ne pas avoir plus de retard."
+    },
+    {
+      "rank": 3,
+      "section": "meetings",
+      "item_ids": [
+        "calendar:dm1-evt-000070"
+      ],
+      "why": "Pour ne pas prendre de retard sur ces dossiers."
+    },
+    {
+      "rank": 4,
+      "section": "actions",
+      "item_ids": [
+        "task:dm1-tsk-000047"
+      ],
+      "why": "Pour organiser la journée."
+    }
+  ],
+  "must_exclude": [
+    "mail:dm1-msg-001602",
+    "mail:dm1-msg-001548",
+    "mail:dm1-msg-001659",
+    "mail:dm1-msg-001599",
+    "mail:dm1-msg-001554",
+    "mail:dm1-msg-001543",
+    "mail:dm1-msg-001578",
+    "mail:dm1-msg-001592",
+    "mail:dm1-msg-001675",
+    "mail:dm1-msg-001649",
+    "mail:dm1-msg-001526",
+    "mail:dm1-msg-001640",
+    "mail:dm1-msg-001626",
+    "mail:dm1-msg-001668",
+    "mail:dm1-msg-001603",
+    "mail:dm1-msg-001615",
+    "mail:dm1-msg-001580",
+    "mail:dm1-msg-001528",
+    "mail:dm1-msg-001642",
+    "mail:dm1-msg-001660",
+    "mail:dm1-msg-001613",
+    "mail:dm1-msg-001657",
+    "mail:dm1-msg-001672",
+    "mail:dm1-msg-001570",
+    "mail:dm1-msg-001539",
+    "mail:dm1-msg-001577",
+    "mail:dm1-msg-001546",
+    "mail:dm1-msg-001549",
+    "mail:dm1-msg-001667",
+    "mail:dm1-msg-001597",
+    "mail:dm1-msg-001536",
+    "mail:dm1-msg-001596",
+    "mail:dm1-msg-001559",
+    "mail:dm1-msg-001590",
+    "mail:dm1-msg-001520",
+    "mail:dm1-msg-001551",
+    "mail:dm1-msg-001556",
+    "mail:dm1-msg-001652",
+    "mail:dm1-msg-001671",
+    "mail:dm1-msg-001674",
+    "mail:dm1-msg-001641",
+    "mail:dm1-msg-001569",
+    "mail:dm1-msg-001624",
+    "mail:dm1-msg-001673",
+    "mail:dm1-msg-001529",
+    "mail:dm1-msg-001620",
+    "mail:dm1-msg-001656",
+    "mail:dm1-msg-001634",
+    "mail:dm1-msg-001618",
+    "mail:dm1-msg-001540",
+    "mail:dm1-msg-001637",
+    "mail:dm1-msg-001630",
+    "mail:dm1-msg-001533",
+    "mail:dm1-msg-001669",
+    "mail:dm1-msg-001612",
+    "mail:dm1-msg-001655",
+    "mail:dm1-msg-001541",
+    "mail:dm1-msg-001628",
+    "mail:dm1-msg-001654",
+    "mail:dm1-msg-001645",
+    "mail:dm1-msg-001647",
+    "mail:dm1-msg-001530"
+  ],
+  "cases": [
+    [
+      "mail:dm1-msg-000041",
+      "mail:dm1-msg-000043",
+      "mail:dm1-msg-000044",
+      "calendar:dm1-evt-000006"
+    ],
+    [
+      "calendar:dm1-evt-000071",
+      "mail:dm1-msg-001669",
+      "mail:dm1-msg-001529",
+      "mail:dm1-msg-001556",
+      "mail:dm1-msg-001536",
+      "mail:dm1-msg-001667",
+      "mail:dm1-msg-001638",
+      "mail:dm1-msg-001657",
+      "mail:dm1-msg-001613",
+      "mail:dm1-msg-001626"
+    ],
+    [
+      "file:dm1-fil-000005",
+      "task:dm1-tsk-000012"
+    ],
+    [
+      "file:dm1-fil-000006",
+      "task:dm1-tsk-000015"
+    ],
+    [
+      "file:dm1-fil-000010",
+      "task:dm1-tsk-000026"
+    ]
+  ],
+  "notes": ""
+}
