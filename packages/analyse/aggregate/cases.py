@@ -45,7 +45,7 @@ _REFERENCE = re.compile(
 # un texte entre guillemets est souvent un canal de discussion (« Expertises complexes ») :
 # il ne crée aucun lien.
 _FILE_NAME = r"[^«»\s][^«»]*\.[A-Za-z0-9]{2,5}"
-_QUOTED_FILE = re.compile(rf"«\s*({_FILE_NAME})\s*»")
+_QUOTED_TEXT = re.compile(r"«\s*([^«»]+?)\s*»")
 _WHOLE_FILE_NAME = re.compile(rf"{_FILE_NAME}")
 
 
@@ -75,14 +75,25 @@ def references(title: str) -> set[str]:
             found.add(f"{kind}:{match['number']}")
     return found
 
+def _is_single_filename(text: str) -> bool:
+    """Un nom de fichier plausible : extension 2-5 caractères, un seul point.
+
+    Le « un seul point » écarte « a.pdf et b.pdf » (deux fichiers collés par
+    une citation maladroite) et « archive.tar.gz » (double extension rare
+    dans les données de démo). Mieux vaut rater un lien que d'en inventer un.
+    """
+    return bool(_WHOLE_FILE_NAME.fullmatch(text)) and text.count(".") == 1
 
 def documents(item: Item) -> set[str]:
-    """Les documents dont parle un item : le fichier lui-même, ou ceux qu'un titre cite
-    entre guillemets (« X a modifié « Planning_experts_S41.xlsx » »). Nom exact."""
+    """Les documents dont parle un item : le fichier lui-même, ou ceux qu'un titre
+    cite entre guillemets (« X a modifié « Planning_experts_S41.xlsx » »). Nom exact."""
     if item.source == "file":
         name = item.title.strip()
-        return {name} if _WHOLE_FILE_NAME.fullmatch(name) else set()
-    return set(_QUOTED_FILE.findall(item.title))
+        return {name} if _is_single_filename(name) else set()
+    return {
+        quoted.strip()
+        for quoted in _QUOTED_TEXT.findall(item.title)
+        if _is_single_filename(quoted.strip())}
 
 
 def group_into_cases(items: Sequence[Item]) -> list[Case]:

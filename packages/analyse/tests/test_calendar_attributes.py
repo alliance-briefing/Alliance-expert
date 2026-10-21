@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Any
 
 from contracts.models import Item
 from packages.analyse import generate_brief
 from packages.analyse.aggregate.rules import meetings_of_day
 from packages.analyse.clock import is_all_day
-from packages.analyse.tests.factories import COLLECTED_AT, USER, at, make_event
+from packages.analyse.tests.factories import COLLECTED_AT, USER, at, make_event, make_item
+from unittest.mock import MagicMock
 
 DAY = date(2026, 10, 7)
 NOW = at(COLLECTED_AT)
@@ -80,3 +81,38 @@ def test_a_day_with_only_a_cancelled_meeting_has_nothing_to_report() -> None:
 
     assert brief.sections[1].entries == []
     assert brief.cited_item_ids() == set()
+
+
+def test_is_all_day_avec_champ_none_est_deduit():
+    """Si le champ is_all_day est None, on doit le déduire (minuit à minuit)."""
+    item = make_item(
+        native_id="test-all-day",
+        source="calendar",
+        start_at=datetime(2026, 10, 7, tzinfo=timezone.utc),
+        end_at=datetime(2026, 10, 8, tzinfo=timezone.utc),
+    )
+
+    # On crée un faux attribut avec is_all_day = None
+    mock_attr = MagicMock()
+    mock_attr.calendar.is_all_day = None
+
+    # On utilise model_copy pour contourner le fait que l'Item est "frozen"
+    item = item.model_copy(update={"attributes": mock_attr})
+
+    assert is_all_day(item) is True
+
+
+def test_meeting_annule_avec_champ_none_n_est_pas_filtre():
+    """Si is_cancelled est None, l'événement ne doit pas être considéré comme annulé."""
+    item = make_item(
+        native_id="test-cancelled",
+        source="calendar",
+        start_at=datetime(2026, 10, 7, 10, 0, tzinfo=timezone.utc),
+        end_at=datetime(2026, 10, 7, 11, 0, tzinfo=timezone.utc),
+    )
+
+    mock_attr = MagicMock()
+    mock_attr.calendar.is_cancelled = None
+    item = item.model_copy(update={"attributes": mock_attr})
+
+    assert meetings_of_day([item], date(2026, 10, 7)) == [item]

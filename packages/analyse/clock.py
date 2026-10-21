@@ -31,7 +31,7 @@ def is_all_day(event: Item) -> bool:
     de Paris, elle irait de 02:00 à 02:00 et déborderait sur le lendemain.
     """
     calendar = event.attributes.calendar if event.attributes else None
-    if calendar is not None:
+    if calendar is not None and calendar.is_all_day is not None:
         return calendar.is_all_day
     start, end = event.start_at, event.end_at
     return (
