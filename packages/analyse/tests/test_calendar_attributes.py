@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import Any
+from unittest.mock import MagicMock
 
 from contracts.models import Item
 from packages.analyse import generate_brief
 from packages.analyse.aggregate.rules import meetings_of_day
 from packages.analyse.clock import is_all_day
 from packages.analyse.tests.factories import COLLECTED_AT, USER, at, make_event, make_item
-from unittest.mock import MagicMock
 
 DAY = date(2026, 10, 7)
 NOW = at(COLLECTED_AT)
@@ -88,8 +88,8 @@ def test_is_all_day_avec_champ_none_est_deduit():
     item = make_item(
         native_id="test-all-day",
         source="calendar",
-        start_at=datetime(2026, 10, 7, tzinfo=timezone.utc),
-        end_at=datetime(2026, 10, 8, tzinfo=timezone.utc),
+        start_at=datetime(2026, 10, 7, tzinfo=UTC),
+        end_at=datetime(2026, 10, 8, tzinfo=UTC),
     )
 
     # On crée un faux attribut avec is_all_day = None
@@ -107,8 +107,8 @@ def test_meeting_annule_avec_champ_none_n_est_pas_filtre():
     item = make_item(
         native_id="test-cancelled",
         source="calendar",
-        start_at=datetime(2026, 10, 7, 10, 0, tzinfo=timezone.utc),
-        end_at=datetime(2026, 10, 7, 11, 0, tzinfo=timezone.utc),
+        start_at=datetime(2026, 10, 7, 10, 0, tzinfo=UTC),
+        end_at=datetime(2026, 10, 7, 11, 0, tzinfo=UTC),
     )
 
     mock_attr = MagicMock()

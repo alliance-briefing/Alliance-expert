@@ -8,7 +8,7 @@ import time
 import pytest
 
 from contracts.demo_data import available_days, load_items
-from packages.analyse.aggregate.cases import Case, group_into_cases, references, documents
+from packages.analyse.aggregate.cases import Case, documents, group_into_cases, references
 from packages.analyse.tests.factories import (
     OTHER_USER,
     make_event,
@@ -336,21 +336,24 @@ def test_five_hundred_items_are_grouped_in_less_than_two_seconds() -> None:
     assert time.perf_counter() - started < 2
     assert sum(len(case.items) for case in cases) == 500
 
+
 def test_documents_refuse_deux_fichiers_dans_une_seule_citation():
     """Deux fichiers cités dans la même paire de guillemets est ambigu :
     on ne crée aucun lien plutôt que de fabriquer un nom qui n'existe pas."""
-    item = make_item(native_id="test-1",source="mail", title="Alice a modifié « a.pdf et b.pdf »")
+    item = make_item(native_id="test-1", source="mail", title="Alice a modifié « a.pdf et b.pdf »")
     assert documents(item) == set()
 
 
 def test_documents_accepte_un_fichier_avec_espace_dans_la_citation():
     """Un vrai nom de fichier peut contenir un espace : il doit rester accepté."""
-    item = make_item(native_id="test-1",source="mail", title="Alice a modifié « Mon rapport.xlsx »")
+    item = make_item(
+        native_id="test-1", source="mail", title="Alice a modifié « Mon rapport.xlsx »"
+    )
     assert documents(item) == {"Mon rapport.xlsx"}
 
 
 def test_documents_source_file_inchange():
-    item = make_item(native_id="test-1",source="file", title="Planning_experts_S41.xlsx")
+    item = make_item(native_id="test-1", source="file", title="Planning_experts_S41.xlsx")
     assert documents(item) == {"Planning_experts_S41.xlsx"}
 
 
