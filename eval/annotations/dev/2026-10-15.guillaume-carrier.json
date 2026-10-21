@@ -1,0 +1,105 @@
+{
+  "schema": "annotation/1.1",
+  "user_id": "u_demo_001",
+  "date": "2026-10-15",
+  "annotator": "guillaume-carrier",
+  "annotated_at": "2026-10-21",
+  "must_include": [
+    {
+      "rank": 1,
+      "section": "overdue",
+      "item_ids": [
+        "task:dm1-tsk-000046",
+        "mail:dm1-msg-000057"
+      ],
+      "why": "Tâche en retard depuis le 14/10 : la traiter pour ne pas accumuler plus de retard."
+    },
+    {
+      "rank": 2,
+      "section": "meetings",
+      "item_ids": [
+        "calendar:dm1-evt-000080"
+      ],
+      "why": "Point téléphonique avec Noémie Girard à 10h45 : à préparer."
+    },
+    {
+      "rank": 3,
+      "section": "actions",
+      "item_ids": [
+        "task:dm1-tsk-000060",
+        "mail:dm1-msg-000071"
+      ],
+      "why": "Appel à Hugo Lacroix (VEI 2026-7455) avant 17h : préparer le call."
+    },
+    {
+      "rank": 4,
+      "section": "actions",
+      "item_ids": [
+        "task:dm1-tsk-000061"
+      ],
+      "why": "Affecter un expert au dossier 2026-1201 avant 12h pour ne pas prendre de retard."
+    }
+  ],
+  "must_exclude": [
+    "mail:dm1-msg-002181",
+    "mail:dm1-msg-002210",
+    "mail:dm1-msg-002183",
+    "mail:dm1-msg-002238",
+    "mail:dm1-msg-002223",
+    "mail:dm1-msg-002201",
+    "mail:dm1-msg-002220",
+    "mail:dm1-msg-002211",
+    "mail:dm1-msg-002182",
+    "mail:dm1-msg-002273",
+    "mail:dm1-msg-002257",
+    "mail:dm1-msg-002261",
+    "mail:dm1-msg-002265",
+    "mail:dm1-msg-002221",
+    "mail:dm1-msg-002236",
+    "mail:dm1-msg-002212",
+    "mail:dm1-msg-002162",
+    "mail:dm1-msg-002206",
+    "mail:dm1-msg-002247",
+    "mail:dm1-msg-002252",
+    "mail:dm1-msg-002171",
+    "mail:dm1-msg-002198",
+    "mail:dm1-msg-002253",
+    "mail:dm1-msg-002216",
+    "mail:dm1-msg-002174",
+    "mail:dm1-msg-002178",
+    "mail:dm1-msg-002234",
+    "mail:dm1-msg-002260",
+    "mail:dm1-msg-002163",
+    "mail:dm1-msg-002275",
+    "mail:dm1-msg-002193",
+    "mail:dm1-msg-002270",
+    "mail:dm1-msg-002224",
+    "mail:dm1-msg-002264",
+    "mail:dm1-msg-002240",
+    "mail:dm1-msg-002195",
+    "mail:dm1-msg-002266",
+    "mail:dm1-msg-002267",
+    "mail:dm1-msg-002170",
+    "mail:dm1-msg-002214",
+    "mail:dm1-msg-002196",
+    "mail:dm1-msg-002197",
+    "mail:dm1-msg-002227",
+    "mail:dm1-msg-002186",
+    "mail:dm1-msg-002177"
+  ],
+  "cases": [
+    [
+      "task:dm1-tsk-000046",
+      "mail:dm1-msg-000057"
+    ],
+    [
+      "task:dm1-tsk-000060",
+      "mail:dm1-msg-000071"
+    ],
+    [
+      "task:dm1-tsk-000061",
+      "mail:dm1-msg-000073"
+    ]
+  ],
+  "notes": ""
+}
