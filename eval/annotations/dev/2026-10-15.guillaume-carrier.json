@@ -7,37 +7,62 @@
   "must_include": [
     {
       "rank": 1,
-      "section": "overdue",
+      "section": "actions",
       "item_ids": [
-        "task:dm1-tsk-000046",
-        "mail:dm1-msg-000057"
+        "mail:dm1-msg-000230"
       ],
-      "why": "Tâche en retard depuis le 14/10 : la traiter pour ne pas accumuler plus de retard."
+      "why": "Le client du dossier 2026-7121 menace de saisir un avocat ; rappel demandé par Anaïs Lefèvre-Dubœuf, sans réponse depuis le 08/10."
     },
     {
       "rank": 2,
-      "section": "meetings",
+      "section": "actions",
       "item_ids": [
-        "calendar:dm1-evt-000080"
+        "mail:dm1-msg-000044",
+        "mail:dm1-msg-000042"
       ],
-      "why": "Point téléphonique avec Noémie Girard à 10h45 : à préparer."
+      "why": "Devis 2026-2384 de 7 300 € au-dessus du seuil, à valider avant le 09/10 12h (dépassé) ; Assur'Alpes a relancé (mail important)."
     },
     {
       "rank": 3,
       "section": "actions",
       "item_ids": [
-        "task:dm1-tsk-000060",
-        "mail:dm1-msg-000071"
+        "mail:dm1-msg-000055"
       ],
-      "why": "Appel à Hugo Lacroix (VEI 2026-7455) avant 17h : préparer le call."
+      "why": "Devis 2026-9859 de 6 800 € au-dessus du seuil, à valider avant le 14/10 12h (dépassé) ; Mutuelle Horizon Sud attend."
     },
     {
       "rank": 4,
       "section": "actions",
       "item_ids": [
-        "task:dm1-tsk-000061"
+        "mail:dm1-msg-000066"
       ],
-      "why": "Affecter un expert au dossier 2026-1201 avant 12h pour ne pas prendre de retard."
+      "why": "Kevin Barbier (dossier 2026-5006) sans nouvelles depuis plus d'une semaine, demande à être rappelé."
+    },
+    {
+      "rank": 5,
+      "section": "actions",
+      "item_ids": [
+        "task:dm1-tsk-000060",
+        "mail:dm1-msg-000071"
+      ],
+      "why": "Appeler Hugo Lacroix avant 17h : VEI dossier 2026-7455 (réparations 14 100 € > valeur 7 200 €), il n'est pas encore au courant."
+    },
+    {
+      "rank": 6,
+      "section": "actions",
+      "item_ids": [
+        "task:dm1-tsk-000061",
+        "mail:dm1-msg-000073"
+      ],
+      "why": "Affecter un expert au dossier 2026-1201 (BMW Série 3) avant 12h ; l'assureur attend la date de passage."
+    },
+    {
+      "rank": 7,
+      "section": "actions",
+      "item_ids": [
+        "mail:dm1-msg-000067"
+      ],
+      "why": "Reporting d'octobre à transmettre à Bernard Mercier avant le 16/10 midi pour le comité de direction."
     }
   ],
   "must_exclude": [
@@ -85,7 +110,10 @@
     "mail:dm1-msg-002197",
     "mail:dm1-msg-002227",
     "mail:dm1-msg-002186",
-    "mail:dm1-msg-002177"
+    "mail:dm1-msg-002177",
+    "mail:dm1-msg-000194",
+    "mail:dm1-msg-000195",
+    "mail:dm1-msg-000207"
   ],
   "cases": [
     [
@@ -101,5 +129,5 @@
       "mail:dm1-msg-000073"
     ]
   ],
-  "notes": ""
+  "notes": "Règles discutées en amont entre annotateurs (avant annotation séparée)."
 }
