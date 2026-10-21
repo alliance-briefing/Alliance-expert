@@ -1,0 +1,140 @@
+{
+  "schema": "annotation/1.1",
+  "user_id": "u_demo_001",
+  "date": "2026-10-15",
+  "annotator": "davy-junior",
+  "annotated_at": "2026-10-21",
+  "must_include": [
+    {
+      "rank": 1,
+      "section": "actions",
+      "item_ids": [
+        "task:dm1-tsk-000046",
+        "mail:dm1-msg-000057"
+      ],
+      "why": "Pour ne pas avoir plus de retard"
+    },
+    {
+      "rank": 2,
+      "section": "meetings",
+      "item_ids": [
+        "calendar:dm1-evt-000080"
+      ],
+      "why": "Préparer le meeting"
+    },
+    {
+      "rank": 3,
+      "section": "meetings",
+      "item_ids": [
+        "task:dm1-tsk-000060",
+        "mail:dm1-msg-000071"
+      ],
+      "why": "Préparer le call"
+    },
+    {
+      "rank": 4,
+      "section": "actions",
+      "item_ids": [
+        "task:dm1-tsk-000061",
+        "mail:dm1-msg-000073"
+      ],
+      "why": "Ne pas prendre de retard"
+    }
+  ],
+  "must_exclude": [
+    "mail:dm1-msg-002177",
+    "mail:dm1-msg-002214",
+    "mail:dm1-msg-002270",
+    "mail:dm1-msg-002193",
+    "mail:dm1-msg-002260",
+    "mail:dm1-msg-002174",
+    "mail:dm1-msg-002220",
+    "mail:dm1-msg-002208",
+    "mail:dm1-msg-002240",
+    "mail:dm1-msg-002179",
+    "mail:dm1-msg-002180",
+    "mail:dm1-msg-002190",
+    "mail:dm1-msg-002241",
+    "mail:dm1-msg-002264",
+    "mail:dm1-msg-002277",
+    "mail:dm1-msg-002229",
+    "mail:dm1-msg-002166",
+    "mail:dm1-msg-002163",
+    "mail:dm1-msg-002176",
+    "mail:dm1-msg-002239",
+    "mail:dm1-msg-000063",
+    "mail:dm1-msg-002204",
+    "mail:dm1-msg-002259",
+    "mail:dm1-msg-002200",
+    "mail:dm1-msg-002262",
+    "mail:dm1-msg-002202",
+    "mail:dm1-msg-002215",
+    "mail:dm1-msg-002249",
+    "mail:dm1-msg-002256",
+    "mail:dm1-msg-002216",
+    "mail:dm1-msg-002253",
+    "mail:dm1-msg-002213",
+    "mail:dm1-msg-002252",
+    "mail:dm1-msg-002269",
+    "mail:dm1-msg-002160",
+    "mail:dm1-msg-002268",
+    "mail:dm1-msg-002278",
+    "mail:dm1-msg-002162",
+    "mail:dm1-msg-002251",
+    "mail:dm1-msg-002276",
+    "mail:dm1-msg-002203",
+    "mail:dm1-msg-002242",
+    "mail:dm1-msg-002273",
+    "mail:dm1-msg-002182",
+    "mail:dm1-msg-000194",
+    "mail:dm1-msg-002243",
+    "mail:dm1-msg-002211",
+    "mail:dm1-msg-002187",
+    "mail:dm1-msg-002246",
+    "mail:dm1-msg-002226",
+    "mail:dm1-msg-002218",
+    "mail:dm1-msg-002237",
+    "mail:dm1-msg-000066",
+    "mail:dm1-msg-002254",
+    "mail:dm1-msg-002192",
+    "mail:dm1-msg-000195",
+    "mail:dm1-msg-002255",
+    "mail:dm1-msg-002235",
+    "mail:dm1-msg-002219",
+    "mail:dm1-msg-002181",
+    "mail:dm1-msg-000055",
+    "mail:dm1-msg-000067",
+    "mail:dm1-msg-000237",
+    "mail:dm1-msg-001956",
+    "mail:dm1-msg-001960",
+    "mail:dm1-msg-001970",
+    "mail:dm1-msg-000028",
+    "mail:dm1-msg-002004",
+    "mail:dm1-msg-000207",
+    "mail:dm1-msg-001704",
+    "mail:dm1-msg-001725",
+    "mail:dm1-msg-001700",
+    "mail:dm1-msg-001789",
+    "mail:dm1-msg-000044",
+    "mail:dm1-msg-001524",
+    "mail:dm1-msg-000230",
+    "mail:dm1-msg-001563",
+    "mail:dm1-msg-001523",
+    "mail:dm1-msg-001639"
+  ],
+  "cases": [
+    [
+      "task:dm1-tsk-000046",
+      "mail:dm1-msg-000057"
+    ],
+    [
+      "mail:dm1-msg-000071",
+      "task:dm1-tsk-000060"
+    ],
+    [
+      "task:dm1-tsk-000061",
+      "mail:dm1-msg-000073"
+    ]
+  ],
+  "notes": ""
+}
