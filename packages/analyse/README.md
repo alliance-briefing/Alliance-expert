@@ -106,6 +106,17 @@ store.delete_user("u_demo_001")  # suppression complète
 - En mémoire (NumPy) ; le stockage persistant sera tranché dans l'ADR RAG. Pas encore branché
   dans le brief (étapes R2-R3).
 
+### Historique des affaires (`rag/retrieve.py`, étape R2)
+
+`history(cases, index, jour)` → pour chaque affaire du jour, au plus 3 items passés liés
+(`PastLink` : item, score, raison). Rien n'est encore affiché dans le brief (R3).
+
+- Requête : chaque item de l'affaire interroge l'index ; un item passé garde sa meilleure similarité.
+- Même référence (« même dossier 2026-3025 ») : lien certain, accepté quel que soit le score.
+- Sinon similarité ≥ seuil, sauf veto si l'affaire et l'item citent des références toutes
+  différentes. Seuil provisoire 0,85 (prudent), à régler avec `explore --historique` (R2b).
+- Liens certains d'abord, puis score, puis item_id ; items du jour et de l'affaire exclus.
+
 ### Exploration (`rag/explore.py`)
 
 Ce que trouverait un niveau 3 de L2.1 : distribution des similarités (paires déjà reliées par les
@@ -136,5 +147,6 @@ clock.py             heure de Paris et détection des journées entières
 rag/embeddings.py    vecteurs de sens des items (L2.6)
 rag/explore.py       outil d'exploration des embeddings sur une journée
 rag/index.py         index RAG par utilisateur (L2.6, R1)
+rag/retrieve.py      historique des affaires du jour (L2.6, R2)
 tests/               fabrique d'Item synthétiques + tests
 ```

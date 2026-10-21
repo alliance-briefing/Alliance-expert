@@ -74,6 +74,49 @@ class UserIndex:
             self._items[item_id] = item
             self._vectors[item_id] = vectors[item_id]
 
+    def scores(
+        self,
+        queries: np.ndarray,
+        before: date,
+        *,
+        days: int = HISTORY_DAYS,
+        exclude: Iterable[str] = (),
+    ) -> tuple[list[Item], np.ndarray]:
+        """Les items passés candidats (triés par item_id) et la matrice requêtes × candidats.
+
+        Seuls comptent les items créés entre `before - days` et la veille de `before`
+        (dates lues en heure de Paris), hors `exclude` (ex. les items du jour).
+        """
+        queries = np.atleast_2d(queries)
+        skip = set(exclude)
+        first_day = before - timedelta(days=days)
+        candidates = sorted(
+            item_id
+            for item_id, item in self._items.items()
+            if item_id not in skip and first_day <= to_paris(item.created_at).date() < before
+        )
+        if not candidates:
+            return [], np.zeros((len(queries), 0), dtype=np.float32)
+        matrix = np.stack([self._vectors[item_id] for item_id in candidates])
+        return [self._items[item_id] for item_id in candidates], queries @ matrix.T
+
+    def score_items(
+        self,
+        items: Sequence[Item],
+        before: date,
+        *,
+        days: int = HISTORY_DAYS,
+        exclude: Iterable[str] = (),
+    ) -> tuple[list[Item], np.ndarray]:
+        """Comme `scores`, en calculant les requêtes avec le même modèle que l'index."""
+        if any(item.owner_user_id != self.owner for item in items):
+            raise ValueError(f"index de {self.owner} : requête d'un autre utilisateur refusée")
+        if not items:
+            return [], np.zeros((0, 0), dtype=np.float32)
+        vectors = embed_items(items, self.embedder, self._cache)
+        queries = np.stack([vectors[item.item_id] for item in items])
+        return self.scores(queries, before, days=days, exclude=exclude)
+
     def search(
         self,
         queries: np.ndarray,
@@ -85,27 +128,10 @@ class UserIndex:
     ) -> list[list[Hit]]:
         """Pour chaque vecteur de requête, les `k` items passés les plus proches.
 
-        Seuls comptent les items créés entre `before - days` et la veille de `before`
-        (dates lues en heure de Paris), hors `exclude` (ex. les items du jour).
         Tri par similarité décroissante, puis par item_id : résultat déterministe.
         """
-        queries = np.atleast_2d(queries)
-        skip = set(exclude)
-        first_day = before - timedelta(days=days)
-        candidates = sorted(
-            item_id
-            for item_id, item in self._items.items()
-            if item_id not in skip and first_day <= to_paris(item.created_at).date() < before
-        )
-        if not candidates or k <= 0:
-            return [[] for _ in queries]
-        matrix = np.stack([self._vectors[item_id] for item_id in candidates])
-        scores = queries @ matrix.T
-        results = []
-        for row in scores:
-            order = np.lexsort((np.arange(len(candidates)), -row))[:k]
-            results.append([Hit(self._items[candidates[n]], float(row[n])) for n in order])
-        return results
+        candidates, scores = self.scores(queries, before, days=days, exclude=exclude)
+        return [_top(candidates, row, k) for row in scores]
 
     def search_items(
         self,
@@ -117,13 +143,8 @@ class UserIndex:
         exclude: Iterable[str] = (),
     ) -> list[list[Hit]]:
         """Comme `search`, en calculant les requêtes avec le même modèle que l'index."""
-        if not items:
-            return []
-        if any(item.owner_user_id != self.owner for item in items):
-            raise ValueError(f"index de {self.owner} : requête d'un autre utilisateur refusée")
-        vectors = embed_items(items, self.embedder, self._cache)
-        queries = np.stack([vectors[item.item_id] for item in items])
-        return self.search(queries, before, k=k, days=days, exclude=exclude)
+        candidates, scores = self.score_items(items, before, days=days, exclude=exclude)
+        return [_top(candidates, row, k) for row in scores]
 
     def clear(self) -> None:
         """Efface les items, les vecteurs et les entrées du cache de cet utilisateur."""
@@ -131,6 +152,14 @@ class UserIndex:
         self._vectors.clear()
         for key in [key for key in self._cache if key[1] == self.owner]:
             del self._cache[key]
+
+
+def _top(candidates: list[Item], row: np.ndarray, k: int) -> list[Hit]:
+    """Les `k` meilleurs d'une ligne de scores ; ex aequo départagés par item_id."""
+    if k <= 0:
+        return []
+    order = np.lexsort((np.arange(len(candidates)), -row))[:k]
+    return [Hit(candidates[n], float(row[n])) for n in order]
 
 
 class IndexStore:
