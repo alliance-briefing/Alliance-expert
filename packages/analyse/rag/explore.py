@@ -19,12 +19,14 @@ import time
 from collections import Counter
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from datetime import date
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-from contracts.demo_data import DEFAULT_USER, DEMO_DIR, load_items
+from contracts.demo_data import DEFAULT_USER, DEMO_DIR, available_days, load_items
 from contracts.models import Item
 from packages.analyse.aggregate.cases import Case, group_into_cases, references
 from packages.analyse.clock import to_paris
@@ -37,10 +39,21 @@ from packages.analyse.rag.embeddings import (
     normalize,
     similarities,
 )
+from packages.analyse.rag.index import IndexStore
+from packages.analyse.rag.retrieve import (
+    BELOW_THRESHOLD,
+    CLOSE_SUBJECT,
+    DEFAULT_THRESHOLD,
+    SAME_REFERENCE,
+    VETO,
+    verdict,
+)
 
 MODEL2VEC_MODEL = "minishlab/potion-multilingual-128M"
 PERCENTILES = (10, 50, 90, 99)
 TITLE_WIDTH = 60
+SHOWN_FLOOR = 0.6  # historique : candidats affichés à partir de ce score (ou même référence)
+HISTOGRAM = (0.6, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95)
 
 
 def title_text(item: Item) -> str:
@@ -157,6 +170,79 @@ def report(items: Sequence[Item], embedder: Embedder, text: str = "complet", top
     return "\n".join(lines)
 
 
+def history_report(
+    day: str,
+    user: str,
+    root: Path,
+    embedder: Embedder,
+    *,
+    past_days: int = 5,
+    threshold: float = DEFAULT_THRESHOLD,
+    top: int = 5,
+) -> str:
+    """Historique (R2) des affaires d'une journée, à juger à la main pour régler le seuil.
+
+    L'index reçoit les `past_days` journées disponibles avant `day`. Pour chaque affaire :
+    les items passés retenus ET écartés (score ≥ SHOWN_FLOOR, ou même référence), avec la
+    raison, selon la règle de `retrieve.verdict`.
+    """
+    previous = [d for d in available_days(user, root) if d < day][-past_days:]
+    index = IndexStore(embedder).for_user(user)
+    started = time.perf_counter()
+    for past in previous:
+        index.add(load_items(past, user, root))
+    cases = sorted(group_into_cases(load_items(day, user, root)), key=lambda c: c.case_id)
+    queries = [item for case in cases for item in case.items]
+    exclude = {item.item_id for item in queries}
+    candidates, scores = index.score_items(queries, date.fromisoformat(day), exclude=exclude)
+    elapsed = time.perf_counter() - started
+    candidate_refs = [references(item.title) for item in candidates]
+    counts: Counter[str] = Counter()
+    open_scores: list[float] = []  # candidats sans conflit de références : ceux que règle le seuil
+    sections: list[str] = []
+    row = 0
+    for case in cases:
+        best = scores[row : row + len(case.items)].max(axis=0) if candidates else []
+        row += len(case.items)
+        case_refs = set().union(*(references(item.title) for item in case.items))
+        rows = []
+        for item, score, refs in zip(candidates, best, candidate_refs, strict=True):
+            decision = verdict(float(score), refs, case_refs, threshold)
+            if decision in (CLOSE_SUBJECT, BELOW_THRESHOLD):
+                open_scores.append(float(score))
+            if decision == SAME_REFERENCE or score >= SHOWN_FLOOR:
+                rows.append(
+                    (decision in (SAME_REFERENCE, CLOSE_SUBJECT), decision, float(score), item)
+                )
+        kept = {decision for retained, decision, _, _ in rows if retained}
+        counts.update(kept | ({"affaires avec historique"} if kept else set()))
+        counts["écartés : références différentes"] += sum(d == VETO for _, d, _, _ in rows)
+        if rows:
+            rows.sort(key=lambda r: (not r[0], -r[2], r[3].item_id))
+            sections.append(f"\n## {_label(case.items[0])} ({len(case.items)} items)")
+            sections += [
+                f"  {'RETENU' if retained else 'ÉCARTÉ'} {score:.2f} | {decision:<22} | "
+                f"{to_paris(item.created_at):%d/%m} {_label(item)}"
+                for retained, decision, score, item in rows[:top]
+            ]
+    histogram = " | ".join(
+        f"{low:.2f}-{min(high, 1.0):.2f} : {sum(low <= s < high for s in open_scores)}"
+        for low, high in pairwise([*HISTOGRAM, 1.01])
+    )
+    index_line = (
+        f"Index : {len(previous)} jours avant le {day} ({len(index)} items) · modèle "
+        f"{embedder.name} · seuil {threshold:.2f} · calcul {elapsed:.1f} s"
+    )
+    cases_line = (
+        f"Affaires du jour : {len(cases)} · avec historique retenu : "
+        f"{counts['affaires avec historique']} (dont même référence {counts[SAME_REFERENCE]}, "
+        f"sujet proche {counts[CLOSE_SUBJECT]}) · candidats écartés par le veto : "
+        f"{counts['écartés : références différentes']}"
+    )
+    histogram_line = f"Candidats sans conflit de références (réglés par le seuil) : {histogram}"
+    return "\n".join([index_line, cases_line, histogram_line, *sections])
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Exploration des embeddings (L2.6).")
     parser.add_argument("jour", help="AAAA-MM-JJ")
@@ -165,12 +251,30 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--top", type=int, default=20)
     parser.add_argument("--utilisateur", default=DEFAULT_USER)
     parser.add_argument("--dossier", type=Path, default=DEMO_DIR, help="<user>/<jour>/items.jsonl")
+    parser.add_argument("--historique", action="store_true", help="historique des affaires (R2)")
+    parser.add_argument("--jours-historique", type=int, default=5)
+    parser.add_argument("--seuil", type=float, default=DEFAULT_THRESHOLD)
     args = parser.parse_args(argv)
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")  # accents lisibles dans PowerShell
+    embedder = make_embedder(args.modele)
+    if args.historique:
+        print(f"# Historique des affaires — {args.jour} ({args.utilisateur})")
+        print(
+            history_report(
+                args.jour,
+                args.utilisateur,
+                args.dossier,
+                embedder,
+                past_days=args.jours_historique,
+                threshold=args.seuil,
+                top=min(args.top, 5),
+            )
+        )
+        return 0
     items = load_items(args.jour, args.utilisateur, args.dossier)
     print(f"# Embeddings — {args.jour} ({args.utilisateur})")
-    print(report(items, make_embedder(args.modele), args.texte, args.top))
+    print(report(items, embedder, args.texte, args.top))
     return 0
 
 

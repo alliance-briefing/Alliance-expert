@@ -11,7 +11,7 @@ from contracts.demo_data import available_days, load_items
 from packages.analyse.aggregate.cases import Case, group_into_cases, references
 from packages.analyse.rag.embeddings import HashEmbedder
 from packages.analyse.rag.index import IndexStore, UserIndex
-from packages.analyse.rag.retrieve import history
+from packages.analyse.rag.retrieve import history, verdict
 from packages.analyse.tests.factories import OTHER_USER, USER, make_mail, make_task
 
 DAY = date(2026, 10, 7)
@@ -186,3 +186,16 @@ def test_demo_history_respects_the_rules() -> None:
             assert link.item.item_id not in c.item_ids
             if link.same_reference:
                 assert references(link.item.title) & case_refs
+
+
+@pytest.mark.parametrize(
+    ("score", "refs", "case_refs", "expected"),
+    [
+        (0.1, {"dossier:1"}, {"dossier:1", "facture:2"}, "même référence"),
+        (0.99, {"dossier:1"}, {"dossier:2"}, "références différentes"),
+        (0.9, set(), {"dossier:2"}, "sujet proche"),
+        (0.5, set(), set(), "sous le seuil"),
+    ],
+)
+def test_verdict(score: float, refs: set, case_refs: set, expected: str) -> None:
+    assert verdict(score, refs, case_refs, threshold=0.85) == expected
