@@ -51,7 +51,7 @@ def overdue_tasks(items: Sequence[Item], now: datetime) -> list[Item]:
 
 def _is_cancelled(event: Item) -> bool:
     calendar = event.attributes.calendar if event.attributes else None
-    return calendar is not None and calendar.is_cancelled
+    return calendar is not None and calendar.is_cancelled is True
 
 
 def _occupies(event: Item, day: date) -> bool:
