@@ -93,7 +93,7 @@ def test_same_input_same_output() -> None:
 
 def test_naive_now_is_rejected() -> None:
     with pytest.raises(ValueError, match="fuseau"):
-        score_case(Case(case_id="case:test", items=(_item("1"),)), datetime(2026, 10, 21, 9, 0))
+        score_case(Case(case_id="case:test", items=(_item("1"),)), datetime(2026, 10, 21, 9, 0))  # noqa: DTZ001 (naïf exprès)
 
 
 # --- Signal 2 : importance native --------------------------------------------

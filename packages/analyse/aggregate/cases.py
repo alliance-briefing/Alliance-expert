@@ -55,7 +55,7 @@ class Case:
 
     case_id: str
     items: tuple[Item, ...]
-    links: tuple[str, ...]
+    links: tuple[str, ...] = ()
 
     @property
     def item_ids(self) -> list[str]:
@@ -75,6 +75,7 @@ def references(title: str) -> set[str]:
             found.add(f"{kind}:{match['number']}")
     return found
 
+
 def _is_single_filename(text: str) -> bool:
     """Un nom de fichier plausible : extension 2-5 caractères, un seul point.
 
@@ -83,6 +84,7 @@ def _is_single_filename(text: str) -> bool:
     dans les données de démo). Mieux vaut rater un lien que d'en inventer un.
     """
     return bool(_WHOLE_FILE_NAME.fullmatch(text)) and text.count(".") == 1
+
 
 def documents(item: Item) -> set[str]:
     """Les documents dont parle un item : le fichier lui-même, ou ceux qu'un titre
@@ -93,7 +95,8 @@ def documents(item: Item) -> set[str]:
     return {
         quoted.strip()
         for quoted in _QUOTED_TEXT.findall(item.title)
-        if _is_single_filename(quoted.strip())}
+        if _is_single_filename(quoted.strip())
+    }
 
 
 def group_into_cases(items: Sequence[Item]) -> list[Case]:
