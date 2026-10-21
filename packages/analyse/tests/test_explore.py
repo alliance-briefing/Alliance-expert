@@ -144,3 +144,18 @@ def test_command_runs_on_a_demo_day(capsys: pytest.CaptureFixture[str]) -> None:
     assert "# Embeddings — 2026-10-07 (u_demo_001)" in out
     assert "paires déjà reliées (même affaire)" in out
     assert "3 paires les plus proches non reliées" in out
+
+
+# --- historique des affaires (R2b) ------------------------------------------------------------------
+
+
+def test_history_command_indexes_only_previous_days(capsys: pytest.CaptureFixture[str]) -> None:
+    args = ["2026-10-09", "--historique", "--modele", "hash", "--jours-historique", "2"]
+
+    assert main(args) == 0
+
+    out = capsys.readouterr().out
+    assert "# Historique des affaires — 2026-10-09 (u_demo_001)" in out
+    assert "Index : 2 jours avant le 2026-10-09" in out
+    assert "Candidats sans conflit de références" in out
+    assert "RETENU" in out or "ÉCARTÉ" in out

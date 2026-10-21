@@ -75,15 +75,27 @@ def history(
     return result
 
 
+SAME_REFERENCE, CLOSE_SUBJECT = "même référence", "sujet proche"
+VETO, BELOW_THRESHOLD = "références différentes", "sous le seuil"
+
+
+def verdict(score: float, refs: set[str], case_refs: set[str], threshold: float) -> str:
+    """Pourquoi un item passé est retenu (SAME_REFERENCE, CLOSE_SUBJECT) ou écarté
+    (VETO, BELOW_THRESHOLD) pour une affaire. Une seule règle, partagée avec l'exploration."""
+    if refs & case_refs:
+        return SAME_REFERENCE
+    if refs and case_refs:
+        return VETO
+    return CLOSE_SUBJECT if score >= threshold else BELOW_THRESHOLD
+
+
 def _link(
     item: Item, score: float, refs: set[str], case_refs: set[str], threshold: float
 ) -> PastLink | None:
-    common = refs & case_refs
-    if common:
-        kind, _, number = min(common).partition(":")
+    decision = verdict(score, refs, case_refs, threshold)
+    if decision == SAME_REFERENCE:
+        kind, _, number = min(refs & case_refs).partition(":")
         return PastLink(item, score, f"même {kind} {number}", True)
-    if refs and case_refs:
-        return None  # veto : références toutes différentes
-    if score >= threshold:
+    if decision == CLOSE_SUBJECT:
         return PastLink(item, score, f"sujet proche ({score:.2f})", False)
     return None

@@ -130,6 +130,23 @@ uv run --with model2vec python -m packages.analyse.rag.explore 2026-10-07 --mode
 uv run python -m packages.analyse.rag.explore <jour> --dossier <DATA_DIR> --utilisateur <id>
 ```
 
+Historique des affaires (R2b) : l'index reçoit les N journées précédentes, puis chaque affaire
+du jour affiche ses items passés retenus et écartés, avec la raison (`retrieve.verdict`).
+
+```bash
+uv run python -m packages.analyse.rag.explore 2026-10-09 --historique --jours-historique 5 --seuil 0.85
+```
+
+Résultats (démo, MiniLM-L12, 5 jours d'historique, 09/10, 15/10 et 21/10, jugés à la main) :
+les liens de même référence sont justes ; les rattachements « sujet proche » sont faux dans
+toutes les tranches de score jugées (0,75 à 1,00) : noms de fichiers générés
+(`Compte_rendu_20261007_01.docx` ← `Compte_rendu_20261006_52.docx`, photos `IMG_…`),
+occurrences d'une même réunion récurrente, messages-types (« Déjeuner – Maëlle » ←
+« Déjeuner – Jérôme »). Les scores les plus hauts sont les plus trompeurs. Réserve : données de
+démo générées à partir de modèles de phrases. Le seuil par défaut (0,85) est en attente de
+décision ; piste : similarité désactivée par défaut, ou encadrée par des garde-fous
+(participant commun, fichiers et séries exclus).
+
 ## Commandes
 
 ```bash
