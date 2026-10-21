@@ -86,6 +86,26 @@ vectors = embed_items(items, FastEmbedder())  # {item_id: vecteur normalisé}
 - Mesure locale (CPU) : chargement 2,6 s, puis 500 textes en 1,4 s ; similarité d'une paraphrase
   française 0,71 contre 0,16 pour un texte sans rapport.
 
+### Index par utilisateur (`rag/index.py`, étape R1)
+
+```python
+from packages.analyse.rag.embeddings import FastEmbedder
+from packages.analyse.rag.index import IndexStore
+
+store = IndexStore(FastEmbedder())
+index = store.for_user("u_demo_001")
+index.add(items_des_jours_passes)
+hits = index.search_items(items_du_jour, date_du_brief, exclude=ids_du_jour)  # k=3, 30 jours
+store.delete_user("u_demo_001")  # suppression complète
+```
+
+- Isolation : un index par utilisateur ; il refuse les items et les requêtes d'un autre.
+- Pas de fuite du futur : seuls les items créés avant le jour du brief (heure de Paris), dans
+  les 30 jours précédents, sont renvoyés.
+- Une version plus récente d'un item remplace l'ancienne ; tri déterministe (score, puis item_id).
+- En mémoire (NumPy) ; le stockage persistant sera tranché dans l'ADR RAG. Pas encore branché
+  dans le brief (étapes R2-R3).
+
 ### Exploration (`rag/explore.py`)
 
 Ce que trouverait un niveau 3 de L2.1 : distribution des similarités (paires déjà reliées par les
@@ -115,5 +135,6 @@ brief.py             generate_brief : assemble le Brief
 clock.py             heure de Paris et détection des journées entières
 rag/embeddings.py    vecteurs de sens des items (L2.6)
 rag/explore.py       outil d'exploration des embeddings sur une journée
+rag/index.py         index RAG par utilisateur (L2.6, R1)
 tests/               fabrique d'Item synthétiques + tests
 ```
