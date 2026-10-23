@@ -7,12 +7,14 @@
   "must_include": [
     {
       "rank": 1,
-      "section": "overdue",
+      "section": "actions",
       "item_ids": [
-        "task:dm1-tsk-000046",
-        "mail:dm1-msg-000057"
+        "mail:dm1-msg-000044",
+        "mail:dm1-msg-000042",
+        "task:dm1-tsk-000036",
+        "file:dm1-fil-000013"
       ],
-      "why": "entretiens annuels"
+      "why": "y'a un lien avec tous ses paramètres"
     },
     {
       "rank": 2,
@@ -39,6 +41,15 @@
         "mail:dm1-msg-000073"
       ],
       "why": "dossier important"
+    },
+    {
+      "rank": 5,
+      "section": "overdue",
+      "item_ids": [
+        "task:dm1-tsk-000046",
+        "mail:dm1-msg-000057"
+      ],
+      "why": "entretiens annuels"
     }
   ],
   "must_exclude": [
