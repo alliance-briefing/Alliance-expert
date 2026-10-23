@@ -11,7 +11,7 @@
       "item_ids": [
         "task:dm1-tsk-000048"
       ],
-      "why": "il est important de satisfaire les attentes du client aussi vite"
+      "why": "il est important de le faire car les clients attendent"
     },
     {
       "rank": 2,
@@ -19,7 +19,7 @@
       "item_ids": [
         "calendar:dm1-evt-000072"
       ],
-      "why": "car c'est sa 1 ère reunion"
+      "why": "reunion importante"
     },
     {
       "rank": 3,
@@ -27,7 +27,7 @@
       "item_ids": [
         "task:dm1-tsk-000032"
       ],
-      "why": "il faut préparer le reporting mensuel"
+      "why": "il faut faire le reporting mensuel"
     },
     {
       "rank": 4,
@@ -35,34 +35,29 @@
       "item_ids": [
         "mail:dm1-msg-000057"
       ],
-      "why": "c'est important d'avoir les taches à traiter , les reunions et les taches en retard pour un rappel"
+      "why": "planning à compléter"
     }
   ],
   "must_exclude": [
     "mail:dm1-msg-001676",
     "mail:dm1-msg-001611",
     "mail:dm1-msg-001635",
-    "mail:dm1-msg-000044",
     "mail:dm1-msg-001524",
     "mail:dm1-msg-001600",
     "mail:dm1-msg-001638",
     "mail:dm1-msg-001680",
     "mail:dm1-msg-001632",
     "mail:dm1-msg-001588",
-    "mail:dm1-msg-000047",
     "mail:dm1-msg-001629",
     "mail:dm1-msg-001619",
     "mail:dm1-msg-001582",
     "mail:dm1-msg-001534",
-    "mail:dm1-msg-000230",
-    "mail:dm1-msg-000051",
     "mail:dm1-msg-001561",
     "mail:dm1-msg-001677",
     "mail:dm1-msg-001563",
     "mail:dm1-msg-001663",
     "mail:dm1-msg-001571",
     "mail:dm1-msg-001650",
-    "mail:dm1-msg-000038",
     "mail:dm1-msg-001523",
     "mail:dm1-msg-001555",
     "mail:dm1-msg-001525",
@@ -74,9 +69,7 @@
     "mail:dm1-msg-001643",
     "mail:dm1-msg-001666",
     "mail:dm1-msg-001550",
-    "mail:dm1-msg-000043",
     "mail:dm1-msg-001522",
-    "mail:dm1-msg-000037",
     "mail:dm1-msg-001670",
     "mail:dm1-msg-001678",
     "mail:dm1-msg-001639",
@@ -86,13 +79,10 @@
     "mail:dm1-msg-001469",
     "mail:dm1-msg-001342",
     "mail:dm1-msg-001375",
-    "mail:dm1-msg-000192",
-    "mail:dm1-msg-000193",
     "mail:dm1-msg-001340",
     "mail:dm1-msg-001408",
     "mail:dm1-msg-001326",
     "mail:dm1-msg-001305",
-    "mail:dm1-msg-000041",
     "mail:dm1-msg-001389",
     "mail:dm1-msg-000206",
     "mail:dm1-msg-001291",
@@ -221,19 +211,6 @@
     "mail:dm1-msg-001647",
     "mail:dm1-msg-001530"
   ],
-  "cases": [
-    [
-      "mail:dm1-msg-001646",
-      "calendar:dm1-evt-000006"
-    ],
-    [
-      "calendar:dm1-evt-000070",
-      "task:dm1-tsk-000048"
-    ],
-    [
-      "mail:dm1-msg-001664",
-      "task:dm1-tsk-000032"
-    ]
-  ],
+  "cases": null,
   "notes": "Annotation entièrement manuelle"
 }

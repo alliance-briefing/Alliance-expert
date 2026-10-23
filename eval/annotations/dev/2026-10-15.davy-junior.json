@@ -7,38 +7,38 @@
   "must_include": [
     {
       "rank": 1,
-      "section": "actions",
-      "item_ids": [
-        "task:dm1-tsk-000046",
-        "mail:dm1-msg-000057"
-      ],
-      "why": "Pour ne pas avoir plus de retard"
-    },
-    {
-      "rank": 2,
       "section": "meetings",
       "item_ids": [
         "calendar:dm1-evt-000080"
       ],
-      "why": "Préparer le meeting"
+      "why": "Point téléphonique avec Noémie Girard aujourd'hui de 10 h 45 à 11 h 15."
     },
     {
-      "rank": 3,
-      "section": "meetings",
+      "rank": 2,
+      "section": "actions",
       "item_ids": [
         "task:dm1-tsk-000060",
         "mail:dm1-msg-000071"
       ],
-      "why": "Préparer le call"
+      "why": "VEI probable sur le dossier 2026-7455 (Audi A4) : réparations à 14 100 € pour une valeur de 7 200 €. Hugo Lacroix n'est pas encore prévenu, appel à passer avant 17 h."
     },
     {
-      "rank": 4,
+      "rank": 3,
       "section": "actions",
       "item_ids": [
         "task:dm1-tsk-000061",
         "mail:dm1-msg-000073"
       ],
-      "why": "Ne pas prendre de retard"
+      "why": "Chloé Vasseur a confié le 14/10 l'expertise du dossier 2026-1201 (BMW Série 3) et attend la confirmation de prise en charge. Expert à affecter avant 12 h."
+    },
+    {
+      "rank": 4,
+      "section": "overdue",
+      "item_ids": [
+        "task:dm1-tsk-000046",
+        "mail:dm1-msg-000057"
+      ],
+      "why": "Planning des entretiens annuels demandé par Gaël Kowalski (RH) pour le 14/10 à 17 h, toujours pas complété."
     }
   ],
   "must_exclude": [
@@ -62,7 +62,6 @@
     "mail:dm1-msg-002163",
     "mail:dm1-msg-002176",
     "mail:dm1-msg-002239",
-    "mail:dm1-msg-000063",
     "mail:dm1-msg-002204",
     "mail:dm1-msg-002259",
     "mail:dm1-msg-002200",
@@ -94,7 +93,6 @@
     "mail:dm1-msg-002226",
     "mail:dm1-msg-002218",
     "mail:dm1-msg-002237",
-    "mail:dm1-msg-000066",
     "mail:dm1-msg-002254",
     "mail:dm1-msg-002192",
     "mail:dm1-msg-000195",
@@ -102,22 +100,16 @@
     "mail:dm1-msg-002235",
     "mail:dm1-msg-002219",
     "mail:dm1-msg-002181",
-    "mail:dm1-msg-000055",
-    "mail:dm1-msg-000067",
-    "mail:dm1-msg-000237",
     "mail:dm1-msg-001956",
     "mail:dm1-msg-001960",
     "mail:dm1-msg-001970",
-    "mail:dm1-msg-000028",
     "mail:dm1-msg-002004",
     "mail:dm1-msg-000207",
     "mail:dm1-msg-001704",
     "mail:dm1-msg-001725",
     "mail:dm1-msg-001700",
     "mail:dm1-msg-001789",
-    "mail:dm1-msg-000044",
     "mail:dm1-msg-001524",
-    "mail:dm1-msg-000230",
     "mail:dm1-msg-001563",
     "mail:dm1-msg-001523",
     "mail:dm1-msg-001639"
