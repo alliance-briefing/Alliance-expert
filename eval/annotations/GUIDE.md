@@ -1,7 +1,7 @@
 # Guide d'annotation — jeu d'évaluation du brief (L3.5)
 
-Version 0.3 · 2026-10-21 · brouillon à valider par le lot 3 (ajout : précisions après le
-kappa du 09/10 — demandes ouvertes, réunions, `must_exclude`, affaires)
+Version 0.3 · 2026-10-21 · **validée le 2026-10-23** par les annotateurs du lot 3 (ajout :
+précisions après le kappa du 09/10 — demandes ouvertes, réunions, `must_exclude`, affaires)
 
 ## But
 Pour chaque journée, dire ce qu'un **manager d'agence d'expertise** doit voir dans son brief
