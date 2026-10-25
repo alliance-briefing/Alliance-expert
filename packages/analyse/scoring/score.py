@@ -5,7 +5,7 @@ Chaque signal se calcule sur toute l'affaire : le résultat ne dépend pas de l'
 items, et les mêmes entrées donnent toujours la même sortie. Spécification détaillée :
 tests/test_scoring.py.
 
-Signaux (partant de 50) : bruit −30 · importance native +20 / −10 · mots d'urgence +15
+Signaux (partant de 50) : envoi en masse −30, sinon notification automatique −10 · importance native +20 / −10 · mots d'urgence +15
 (annulés par le bruit) · tâche en retard +25, sinon échéance la plus proche < 24 h +20 ou
 < 48 h +10 · expéditeur bloqué −20, hiérarchie +25 ou contact fréquent +10 · réunion en
 cours ou dans les 48 h +15 · mail non lu adressé au manager +10.
@@ -50,16 +50,10 @@ class ScoringConfig:
             "impératif",
         }
     )
-    noise_keywords: frozenset[str] = frozenset(
-        {
-            "newsletter",
-            "noreply",
-            "no-reply",
-            "notification",
-            "unsubscribe",
-            "désabonner",
-        }
-    )
+    # Envoi en masse : jamais une action pour le manager.
+    noise_keywords: frozenset[str] = frozenset({"newsletter", "unsubscribe", "désabonner"})
+    # Automate : peut demander une action (rappel RH, mission affectée, mention) ; malus léger.
+    automated_keywords: frozenset[str] = frozenset({"noreply", "no-reply", "notification"})
 
 
 @dataclass(frozen=True)
@@ -82,9 +76,12 @@ def score_case(
         raise ValueError("now doit avoir un fuseau horaire")
     config = config or ScoringConfig()
     items = case.items
-    noise = _is_noise(items, config)
+    noise = _matches(items, config.noise_keywords)
     candidates = [
-        Signal(-30, "message automatique ou newsletter") if noise else None,
+        Signal(-30, "newsletter ou envoi en masse") if noise else None,
+        Signal(-10, "notification automatique")
+        if not noise and _matches(items, config.automated_keywords)
+        else None,
         _importance(items),
         None if noise else _urgency(items, config),
         _deadline(items, now),
@@ -101,10 +98,10 @@ def score_case(
 # --- signaux ------------------------------------------------------------------------------------
 
 
-def _is_noise(items: Sequence[Item], config: ScoringConfig) -> bool:
-    """Newsletter, notification automatique : mot-clé dans le titre, l'extrait ou l'adresse
-    de l'expéditeur (« newsletters » compte comme « newsletter »)."""
-    keywords = _normalized(config.noise_keywords)
+def _matches(items: Sequence[Item], keywords: Iterable[str]) -> bool:
+    """Mot-clé dans le titre, l'extrait ou l'adresse de l'expéditeur (« newsletters »
+    compte comme « newsletter », « noreply@… » comme « noreply »)."""
+    keywords = _normalized(keywords)
     if not keywords:
         return False
     texts = [_normalize(f"{item.title} {item.snippet}") for item in items]

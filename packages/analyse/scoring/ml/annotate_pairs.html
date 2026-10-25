@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comparaison de mails</title>
+<style>
+  :root {
+    --bg: #f6f5f1; --card: #ffffff; --fg: #1c1c1a; --muted: #6d6c66; --faint: #8f8e87;
+    --line: #e3e1da; --accent: #2f5bd3; --chip: #eceae3; --chip-strong: #dfe6fb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #151514; --card: #1e1e1c; --fg: #ecebe5; --muted: #9b9a93; --faint: #7d7c76;
+      --line: #34332f; --accent: #7d9cf0; --chip: #2a2a27; --chip-strong: #26304d; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1180px; margin: 0 auto; padding: 20px 16px 40px; }
+  header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+    flex-wrap: wrap; }
+  h1 { font-size: 22px; line-height: 1.3; margin: 0 0 4px; }
+  .count { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 14px; }
+  .bar { height: 4px; background: var(--line); border-radius: 2px; margin: 8px 0 18px;
+    overflow: hidden; }
+  .bar span { display: block; height: 100%; background: var(--accent); width: 0; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 760px) { .pair { grid-template-columns: 1fr; } }
+  article { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px 18px; }
+  article.picked { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .side { font-weight: 700; color: var(--accent); font-size: 13px; letter-spacing: .04em; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 12px; }
+  .chip { background: var(--chip); border-radius: 999px; padding: 2px 10px; font-size: 13px; }
+  .chip:first-child { background: var(--chip-strong); font-weight: 600; }
+  .title { font-weight: 650; margin-bottom: 4px; }
+  .who { color: var(--muted); font-size: 13px; margin-bottom: 6px; }
+  .text { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--faint); font-size: 13px;
+    max-height: 220px; overflow: auto; }
+  .keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+  .keys button { border: 1px solid var(--line); background: var(--card); color: var(--fg);
+    border-radius: 10px; padding: 12px 8px; font: inherit; font-weight: 600; cursor: pointer; }
+  .keys kbd { display: block; font: 12px ui-monospace, monospace; color: var(--muted);
+    font-weight: 400; margin-top: 2px; }
+  .keys button.flash { background: var(--chip); }
+  .help { color: var(--muted); font-size: 13px; margin-top: 12px; }
+  .done { text-align: center; padding: 60px 0; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1 id="question">Chargement…</h1>
+    <span class="count" id="count"></span>
+  </header>
+  <div class="bar"><span id="fill"></span></div>
+  <section class="pair" id="pair" aria-live="polite"></section>
+  <div class="keys">
+    <button data-value="A">A d'abord<kbd>←</kbd></button>
+    <button data-value="=">Équivalent<kbd>↓</kbd></button>
+    <button data-value="B">B d'abord<kbd>→</kbd></button>
+  </div>
+  <p class="help">Jugez d'abord la fiche (les pastilles) ; le mail, en gris, sert à la rendre
+    concrète. Retour arrière : revenir à la paire précédente pour corriger.</p>
+</main>
+<script>
+"use strict";
+let task = null, history = [], busy = false;
+const $ = (id) => document.getElementById(id);
+const DAY = new Intl.DateTimeFormat("fr-FR", {weekday: "long", day: "numeric", month: "long"});
+
+async function api(path, body) {
+  const res = await fetch(path, body ? {
+    method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)
+  } : {});
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+function card(side, label) {
+  // Le contenu d'un mail est une donnée : toujours textContent, jamais innerHTML.
+  const el = document.createElement("article");
+  el.dataset.side = label;
+  const head = document.createElement("div"); head.className = "side"; head.textContent = label;
+  const chips = document.createElement("div"); chips.className = "chips";
+  for (const c of side.chips) {
+    const s = document.createElement("span"); s.className = "chip"; s.textContent = c;
+    chips.append(s);
+  }
+  const title = document.createElement("div"); title.className = "title";
+  title.textContent = side.title || "(sans objet)";
+  const who = document.createElement("div"); who.className = "who"; who.textContent = side.sender;
+  const text = document.createElement("div"); text.className = "text"; text.textContent = side.text;
+  el.append(head, chips, title, who, text);
+  return el;
+}
+
+function render(state) {
+  $("count").textContent = `${state.done} / ${state.total}`;
+  $("fill").style.width = `${(100 * state.done / Math.max(state.total, 1)).toFixed(1)}%`;
+  const pair = $("pair");
+  pair.replaceChildren();
+  if (!task) {
+    $("question").textContent = "Terminé, merci !";
+    const p = document.createElement("p"); p.className = "done";
+    p.textContent = "Toutes les paires sont jugées.";
+    pair.append(p);
+    return;
+  }
+  const day = DAY.format(new Date(`${task.day}T08:30:00`));
+  $("question").textContent = `Le ${day} à 8 h 30, lequel Hélène doit-elle traiter en premier ?`;
+  pair.append(card(task.a, "A"), card(task.b, "B"));
+}
+
+async function refresh() {
+  const state = await api("/api/pairs/state");
+  task = (await api("/api/pairs/next")).task;
+  render(state);
+}
+
+async function answer(value) {
+  if (!task || busy) return;
+  busy = true;
+  const btn = document.querySelector(`.keys [data-value="${CSS.escape(value)}"]`);
+  btn.classList.add("flash"); setTimeout(() => btn.classList.remove("flash"), 150);
+  for (const a of document.querySelectorAll("article")) {
+    a.classList.toggle("picked", a.dataset.side === value);
+  }
+  try {
+    await api("/api/pairs/answer", {pair_id: task.pair_id, value, repeat: task.repeat});
+    history.push(task);
+    await refresh();
+  } catch (e) {
+    $("pair").textContent = `Erreur : ${e.message}`;
+  } finally { busy = false; }
+}
+
+async function back() {
+  if (!history.length) return;
+  task = history.pop();
+  render(await api("/api/pairs/state"));
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === "ArrowLeft") answer("A");
+  else if (e.key === "ArrowRight") answer("B");
+  else if (e.key === "ArrowDown") answer("=");
+  else if (e.key === "Backspace") back();
+  else return;
+  e.preventDefault();
+});
+for (const b of document.querySelectorAll(".keys button")) {
+  b.addEventListener("click", () => answer(b.dataset.value));
+}
+refresh();
+</script>
+</body>
+</html>
