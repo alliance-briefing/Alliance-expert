@@ -204,8 +204,8 @@ appris bat les règles. Réserve : données synthétiques, mots-clés écrits en
 
 - `uv run --group embeddings python -m packages.analyse.scoring.ml.intents` : mesure puis
   entraîne et écrit `scoring/ml/intents_model.npz` (poids, quelques Ko ; déterministe).
-- e5-large (2,2 Go, fastembed ONNX, sans torch) ; vecteurs en cache par (modèle, texte) dans
-  `~/.cache/alliance-briefing/`, hors du dépôt.
+- MiniLM (0,22 Go) ou e5-large (2,2 Go), fastembed ONNX, sans torch ; vecteurs en cache par
+  (modèle, texte), un fichier par modèle, dans `~/.cache/alliance-briefing/`, hors du dépôt.
 - Le groupe `nli` (torch, transformers) n'a servi qu'à l'essai du NLI. Piège noté : transformers 5
   garde le float16 du fichier, 11 fois plus lent sur CPU : charger en `dtype=torch.float32`.
 - Le test sur le jeu complet de David tourne si `ALLIANCE_GRAPH_DIR` pointe vers son `data/`.
@@ -217,6 +217,9 @@ comparaisons de paires de Théo (`scoring/ml/pairs.py`, page `/paires` de l'anno
 Score 0-100 (50 = mail médian) et jusqu'à 3 raisons. Sur 24 paires réservées : accord avec Théo
 0,86 (IC 95 % 0,73-1,00) contre 0,61 pour le score par règles, qui ne départage pas 15 paires
 sur 22 ; cohérence de Théo 0,92.
+Transfert vers la démo du lot 1 (autre métier, persona Camille Laurent, 40 paires jamais apprises) :
+0,89 (IC 95 % 0,78-0,97) contre 0,59 pour les règles. Embeddings : MiniLM par défaut (même score
+final qu'e5-large, 10 fois plus léger) ; `intents --e5` pour e5.
 
 ```bash
 uv run --group embeddings python -m packages.analyse.scoring.ml.pairs <data>   # paires

@@ -139,6 +139,30 @@ def mail_to_item(
     return item, extras
 
 
+def dataset_from_items(items: list[Item], owner_email: str) -> GraphDataset:
+    """Un jeu déjà au format Item (démo du lot 1) : `MailExtras` déduits des participants.
+    Les champs Graph absents (classement, signalement…) restent vides ; un mail dont le
+    manager est l'expéditeur compte comme envoyé."""
+    owner_email = owner_email.lower()
+    dataset = GraphDataset()
+    for item in sorted({i.item_id: i for i in items}.values(), key=lambda i: i.item_id):
+        dataset.items.append(item)
+        if item.source != "mail":
+            continue
+        roles = {p.role for p in item.participants if p.email.lower() == owner_email}
+        role = next((r for r in ("from", "to", "cc") if r in roles), None)
+        dataset.extras[item.item_id] = MailExtras(
+            recipient_role=role,
+            is_sent=role == "from",
+            inference_classification=None,
+            meeting_message_type=None,
+            has_attachments=False,
+            flagged=False,
+            categories=(),
+        )
+    return dataset
+
+
 def _read(path: Path) -> list[dict]:
     return json.loads(path.read_text(encoding="utf-8"))["value"]
 

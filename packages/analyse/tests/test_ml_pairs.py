@@ -22,9 +22,14 @@ from packages.analyse.scoring.ml.features import (
     mail_features,
     vectorize,
 )
-from packages.analyse.scoring.ml.graph_convert import GraphDataset, MailExtras
+from packages.analyse.scoring.ml.graph_convert import GraphDataset, MailExtras, dataset_from_items
 from packages.analyse.scoring.ml.intents import IntentModel
-from packages.analyse.scoring.ml.pairs import build_pairs, chips, intent_probs
+from packages.analyse.scoring.ml.pairs import (
+    build_pairs,
+    chips,
+    intent_probs,
+    refresh_features,
+)
 from packages.analyse.scoring.ml.persona import GRAPH_HELENE
 from packages.analyse.scoring.ml.sample import write_sample
 
@@ -269,6 +274,7 @@ def test_serveur_page_et_api_des_paires(tmp_path):
         tmp_path / "l.jsonl",
         tmp_path / "pairs.jsonl",
         tmp_path / "pl.jsonl",
+        tmp_path / "pas-de-demo.jsonl",
     )
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     base = f"http://127.0.0.1:{httpd.server_address[1]}"
@@ -296,3 +302,25 @@ def test_une_seconde_serie_vient_apres_sans_changer_la_premiere(tmp_path):
     after = PairAnnotator(first + second, LabelStore(tmp_path / "b.jsonl")).tasks
     assert after[: len(before)] == before
     assert {pid for pid, _ in after[len(before) :]} == {f"q{n}" for n in range(10)}
+
+
+def test_jeu_deja_au_format_item_extras_deduits_des_participants():
+    sent = _mail("s", ME, NOW, "Réponse")
+    got = _mail("g", f"hugo.lambert@{DOM}", NOW, "Question")
+    data = got.model_dump()
+    data["participants"].append({"name": "H", "email": ME.upper(), "role": "cc"})
+    got = Item.model_validate(data)
+    dataset = dataset_from_items([sent, got, got, _event("e", NOW, "c")], ME)
+    assert [i.item_id for i in dataset.items] == ["calendar:e", "mail:g", "mail:s"]
+    assert dataset.extras["mail:s"].is_sent and dataset.extras["mail:s"].recipient_role == "from"
+    assert dataset.extras["mail:g"].recipient_role == "cc" and not dataset.extras["mail:g"].is_sent
+
+
+def test_rafraichir_recalcule_les_fiches_sans_toucher_a_l_affichage():
+    dataset = _many_mornings()
+    pairs = build_pairs(dataset, _probs(dataset, 0.2), n_pairs=6, n_heldout=1)
+    fresh = refresh_features(pairs, dataset, _probs(dataset, 0.7))
+    assert [p["a"]["chips"] for p in fresh] == [p["a"]["chips"] for p in pairs]
+    assert all(p["a"]["features"]["action"] == 0.7 for p in fresh)
+    assert all(p["b"]["features"]["reponse"] == 0.7 for p in fresh)
+    assert pairs[0]["a"]["features"]["action"] == 0.2  # l'original n'est pas modifié

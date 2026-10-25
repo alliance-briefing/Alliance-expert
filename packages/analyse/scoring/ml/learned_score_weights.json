@@ -1,24 +1,24 @@
 {
  "poids": {
-  "expéditeur : hiérarchie": 0.5784537438189147,
-  "expéditeur : direction": 0.13686301720712352,
-  "expéditeur : client": 0.13739458704583915,
-  "expéditeur : fournisseur": -0.8993701720456747,
-  "expéditeur : automate": -0.44261986065209297,
-  "demande une action": 0.9598691667810522,
-  "attend une réponse": 2.1771921289522798,
-  "incident": 0.16976238442828584,
-  "alerte": 1.121111320464813,
-  "échéance : dépassée": 0.11633997181031865,
-  "échéance : aujourd'hui ou demain": 1.0960581234002311,
-  "échéance : ≤ 3 jours": 0.023138988058429982,
-  "échéance : plus tard": 0.7180846345572488,
-  "balle dans son camp": -0.46160262934283813,
-  "fil long (≥ 3 messages)": 0.4076810066352238,
-  "hiérarchie dans le fil": 0.06415413877511833,
-  "reçu depuis moins de 24 h": 0.0886321935194534,
+  "expéditeur : hiérarchie": 0.7544295050399559,
+  "expéditeur : direction": 0.21228504834213455,
+  "expéditeur : client": 0.1991365447785561,
+  "expéditeur : fournisseur": -0.5804797335095597,
+  "expéditeur : automate": -0.6069308411176855,
+  "demande une action": 1.1756249641461547,
+  "attend une réponse": 2.0122693775577987,
+  "incident": 0.5691014331964158,
+  "alerte": 0.8252013369804686,
+  "échéance : dépassée": 0.04204869602850403,
+  "échéance : aujourd'hui ou demain": 1.0328187605591117,
+  "échéance : ≤ 3 jours": 0.0741937245961659,
+  "échéance : plus tard": 0.8248199809720383,
+  "balle dans son camp": -0.7120288461702307,
+  "fil long (≥ 3 messages)": 0.40200094827233906,
+  "hiérarchie dans le fil": 0.2408856664045621,
+  "reçu depuis moins de 24 h": 0.014669855183794338,
   "réunion dans les 48 h": 0.0,
-  "demande d'action du N+1": 0.28796326547924295
+  "demande d'action du N+1": -0.20486497895997322
  },
- "décalage": 0.7620497828713853
+ "décalage": 0.6531503073435714
 }

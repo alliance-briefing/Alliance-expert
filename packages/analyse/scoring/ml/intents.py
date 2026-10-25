@@ -2,13 +2,14 @@
 
 Apprises sur les étiquettes de Théo (181 mails, un par modèle de phrase) : `action` (le mail
 demande à Hélène de faire quelque chose), `reponse` (attend une réponse), `incident`
-(signale un incident ou un blocage). Modèle : embeddings `multilingual-e5-large` +
+(signale un incident ou un blocage). Modèle : embeddings MiniLM multilingue (`--e5` :
+`multilingual-e5-large`, 10 fois plus lourd, même score final) +
 régression logistique, avec en option un indice par mots-clés (« ? » pour `reponse`),
 retenu seulement si la validation croisée le justifie.
 Par règle, car le concept est précis : `alerte` (sécurité, banque) et l'échéance
 (`deadline.py`). Le NLI zéro-coup a été écarté : F1 0,30 à 0,40, mesuré le 25/10/2026.
 
-`uv run --group embeddings python -m packages.analyse.scoring.ml.intents` : mesure en
+`uv run --group embeddings python -m packages.analyse.scoring.ml.intents [--e5]` : mesure en
 validation croisée imbriquée, puis entraîne sur tout l'échantillon et écrit le modèle.
 """
 
@@ -31,6 +32,9 @@ from packages.analyse.scoring.ml.deadline import find_deadline
 from packages.analyse.scoring.ml.sample import ANNOTATIONS, load_sample
 
 E5_MODEL = "intfloat/multilingual-e5-large"
+# Modèle par défaut depuis le 26/10/2026 : MiniLM (0,22 Go, celui du RAG) donne le même accord
+# du score final sur les paires réservées qu'e5-large (2,2 Go) : 0,86 dans les deux cas.
+DEFAULT_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 LEARNED = ("action", "reponse", "incident")
 MODEL_PATH = Path(__file__).with_name("intents_model.npz")
 LABELS_PATH = ANNOTATIONS / "intent_labels.jsonl"
@@ -93,11 +97,22 @@ def e5_embedder() -> PrefixedEmbedder:
     return PrefixedEmbedder(FastEmbedder(E5_MODEL), "query: ")
 
 
+def embedder_for(name: str) -> Embedder:
+    """L'embedder d'un modèle d'intentions enregistré (son nom est dans le fichier)."""
+    return e5_embedder() if name == E5_MODEL else FastEmbedder(name)
+
+
+def cache_path(embedder: Embedder) -> Path:
+    """Un fichier de cache par modèle : leurs vecteurs n'ont pas la même dimension."""
+    return CACHE_DIR / f"vectors_{re.sub(r'[^A-Za-z0-9]+', '_', embedder.name).strip('_')}.npz"
+
+
 class VectorCache:
     """Vecteurs par (modèle, empreinte du texte), enregistrés dans un fichier .npz.
 
     La clé est le texte et non l'item : deux mails au texte identique ne sont calculés
-    qu'une fois. Le fichier reste sur la machine, hors du dépôt.
+    qu'une fois. Le fichier reste sur la machine, hors du dépôt ; un fichier par modèle
+    (`cache_path`), sinon les dimensions se mélangent.
     """
 
     def __init__(self, path: Path | None) -> None:
@@ -121,6 +136,8 @@ class VectorCache:
                 missing, embedder.embed([t for _, t in missing]), strict=True
             ):
                 self.vectors[k] = vector
+            if len({v.shape for v in self.vectors.values()}) > 1:
+                raise ValueError("un cache ne doit servir qu'à un seul modèle (cache_path)")
             self.save()
         return np.array([self.vectors[k] for k in keys], dtype=np.float32)
 
@@ -280,6 +297,7 @@ def train(
     embed: Callable[[list[str]], np.ndarray],
     labels_path: Path = LABELS_PATH,
     repeats: int = 5,
+    embedder_name: str = DEFAULT_MODEL,
 ) -> tuple[IntentModel, list[str]]:
     """Mesure (validation imbriquée) puis entraînement sur tout l'échantillon.
 
@@ -300,7 +318,7 @@ def train(
         E, texts = E_all[[row[i] for i in keep]], [texts_by_id[i] for i in keep]
         p, r, f = nested_cv(E, texts, y, feature, repeats).mean(axis=0)
         config = select(E, texts, y, feature)
-        method = "e5 + LR" + (" + indice" if config.use_hint else "")
+        method = "embeddings + LR" + (" + indice" if config.use_hint else "")
         report.append(f"{feature:<17} {method:<25} {p:>9.2f} {r:>7.2f} {f:>5.2f}")
         weights[feature] = fit_logistic(design(E, texts, feature, config.use_hint), y, config.l2)
         hints[feature] = config.use_hint
@@ -321,12 +339,16 @@ def train(
         pred = np.array([predict(by_id[i]) for i in keep], dtype=float)
         p, r, f = prf(pred, np.array([labels[i] for i in keep], dtype=float))
         report.append(f"{feature:<17} {'règle':<25} {p:>9.2f} {r:>7.2f} {f:>5.2f}")
-    return IntentModel(weights, hints, E5_MODEL), report
+    return IntentModel(weights, hints, embedder_name), report
 
 
 def main(argv: list[str]) -> int:
-    embedder, cache = e5_embedder(), VectorCache(CACHE_DIR / "e5_vectors.npz")
-    model, report = train(load_sample(), lambda texts: cache.embed(embedder, texts))
+    name = E5_MODEL if "--e5" in argv else DEFAULT_MODEL
+    embedder = embedder_for(name)
+    cache = VectorCache(cache_path(embedder))
+    model, report = train(
+        load_sample(), lambda texts: cache.embed(embedder, texts), embedder_name=name
+    )
     model.save()
     print("\n".join(report))
     print(f"(apprises : validation croisée imbriquée 5 plis x 5 ; modèle → {MODEL_PATH.name})")

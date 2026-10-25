@@ -6,6 +6,7 @@ ils viendraient de l'annuaire et du CRM. Ici, une configuration par persona, ver
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Literal
 
@@ -18,7 +19,34 @@ SENDER_KINDS: tuple[SenderKind, ...] = (
     "fournisseur",
     "automate",
 )
-_AUTOMATED_LOCALS = ("noreply", "no-reply", "support", "alertes", "taches", "securite", "billets")
+# Premier mot de l'adresse d'un automate (« support@… », « noreply-missions@… »). Une adresse
+# sans « prénom.nom » n'en est pas forcément un : « contact@garage-tilleuls » est un garage.
+_AUTOMATED_WORDS = frozenset(
+    {
+        "noreply",
+        "no",
+        "donotreply",
+        "support",
+        "alertes",
+        "alerte",
+        "alerts",
+        "taches",
+        "securite",
+        "security",
+        "billets",
+        "notification",
+        "notifications",
+        "reporting",
+        "newsletter",
+        "redaction",
+        "quotidien",
+        "promo",
+        "info",
+        "system",
+        "mailer",
+        "admin",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -38,11 +66,9 @@ class Persona:
             return "hiérarchie"
         if email in self.direction:
             return "direction"
-        # Une personne a une adresse « prénom.nom » ; un automate, « support@… », « alertes@… »
-        person = "." in local and not local.startswith(_AUTOMATED_LOCALS)
-        if not person:
+        if re.split(r"[.\-_+]", local)[0] in _AUTOMATED_WORDS:
             return "automate"
-        if domain == self.internal_domain:
+        if domain == self.internal_domain or domain.endswith("." + self.internal_domain):
             return "collègue"
         if domain in self.client_domains:
             return "client"
@@ -66,6 +92,30 @@ GRAPH_HELENE = Persona(
             "noviel.example",
             "marchetti-transports.example",
             "agrinova.example",
+        }
+    ),
+)
+
+
+# Camille Laurent, responsable de l'agence Lyon-Est d'un réseau d'expertise automobile (données
+# de démo du lot 1), validé le 26/10/2026 : Bernard Mercier est son N+1 ; Stéphane Morel, Valérie
+# Chevalier et Arnaud Petitjean ses pairs de direction régionale ; les assureurs et les assurés
+# sont ses clients ; garages, carrosseries, loueurs et vendeurs de pièces, ses fournisseurs.
+_DEMO = "reseau-expertis.test"
+DEMO_CAMILLE = Persona(
+    address=f"camille.laurent@{_DEMO}",
+    internal_domain=_DEMO,
+    hierarchy=frozenset({f"bernard.mercier@{_DEMO}"}),
+    direction=frozenset(
+        {f"stephane.morel@{_DEMO}", f"valerie.chevalier@{_DEMO}", f"arnaud.petitjean@{_DEMO}"}
+    ),
+    client_domains=frozenset(
+        {
+            "horizon-sud.test",
+            "lumen-assurances.test",
+            "assuralpes.test",
+            "assurance-quebec.test",
+            "particulier.test",
         }
     ),
 )

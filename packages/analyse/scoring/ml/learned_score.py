@@ -22,7 +22,12 @@ from pathlib import Path
 
 import numpy as np
 
-from packages.analyse.scoring.ml.annotate import PAIR_LABELS_PATH, PAIRS_PATH, PairAnnotator
+from packages.analyse.scoring.ml.annotate import (
+    DEMO_PAIRS_PATH,
+    PAIR_LABELS_PATH,
+    PAIRS_PATH,
+    PairAnnotator,
+)
 from packages.analyse.scoring.ml.features import VECTOR_NAMES, MailFeatures, vectorize
 from packages.analyse.scoring.ml.sample import load_sample
 
@@ -102,7 +107,10 @@ def _rule_hits(pairs: dict, labels: dict, ids: list[str]) -> np.ndarray:
 
 
 def evaluate(pairs: dict[str, dict], labels: dict[str, str], repeats: dict[str, str]) -> dict:
-    """La mesure publiée : entraînement sans les paires réservées, accord sur celles-ci."""
+    """La mesure publiée : entraînement sans les paires réservées, accord sur celles-ci.
+    Seules comptent les paires présentes dans `pairs` (les données de David)."""
+    labels = {i: v for i, v in labels.items() if i in pairs}
+    repeats = {i: v for i, v in repeats.items() if i in pairs}
     train = sorted(i for i in labels if not pairs[i].get("heldout"))
     test = sorted(i for i in labels if pairs[i].get("heldout"))
     beta = fit_bradley_terry(*comparisons(pairs, labels, train))
@@ -167,9 +175,28 @@ class LearnedScore:
         return cls(data["poids"], data["décalage"])
 
 
+def transfer(model: LearnedScore, pairs: dict[str, dict], labels: dict[str, str]) -> dict:
+    """Test de transfert : le modèle appris sur David, jugé sur d'autres données (démo)."""
+    ids = sorted(i for i in labels if i in pairs)
+    beta = np.array([model.weights[n] for n in VECTOR_NAMES])
+    learned, rules = _learned_hits(beta, pairs, labels, ids), _rule_hits(pairs, labels, ids)
+    boot = np.random.default_rng(0).integers(0, len(learned), (10_000, len(learned)))
+    return {
+        "paires jugées (non équivalentes)": len(learned),
+        "accord appris": float(learned.mean()),
+        "IC 95 %": [float(x) for x in np.percentile(learned[boot].mean(1), [2.5, 97.5])],
+        "accord règles": float(rules.mean()),
+        "égalités du score par règles": int((rules == 0.5).sum()),
+        "écart appris − règles, IC 95 %": [
+            float(x) for x in np.percentile((learned[boot] - rules[boot]).mean(1), [2.5, 97.5])
+        ],
+    }
+
+
 def train(pairs: dict[str, dict], labels: dict[str, str]) -> LearnedScore:
     """Modèle final : toutes les paires jugées (la mesure a été faite avant, sans les réservées)."""
-    beta = fit_bradley_terry(*comparisons(pairs, labels, sorted(labels)))
+    ids = sorted(i for i in labels if i in pairs)
+    beta = fit_bradley_terry(*comparisons(pairs, labels, ids))
     cards = {s["item_id"]: card_vector(s) for p in pairs.values() for s in (p["a"], p["b"])}
     offset = float(np.median([v @ beta for v in cards.values()]))
     return LearnedScore(dict(zip(VECTOR_NAMES, map(float, beta), strict=True)), offset)
@@ -178,24 +205,28 @@ def train(pairs: dict[str, dict], labels: dict[str, str]) -> LearnedScore:
 def main(argv: list[str]) -> int:
     pairs = {p["item_id"]: p for p in load_sample(PAIRS_PATH)}
     labels, repeats = load_pair_labels()
-    report = evaluate(pairs, labels, repeats)
-    for key, value in report.items():
-        shown = (
-            (
-                f"[{value[0]:+.2f} ; {value[1]:+.2f}]"
-                if "écart" in key
-                else f"[{value[0]:.2f} ; {value[1]:.2f}]"
-            )
-            if isinstance(value, list)
-            else (f"{value:.2f}" if isinstance(value, float) else value)
-        )
-        print(f"{key:<52} {shown}")
+    _print(evaluate(pairs, labels, repeats))
     model = train(pairs, labels)
     model.save()
-    print("\nPoids (modèle final, toutes les paires) :")
+    print("\nPoids (modèle final, toutes les paires de David) :")
     for name, w in sorted(model.weights.items(), key=lambda nw: -nw[1]):
         print(f"  {w:+.2f}  {name}")
+    if DEMO_PAIRS_PATH.exists():
+        demo = {p["item_id"]: p for p in load_sample(DEMO_PAIRS_PATH)}
+        if any(i in demo for i in labels):
+            print("\nTransfert vers la démo du lot 1 (jamais apprise) :")
+            _print(transfer(model, demo, labels))
     return 0
+
+
+def _print(report: dict) -> None:
+    for key, value in report.items():
+        if isinstance(value, list):
+            sign = "+" if "écart" in key else ""
+            shown = f"[{value[0]:{sign}.2f} ; {value[1]:{sign}.2f}]"
+        else:
+            shown = f"{value:.2f}" if isinstance(value, float) else str(value)
+        print(f"{key:<52} {shown}")
 
 
 if __name__ == "__main__":

@@ -1,12 +1,19 @@
-"""Paires de mails à comparer : « ce matin, lequel Hélène doit-elle traiter en premier ? ».
+"""Paires de mails à comparer : « ce matin, lequel traiter en premier ? ».
 
 Deux mails du même matin (candidats du brief, `features.candidates`). Moitié tirées au hasard,
 moitié « serrées » (le score par règles actuel les juge à 5 points ou moins) : ce sont les
-cas qui apprennent le plus. Chaque mail est tiré par type d'expéditeur d'abord (rééquilibré). Côtés A/B tirés au hasard (pas de biais de position) ; 24 paires
-réservées à la mesure finale, jamais vues par l'entraînement.
+cas qui apprennent le plus. Chaque mail est tiré par type d'expéditeur d'abord (rééquilibré),
+côtés A/B au hasard (pas de biais de position) ; 24 paires réservées à la mesure.
 
-`uv run --group embeddings python -m packages.analyse.scoring.ml.pairs <alliance-graph-synth>/data`
-écrit `scoring/annotations/pair_sample.jsonl` (versionné : données synthétiques).
+`chips` est ce que l'annotateur a vu ; `features`, l'entrée du modèle, se recalcule avec le
+modèle d'intentions courant (`rafraichir`), sans toucher aux paires ni à leur affichage.
+
+    uv run --group embeddings python -m packages.analyse.scoring.ml.pairs construire <data>
+    uv run --group embeddings python -m packages.analyse.scoring.ml.pairs rafraichir <data>
+    uv run --group embeddings python -m packages.analyse.scoring.ml.pairs demo
+
+`<data>` : le dossier `data/` d'alliance-graph-synth. `demo` tire 40 paires des données de démo
+du lot 1 (persona Camille Laurent), toutes réservées : un test de transfert, jamais appris.
 """
 
 from __future__ import annotations
@@ -27,22 +34,28 @@ from packages.analyse.scoring.ml.features import (
     candidates,
     mail_features,
 )
-from packages.analyse.scoring.ml.graph_convert import GraphDataset, load_graph_dataset
+from packages.analyse.scoring.ml.graph_convert import (
+    GraphDataset,
+    dataset_from_items,
+    load_graph_dataset,
+)
 from packages.analyse.scoring.ml.intents import (
-    CACHE_DIR,
     LEARNED,
     IntentModel,
     VectorCache,
-    e5_embedder,
+    cache_path,
+    embedder_for,
     intent_text,
 )
 from packages.analyse.scoring.ml.noise import noise_reason
-from packages.analyse.scoring.ml.persona import GRAPH_HELENE, Persona
-from packages.analyse.scoring.ml.sample import ANNOTATIONS, write_sample
+from packages.analyse.scoring.ml.persona import DEMO_CAMILLE, GRAPH_HELENE, Persona
+from packages.analyse.scoring.ml.sample import ANNOTATIONS, load_sample, write_sample
 from packages.analyse.scoring.score import ScoringConfig, score_case
 
 PAIRS_PATH = ANNOTATIONS / "pair_sample.jsonl"
+DEMO_PAIRS_PATH = ANNOTATIONS / "pair_sample_demo.jsonl"
 N_PAIRS, N_HELDOUT, CLOSE_GAP = 120, 24, 5
+N_DEMO_PAIRS = 40
 SHOWN_CHARS = 600
 _KIND_LABEL = {
     "hiérarchie": "N+1 (hiérarchie)",
@@ -100,6 +113,7 @@ def build_pairs(
     seed: int = 0,
     n_pairs: int = N_PAIRS,
     n_heldout: int = N_HELDOUT,
+    prefix: str = "p",
 ) -> list[dict]:
     rng = random.Random(seed)
     mornings = _mornings(dataset, probs, persona)
@@ -134,7 +148,9 @@ def build_pairs(
             }
         )
     heldout = set(rng.sample(range(len(pairs)), n_heldout))
-    return [{"item_id": f"p{n:03d}", "heldout": n in heldout} | p for n, p in enumerate(pairs)]
+    return [
+        {"item_id": f"{prefix}{n:03d}", "heldout": n in heldout} | p for n, p in enumerate(pairs)
+    ]
 
 
 Option = tuple[Item, MailFeatures, int]  # (mail, fiche, score par règles)
@@ -236,22 +252,75 @@ def _side(item: Item, f: MailFeatures, rule: int, now) -> dict:
     }
 
 
-def main(argv: list[str]) -> int:
-    if len(argv) != 1:
-        print(__doc__.strip().splitlines()[-2])
-        return 2
-    dataset = load_graph_dataset(argv[0])
+def refresh_features(
+    pairs: list[dict],
+    dataset: GraphDataset,
+    probs: dict[str, dict[str, float]],
+    persona: Persona = GRAPH_HELENE,
+) -> list[dict]:
+    """Les mêmes paires, fiches recalculées (intentions du modèle courant) ; `chips` intact."""
+    by_id = {item.item_id: item for item in dataset.items}
+    out = []
+    for pair in pairs:
+        now = brief_instant(date.fromisoformat(pair["day"]))
+        new = dict(pair)
+        for side in ("a", "b"):
+            item = by_id[pair[side]["item_id"]]
+            f = mail_features([item], dataset, now, persona, probs)[0]
+            new[side] = pair[side] | {"features": f.as_dict()}
+        out.append(new)
+    return out
+
+
+def demo_dataset() -> GraphDataset:
+    """Toutes les journées de démo du lot 1, dédoublonnées (u_demo_001, Camille Laurent)."""
+    from contracts import demo_data
+
+    items = [item for day in demo_data.available_days() for item in demo_data.load_items(day)]
+    return dataset_from_items(items, DEMO_CAMILLE.address)
+
+
+def _probs(dataset: GraphDataset) -> dict[str, dict[str, float]]:
     received = [
         i
         for i in dataset.items
         if i.source == "mail" and not dataset.extras[i.item_id].is_sent and not noise_reason(i)
     ]
-    cache, embedder = VectorCache(CACHE_DIR / "e5_vectors.npz"), e5_embedder()
-    probs = intent_probs(received, IntentModel.load(), lambda t: cache.embed(embedder, t))
-    pairs = build_pairs(dataset, probs)
-    pairs += build_targeted_pairs(
-        dataset, probs, {frozenset((p["a"]["item_id"], p["b"]["item_id"])) for p in pairs}
-    )
+    model = IntentModel.load()
+    embedder = embedder_for(model.embedder_name)
+    cache = VectorCache(cache_path(embedder))
+    return intent_probs(received, model, lambda t: cache.embed(embedder, t))
+
+
+def main(argv: list[str]) -> int:
+    command = argv[0] if argv else ""
+    if command == "demo" and len(argv) == 1:
+        dataset = demo_dataset()
+        pairs = build_pairs(
+            dataset,
+            _probs(dataset),
+            DEMO_CAMILLE,
+            seed=2,
+            n_pairs=N_DEMO_PAIRS,
+            n_heldout=N_DEMO_PAIRS,
+            prefix="d",
+        )
+        pairs = [p | {"round": 3, "dataset": "démo", "manager": "Camille"} for p in pairs]
+        write_sample(pairs, DEMO_PAIRS_PATH)
+        print(f"{len(pairs)} paires de démo → {DEMO_PAIRS_PATH}, toutes réservées")
+        return 0
+    if command not in ("construire", "rafraichir") or len(argv) != 2:
+        print(__doc__.split("\n\n")[3])
+        return 2
+    dataset = load_graph_dataset(argv[1])
+    probs = _probs(dataset)
+    if command == "rafraichir":
+        pairs = refresh_features(load_sample(PAIRS_PATH), dataset, probs)
+    else:
+        pairs = build_pairs(dataset, probs)
+        pairs += build_targeted_pairs(
+            dataset, probs, {frozenset((p["a"]["item_id"], p["b"]["item_id"])) for p in pairs}
+        )
     write_sample(pairs, PAIRS_PATH)
     kinds = Counter(p["kind"] for p in pairs)
     print(

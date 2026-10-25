@@ -12,6 +12,7 @@ from packages.analyse.scoring.ml.intents import (
     IntentModel,
     PrefixedEmbedder,
     VectorCache,
+    cache_path,
     design,
     fit_logistic,
     folds,
@@ -176,3 +177,13 @@ def test_entrainement_complet_rapport_et_modele_enregistre(tmp_path):
     probs = loaded.predict(E, [intent_text(r["title"], r["text"]) for r in sample])
     assert set(probs) == {"action", "reponse", "incident"}
     np.testing.assert_allclose(probs["action"], model.predict(E, texts)["action"], atol=1e-6)
+
+
+def test_un_fichier_de_cache_par_modele_et_melange_refuse(tmp_path):
+    small, big = HashEmbedder(8), HashEmbedder(16)
+    assert cache_path(small) != cache_path(big)
+    assert cache_path(PrefixedEmbedder(small, "query: ")).name == "vectors_hash_8_query.npz"
+    cache = VectorCache(tmp_path / "v.npz")
+    cache.embed(small, ["a"])
+    with pytest.raises(ValueError):
+        cache.embed(big, ["b"])
