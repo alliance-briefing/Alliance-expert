@@ -109,7 +109,7 @@ function render(state) {
     return;
   }
   const day = DAY.format(new Date(`${task.day}T08:30:00`));
-  $("question").textContent = `Le ${day} à 8 h 30, lequel Hélène doit-elle traiter en premier ?`;
+  $("question").textContent = `Le ${day} à 8 h 30, lequel ${task.manager} doit-elle traiter en premier ?`;
   pair.append(card(task.a, "A"), card(task.b, "B"));
 }
 

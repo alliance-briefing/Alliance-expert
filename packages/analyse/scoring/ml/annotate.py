@@ -215,7 +215,12 @@ class PairAnnotator:
                 pair = self.pairs[pair_id]
                 a, b = (pair["b"], pair["a"]) if repeat else (pair["a"], pair["b"])
                 shown = ("sender", "sender_kind", "title", "text", "chips")
-                return {"pair_id": pair_id, "repeat": repeat, "day": pair["day"]} | {
+                return {
+                    "pair_id": pair_id,
+                    "repeat": repeat,
+                    "day": pair["day"],
+                    "manager": pair.get("manager", "Hélène"),
+                } | {
                     "a": {k: a[k] for k in shown},
                     "b": {k: b[k] for k in shown},
                 }

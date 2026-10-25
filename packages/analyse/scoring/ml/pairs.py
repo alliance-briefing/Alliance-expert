@@ -305,7 +305,7 @@ def main(argv: list[str]) -> int:
             n_heldout=N_DEMO_PAIRS,
             prefix="d",
         )
-        pairs = [p | {"round": 3, "dataset": "démo"} for p in pairs]
+        pairs = [p | {"round": 3, "dataset": "démo", "manager": "Camille"} for p in pairs]
         write_sample(pairs, DEMO_PAIRS_PATH)
         print(f"{len(pairs)} paires de démo → {DEMO_PAIRS_PATH}, toutes réservées")
         return 0
