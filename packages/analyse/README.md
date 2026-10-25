@@ -168,6 +168,16 @@ Limites du jeu, mesurées : `flag`, `categories` et `importance` sont tirés au 
 toujours en `to` : aucun de ces champs ne sert d'étiquette. Le texte vient de modèles de phrases
 (≈ 400 débuts de corps) : séparer entraînement et test par modèle de phrase, pas au hasard.
 
+**Bruit certain** : `scoring/ml/noise.py` écarte avant le modèle les envois en masse, repérés
+par un lien de désabonnement dans l'objet ou le corps. Ni l'adresse (« noreply ») ni le mot
+« newsletter » ne suffisent : un rappel RH « noreply » demande une action. Sur le jeu de David :
+1 084 mails écartés sur 3 992 reçus, tous issus des 5 lettres d'information ; portail RH,
+tickets, banque, sécurité et catalogues restent notés par le modèle.
+
+```bash
+uv run python -m packages.analyse.scoring.ml.noise <alliance-graph-synth>/data  # compte + échantillon
+```
+
 **NLI** : `MoritzLaurer/mDeBERTa-v3-base-mnli-xnli` (MIT, 83,4 % sur XNLI français, 0,55 Go),
 groupe optionnel absent de la CI et de Docker : `uv sync --all-packages --group nli` (torch CPU).
 Charger le modèle en `dtype=torch.float32` : transformers 5 garde le float16 du fichier, 11 fois
@@ -193,6 +203,6 @@ rag/explore.py       outil d'exploration des embeddings sur une journée
 rag/index.py         index RAG par utilisateur (L2.6, R1)
 rag/retrieve.py      historique des affaires du jour (L2.6, R2)
 scoring/score.py     score de priorité par règles (L2.2)
-scoring/ml/          score appris : conversion des données Graph (pipeline A)
+scoring/ml/          score appris : données Graph, filtre du bruit (pipeline A)
 tests/               fabrique d'Item synthétiques + tests
 ```
