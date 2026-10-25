@@ -147,6 +147,33 @@ démo générées à partir de modèles de phrases. Le seuil par défaut (0,85) 
 décision ; piste : similarité désactivée par défaut, ou encadrée par des garde-fous
 (participant commun, fichiers et séries exclus).
 
+## Score appris (L2.2, pipeline A, en cours)
+
+Score de priorité appris à partir de caractéristiques lisibles (signaux des règles + NLI
+multilingue) et de comparaisons de profils annotées à la main. Pas encore utilisé par le brief.
+
+**Données** : `scoring/ml/graph_convert.py` convertit le jeu Microsoft Graph synthétique de
+David (`alliance-graph-synth`, persona Hélène Marchand, 05/10 → 16/11) en Item du contrat A,
+utilisateur `u_graph_helene`. Le texte, les invitations et les événements passent par le code
+du lot 1 (`packages/collect`, importé en lecture seule). Ce que le contrat n'a pas (place du
+manager en `to`/`cc`, mail envoyé…) va dans `MailExtras`, à côté de l'Item.
+
+```bash
+uv run python -m packages.analyse.scoring.ml.graph_convert <alliance-graph-synth>/data
+# Item : 4658 {'mail': 4463, 'calendar': 195} (dont 471 mails envoyés), refusés : 0
+```
+
+Limites du jeu, mesurées : `flag`, `categories` et `importance` sont tirés au hasard (2-3 %),
+`isRead` ne dépend que de l'âge, les réponses d'Hélène ne dépendent pas du contenu, et elle est
+toujours en `to` : aucun de ces champs ne sert d'étiquette. Le texte vient de modèles de phrases
+(≈ 400 débuts de corps) : séparer entraînement et test par modèle de phrase, pas au hasard.
+
+**NLI** : `MoritzLaurer/mDeBERTa-v3-base-mnli-xnli` (MIT, 83,4 % sur XNLI français, 0,55 Go),
+groupe optionnel absent de la CI et de Docker : `uv sync --all-packages --group nli` (torch CPU).
+Charger le modèle en `dtype=torch.float32` : transformers 5 garde le float16 du fichier, 11 fois
+plus lent sur CPU. Mesure locale : ≈ 75 ms par paire (texte, hypothèse) par lots de 16.
+Le test sur le jeu complet tourne si `ALLIANCE_GRAPH_DIR` pointe vers son dossier `data/`.
+
 ## Commandes
 
 ```bash
@@ -165,5 +192,7 @@ rag/embeddings.py    vecteurs de sens des items (L2.6)
 rag/explore.py       outil d'exploration des embeddings sur une journée
 rag/index.py         index RAG par utilisateur (L2.6, R1)
 rag/retrieve.py      historique des affaires du jour (L2.6, R2)
+scoring/score.py     score de priorité par règles (L2.2)
+scoring/ml/          score appris : conversion des données Graph (pipeline A)
 tests/               fabrique d'Item synthétiques + tests
 ```
