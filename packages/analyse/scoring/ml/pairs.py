@@ -316,6 +316,13 @@ def main(argv: list[str]) -> int:
     probs = _probs(dataset)
     if command == "rafraichir":
         pairs = refresh_features(load_sample(PAIRS_PATH), dataset, probs)
+        if DEMO_PAIRS_PATH.exists():
+            demo = demo_dataset()
+            demo_pairs = refresh_features(
+                load_sample(DEMO_PAIRS_PATH), demo, _probs(demo), DEMO_CAMILLE
+            )
+            write_sample(demo_pairs, DEMO_PAIRS_PATH)
+            print(f"{len(demo_pairs)} paires de démo rafraîchies")
     else:
         pairs = build_pairs(dataset, probs)
         pairs += build_targeted_pairs(
