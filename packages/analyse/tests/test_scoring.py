@@ -21,7 +21,8 @@ OWNER = "u1"
 USER = "moi@alliance.test"
 STANDARD = "élément professionnel standard"
 URGENCY = "contient des mots signalant l'urgence"
-NOISE = "message automatique ou newsletter"
+NOISE = "newsletter ou envoi en masse"
+AUTO = "notification automatique"
 
 
 def _item(
@@ -266,8 +267,18 @@ def test_newsletter_is_noise(title: str) -> None:
     assert _score(_item("1", title=title)) == (20, [NOISE])
 
 
-def test_noreply_sender_is_noise() -> None:
-    mail = _item("1", people=[("from", "noreply@portail.test")])
+def test_noreply_sender_is_an_automatic_notification_not_noise() -> None:
+    # Un rappel RH ou une mission affectée arrive d'un « noreply » et demande une action.
+    mail = _item("1", title="Rappel : notes de frais", people=[("from", "noreply@rh.test")])
+    assert _score(mail) == (40, [AUTO])
+
+
+def test_automatic_notification_keeps_the_urgency_bonus() -> None:
+    assert _score(_item("1", title="Notification : intervention urgente")) == (55, [URGENCY, AUTO])
+
+
+def test_mass_mailing_from_a_noreply_is_counted_once() -> None:
+    mail = _item("1", title="Newsletter", people=[("from", "noreply@news.test")])
     assert _score(mail) == (20, [NOISE])
 
 
@@ -276,8 +287,13 @@ def test_noise_cancels_the_urgency_bonus() -> None:
 
 
 def test_empty_keyword_lists_turn_the_text_signals_off() -> None:
-    config = ScoringConfig(urgency_keywords=frozenset(), noise_keywords=frozenset())
-    assert _score(_item("1", title="URGENT newsletter"), config=config) == (50, [STANDARD])
+    config = ScoringConfig(
+        urgency_keywords=frozenset(),
+        noise_keywords=frozenset(),
+        automated_keywords=frozenset(),
+    )
+    mail = _item("1", title="URGENT newsletter", people=[("from", "noreply@x.test")])
+    assert _score(mail, config=config) == (50, [STANDARD])
 
 
 def test_keywords_given_as_plain_sets_work() -> None:
