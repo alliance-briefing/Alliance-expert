@@ -149,8 +149,9 @@ décision ; piste : similarité désactivée par défaut, ou encadrée par des g
 
 ## Score appris (L2.2, pipeline A, en cours)
 
-Score de priorité appris à partir de caractéristiques lisibles (signaux des règles + NLI
-multilingue) et de comparaisons de profils annotées à la main. Pas encore utilisé par le brief.
+Score de priorité appris à partir de caractéristiques lisibles (signaux des règles +
+intentions des mails) et de comparaisons de profils annotées à la main. Pas encore utilisé
+par le brief.
 
 **Données** : `scoring/ml/graph_convert.py` convertit le jeu Microsoft Graph synthétique de
 David (`alliance-graph-synth`, persona Hélène Marchand, 05/10 → 16/11) en Item du contrat A,
@@ -178,11 +179,36 @@ tickets, banque, sécurité et catalogues restent notés par le modèle.
 uv run python -m packages.analyse.scoring.ml.noise <alliance-graph-synth>/data  # compte + échantillon
 ```
 
-**NLI** : `MoritzLaurer/mDeBERTa-v3-base-mnli-xnli` (MIT, 83,4 % sur XNLI français, 0,55 Go),
-groupe optionnel absent de la CI et de Docker : `uv sync --all-packages --group nli` (torch CPU).
-Charger le modèle en `dtype=torch.float32` : transformers 5 garde le float16 du fichier, 11 fois
-plus lent sur CPU. Mesure locale : ≈ 75 ms par paire (texte, hypothèse) par lots de 16.
-Le test sur le jeu complet tourne si `ALLIANCE_GRAPH_DIR` pointe vers son dossier `data/`.
+**Intentions des mails** (`scoring/ml/intents.py`), étiquetées par Théo sur 181 mails (un par
+modèle de phrase, hors bruit : `scoring/ml/sample.py`) avec la page locale
+`uv run python -m packages.analyse.scoring.ml.annotate` (http://127.0.0.1:8765). Réponses dans
+`scoring/annotations/intent_labels.jsonl` (ajout seul ; 10 % de répétitions cachées).
+Cohérence de l'annotateur : 94 à 100 % selon la question, 83 % pour « problème », trop flou,
+scindé en « incident » et « alerte » (revue de 53 mails, les autres héritent du « non »).
+
+Mesure sur des mails jamais vus (validation croisée imbriquée, 5 plis × 5) :
+
+| Caractéristique | Méthode | Précision | Rappel | F1 |
+|---|---|---|---|---|
+| action | e5-large + régression logistique | 0,74 | 0,85 | 0,79 |
+| reponse | e5-large + indice « ? » + régression logistique | 0,85 | 0,82 | 0,84 |
+| incident | e5-large + régression logistique | 0,53 | 0,79 | 0,63 |
+| échéance (+ date) | règle `scoring/ml/deadline.py` | 1,00 | 0,94 | 0,97 |
+| alerte | règle (automate + « inhabituel », « connexion »…) | 1,00 | 1,00 | 1,00 (4 cas) |
+
+Écartés, mesurés : NLI zéro-coup `mDeBERTa-v3-base-mnli-xnli` (F1 0,30 à 0,40 : il lit les mots,
+pas l'intention, « merci de m'envoyer » ≈ remerciement), mots-clés seuls (0,42 à 0,59 sauf
+« ? » pour reponse, 0,85), MiniLM et mpnet (≈ 0,72 sur action). Quand le concept est précis
+(échéance, alerte), la règle bat le modèle ; flou mais fréquent (action, réponse), le modèle
+appris bat les règles. Réserve : données synthétiques, mots-clés écrits en connaissant leur style.
+
+- `uv run --group embeddings python -m packages.analyse.scoring.ml.intents` : mesure puis
+  entraîne et écrit `scoring/ml/intents_model.npz` (poids, quelques Ko ; déterministe).
+- e5-large (2,2 Go, fastembed ONNX, sans torch) ; vecteurs en cache par (modèle, texte) dans
+  `~/.cache/alliance-briefing/`, hors du dépôt.
+- Le groupe `nli` (torch, transformers) n'a servi qu'à l'essai du NLI. Piège noté : transformers 5
+  garde le float16 du fichier, 11 fois plus lent sur CPU : charger en `dtype=torch.float32`.
+- Le test sur le jeu complet de David tourne si `ALLIANCE_GRAPH_DIR` pointe vers son `data/`.
 
 ## Commandes
 
@@ -203,6 +229,7 @@ rag/explore.py       outil d'exploration des embeddings sur une journée
 rag/index.py         index RAG par utilisateur (L2.6, R1)
 rag/retrieve.py      historique des affaires du jour (L2.6, R2)
 scoring/score.py     score de priorité par règles (L2.2)
-scoring/ml/          score appris : données Graph, filtre du bruit (pipeline A)
+scoring/ml/          score appris : données Graph, bruit, intentions, échéances (pipeline A)
+scoring/annotations/ échantillon et étiquettes de Théo (versionnés, données synthétiques)
 tests/               fabrique d'Item synthétiques + tests
 ```
