@@ -187,3 +187,38 @@ def test_un_fichier_de_cache_par_modele_et_melange_refuse(tmp_path):
     cache.embed(small, ["a"])
     with pytest.raises(ValueError):
         cache.embed(big, ["b"])
+
+
+def test_mails_generes_accord_arbitrage_et_annotateur_unique(tmp_path):
+    def rows(*items):
+        return [_row(i, f, v) for i, f, v in items]
+
+    _write_labels(tmp_path / "intent_labels.jsonl", [_row("m1", "action", "oui")])
+    _write_labels(
+        tmp_path / "intent_labels_theo.jsonl",
+        rows(
+            ("synth:1", "action", "oui"),
+            ("synth:2", "action", "oui"),
+            ("synth:3", "action", "non"),
+            ("synth:5", "action", "?"),
+        ),
+    )
+    _write_labels(
+        tmp_path / "intent_labels_paul.jsonl",
+        rows(
+            ("synth:1", "action", "oui"),
+            ("synth:2", "action", "non"),
+            ("synth:4", "action", "oui"),
+            ("synth:6", "action", "oui"),
+            ("synth:6", "action", "non"),
+        ),
+    )
+    _write_labels(tmp_path / "intent_labels_arbitrage.jsonl", rows(("synth:2", "action", "non")))
+    assert load_labels("action", tmp_path / "intent_labels.jsonl") == {
+        "m1": True,
+        "synth:1": True,  # d'accord
+        "synth:2": False,  # désaccord tranché par l'arbitrage
+        "synth:3": False,  # un seul annotateur
+        "synth:4": True,
+        "synth:6": False,  # sa dernière réponse compte
+    }

@@ -170,7 +170,38 @@ def load_labels(feature: str, path: Path = LABELS_PATH) -> dict[str, bool]:
             labels.pop(item_id, None)
             if value in ("oui", "non"):
                 labels[item_id] = value == "oui"
-    return labels
+    return labels | synth_labels(feature, path.parent)
+
+
+ANNOTATOR_FILES = ("intent_labels_theo.jsonl", "intent_labels_paul.jsonl")
+ARBITRATION_FILE = "intent_labels_arbitrage.jsonl"
+
+
+def _first_answers(path: Path) -> dict[tuple[str, str], str]:
+    last: dict[tuple[str, str], str] = {}
+    if path.exists():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line:
+                row = json.loads(line)
+                if not row["repeat"]:
+                    last[(row["item_id"], row["feature"])] = row["value"]
+    return last
+
+
+def synth_labels(feature: str, folder: Path) -> dict[str, bool]:
+    """Étiquettes des mails générés, annotés à deux (fichiers de `folder`) : la réponse
+    commune quand les deux ont répondu pareil, l'arbitrage quand ils divergent, la réponse
+    de l'unique annotateur sinon ; « ? » écartés."""
+    answers = [_first_answers(folder / name) for name in ANNOTATOR_FILES]
+    arbitration = _first_answers(folder / ARBITRATION_FILE)
+    out: dict[str, bool] = {}
+    keys = {k for a in answers for k in a if k[1] == feature}
+    for key in sorted(keys):
+        given = {a[key] for a in answers if key in a and a[key] in ("oui", "non")}
+        value = arbitration.get(key) if len(given) > 1 else next(iter(given), None)
+        if value in ("oui", "non"):
+            out[key[0]] = value == "oui"
+    return out
 
 
 # --- régression logistique et validation croisée -----------------------------------------------
@@ -346,9 +377,10 @@ def main(argv: list[str]) -> int:
     name = E5_MODEL if "--e5" in argv else DEFAULT_MODEL
     embedder = embedder_for(name)
     cache = VectorCache(cache_path(embedder))
-    from packages.analyse.scoring.ml.annotate import INTENT_R2_PATH
+    from packages.analyse.scoring.ml.annotate import INTENT_R2_PATH, SYNTH_PATH
 
-    sample = load_sample() + (load_sample(INTENT_R2_PATH) if INTENT_R2_PATH.exists() else [])
+    extra = [path for path in (INTENT_R2_PATH, SYNTH_PATH) if path.exists()]
+    sample = load_sample() + [row for path in extra for row in load_sample(path)]
     model, report = train(sample, lambda texts: cache.embed(embedder, texts), embedder_name=name)
     model.save()
     print("\n".join(report))
