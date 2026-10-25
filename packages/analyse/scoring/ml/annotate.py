@@ -40,25 +40,25 @@ FEATURES = (
         "action",
         "Le mail demande-t-il à Hélène de faire quelque chose ?",
         "Oui : envoyer, valider, relire, payer, confirmer, traiter… Non : informer, remercier, "
-        "confirmer ce qui est déjà fait, demander à quelqu'un d'autre.",
+        "confirmer ce qui est déjà fait, demander à quelqu'un d'autre, inviter à une réunion.",
     ),
     Feature(
         "reponse",
         "L'expéditeur attend-il une réponse d'Hélène ?",
         "Oui : une question posée, une demande d'avis ou de disponibilité. "
-        "Non : un message qui se suffit à lui-même.",
+        "Non : un message qui se suffit à lui-même. Invitation à une réunion : oui.",
     ),
     Feature(
         "probleme",
         "Le mail signale-t-il un problème ?",
         "Oui : incident, retard, erreur, refus, insatisfaction, alerte de sécurité. "
-        "Non : un fonctionnement normal, même s'il demande une action.",
+        "Non : un fonctionnement normal, même s'il demande une action, une invitation.",
     ),
     Feature(
         "echeance",
         "Le mail fixe-t-il une échéance à Hélène ?",
         "Oui : une date ou un délai à respecter (« avant jeudi », « d'ici le 12 »). "
-        "Non : la date d'une réunion, d'un voyage ou d'un événement passé.",
+        "Non : la date d'une réunion (invitation comprise), d'un voyage ou d'un événement passé.",
     ),
 )
 _BY_KEY = {feature.key: feature for feature in FEATURES}
