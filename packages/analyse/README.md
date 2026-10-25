@@ -247,7 +247,21 @@ uv run python -m packages.analyse.scoring.ml.annotate --annotateur theo   # ou p
 ```
 
 Annotation à deux : un fichier par personne (`intent_labels_theo.jsonl`, `intent_labels_paul.jsonl`),
-un mail sur quatre en commun pour l'accord entre annotateurs, le reste partagé.
+un mail sur quatre en commun pour l'accord entre annotateurs, le reste partagé. Accord sur 74 mails
+communs : action 95 % (kappa 0,89), réponse 91 % (kappa 0,79) ; désaccords arbitrés
+(`intent_labels_arbitrage.jsonl`). Sur 70 mails de démo étiquetés à la main, les mails générés
+font passer « action » de 0,62 à 0,69 de F1.
+
+**Journées générées** (`scoring/ml/synth/days.py`) : cinq personas sur trois semaines, affaires
+qui vivent (relance, réponse de la manager, clôture), flux de fond, automates, lettres
+d'information, invitations avec leur événement. 160 paires du même matin, dont 80 réservées à la
+mesure, annotées **à l'aveugle** (fonction de l'expéditeur et faits visibles, aucune intention
+calculée : les paires jugées avec les pastilles d'un modèle avantagent ce modèle) et à deux.
+
+```bash
+uv run --group embeddings python -m packages.analyse.scoring.ml.synth.days     # journées + paires
+uv run python -m packages.analyse.scoring.ml.annotate --annotateur theo --paires
+```
 
 ## Commandes
 

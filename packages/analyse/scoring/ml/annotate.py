@@ -2,6 +2,7 @@
 
 `uv run python -m packages.analyse.scoring.ml.annotate` puis http://127.0.0.1:8765
 `… annotate --annotateur paul` : mails générés, étiquettes dans intent_labels_paul.jsonl
+`… annotate --annotateur paul --paires` : paires des journées générées (pair_labels_paul.jsonl)
 
 Chaque réponse est ajoutée en fin de `scoring/annotations/intent_labels.jsonl` (rien n'est
 jamais réécrit : fermer la page ne perd rien, la dernière réponse à une question compte).
@@ -33,6 +34,7 @@ INTENT_R2_PATH = ANNOTATIONS / "intent_sample_r2.jsonl"  # 2e série (action, r�
 ROUND2_FEATURES = ("action", "reponse")
 # Mails générés (synth/), annotés à deux : un fichier d'étiquettes par annotateur.
 SYNTH_PATH = ANNOTATIONS / "synth_sample.jsonl"
+SYNTH_PAIRS_PATH = ANNOTATIONS / "pair_sample_synth.jsonl"  # journées générées, à l'aveugle
 ANNOTATORS = ("theo", "paul")
 SHARED_SHARE = 4  # 1 mail sur 4 annoté par les deux (accord entre annotateurs)
 PAIRS_PATH = ANNOTATIONS / "pair_sample.jsonl"
@@ -352,7 +354,15 @@ def serve(
     r2_path: Path = INTENT_R2_PATH,
     annotator: str | None = None,
     synth_path: Path = SYNTH_PATH,
+    pairs_mode: bool = False,
+    synth_pairs_path: Path = SYNTH_PAIRS_PATH,
 ):
+    if annotator and pairs_mode:  # paires des journées générées, à l'aveugle, à deux
+        rows = assigned(load_sample(synth_pairs_path), annotator)
+        store = LabelStore(labels.with_name(f"pair_labels_{annotator}.jsonl"))
+        empty = Annotator([], LabelStore(labels.with_name(f"intent_labels_{annotator}.jsonl")))
+        handler = make_handler(empty, PairAnnotator(rows, store))
+        return ThreadingHTTPServer(("127.0.0.1", port), handler)
     if annotator:  # mails générés, fichier d'étiquettes propre à l'annotateur
         rows = assigned(load_sample(synth_path), annotator)
         store = LabelStore(labels.with_name(f"intent_labels_{annotator}.jsonl"))
@@ -379,9 +389,14 @@ def main(argv: list[str]) -> int:
         i = args.index("--annotateur")
         who = args[i + 1].lower() if i + 1 < len(args) else ""
         del args[i : i + 2]
+    pairs_mode = "--paires" in args
+    if pairs_mode:
+        args.remove("--paires")
     port = int(args[0]) if args else 8765
-    server = serve(port, annotator=who)
-    if who:
+    server = serve(port, annotator=who, pairs_mode=pairs_mode)
+    if who and pairs_mode:
+        print(f"Paires des journées générées ({who}) : http://127.0.0.1:{port}/paires")
+    elif who:
         print(
             f"Annotation des mails générés ({who}) : http://127.0.0.1:{port}  (Ctrl+C pour arrêter)"
         )
