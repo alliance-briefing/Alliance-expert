@@ -220,10 +220,52 @@ sur 22 ; cohérence de Théo 0,92.
 Transfert vers la démo du lot 1 (autre métier, persona Camille Laurent, 40 paires jamais apprises) :
 0,89 (IC 95 % 0,78-0,97) contre 0,59 pour les règles. Embeddings : MiniLM par défaut (même score
 final qu'e5-large, 10 fois plus léger) ; `intents --e5` pour e5.
+**Depuis le 26/10** (ADR-0003, mise à jour) : intentions entraînées sur 601 mails (David, démo hors
+paires, mails générés annotés à deux) ; score appris sur 108 paires de David et 80 paires de
+journées générées. Mesure principale : **0,80** (IC 95 % 0,70-0,89) sur les 80 paires réservées
+des journées générées, jugées à l'aveugle par deux annotateurs, contre 0,58 pour le score par
+règles ; plafond réaliste : l'accord entre annotateurs, 86 % hors « équivalent ».
 
 ```bash
 uv run --group embeddings python -m packages.analyse.scoring.ml.pairs <data>   # paires
 uv run python -m packages.analyse.scoring.ml.learned_score                      # mesure + poids
+```
+
+### Robustesse des intentions et données générées (en cours)
+- **Banc CheckList** (`scoring/ml/checklist.py`, `annotations/intent_checklist.json`) : 61
+  vérifications sur des mails fictifs indépendants (cas de base, invariance, direction).
+  « réponse » réussit tout ; « action » échoue sur des demandes explicites ou implicites : le
+  modèle lit le sujet du mail plutôt que l'acte. Deux essais (indices d'actes de langage, 2e série
+  d'étiquettes) ont gagné sur David et reculé sur le banc ou le transfert : écartés, la règle étant
+  de ne retenir un modèle que s'il ne recule sur aucun des trois garde-fous (banc, paires
+  réservées de David, transfert vers la démo).
+- **2e série d'étiquettes** (`scoring/ml/sample_round2.py`) : 120 mails, démo hors paires de démo
+  et mails de David où le modèle hésite ; gardée pour la suite.
+- **Générateur du lot 2** (`scoring/ml/synth/`, spécification `SPEC.md`) : mails isolés de cinq
+  secteurs (conseil, BTP, clinique, e-commerce, collectivité ; pas l'expertise automobile, gardée
+  pour le test), actes de langage × formulations × forme, étiquettes par construction jamais
+  montrées aux annotateurs.
+
+```bash
+uv run python -m packages.analyse.scoring.ml.synth.generator        # 300 mails générés
+uv run python -m packages.analyse.scoring.ml.annotate --annotateur theo   # ou paul
+```
+
+Annotation à deux : un fichier par personne (`intent_labels_theo.jsonl`, `intent_labels_paul.jsonl`),
+un mail sur quatre en commun pour l'accord entre annotateurs, le reste partagé. Accord sur 74 mails
+communs : action 95 % (kappa 0,89), réponse 91 % (kappa 0,79) ; désaccords arbitrés
+(`intent_labels_arbitrage.jsonl`). Sur 70 mails de démo étiquetés à la main, les mails générés
+font passer « action » de 0,62 à 0,69 de F1.
+
+**Journées générées** (`scoring/ml/synth/days.py`) : cinq personas sur trois semaines, affaires
+qui vivent (relance, réponse de la manager, clôture), flux de fond, automates, lettres
+d'information, invitations avec leur événement. 160 paires du même matin, dont 80 réservées à la
+mesure, annotées **à l'aveugle** (fonction de l'expéditeur et faits visibles, aucune intention
+calculée : les paires jugées avec les pastilles d'un modèle avantagent ce modèle) et à deux.
+
+```bash
+uv run --group embeddings python -m packages.analyse.scoring.ml.synth.days     # journées + paires
+uv run python -m packages.analyse.scoring.ml.annotate --annotateur theo --paires
 ```
 
 ## Commandes
@@ -246,6 +288,7 @@ rag/index.py         index RAG par utilisateur (L2.6, R1)
 rag/retrieve.py      historique des affaires du jour (L2.6, R2)
 scoring/score.py     score de priorité par règles (L2.2)
 scoring/ml/          score appris : données Graph, bruit, intentions, échéances (pipeline A)
+scoring/ml/synth/    générateur de mails du lot 2 (SPEC.md)
 scoring/annotations/ échantillon et étiquettes de Théo (versionnés, données synthétiques)
 tests/               fabrique d'Item synthétiques + tests
 ```

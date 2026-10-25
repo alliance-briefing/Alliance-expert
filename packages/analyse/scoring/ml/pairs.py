@@ -316,6 +316,28 @@ def main(argv: list[str]) -> int:
     probs = _probs(dataset)
     if command == "rafraichir":
         pairs = refresh_features(load_sample(PAIRS_PATH), dataset, probs)
+        if DEMO_PAIRS_PATH.exists():
+            demo = demo_dataset()
+            demo_pairs = refresh_features(
+                load_sample(DEMO_PAIRS_PATH), demo, _probs(demo), DEMO_CAMILLE
+            )
+            write_sample(demo_pairs, DEMO_PAIRS_PATH)
+            print(f"{len(demo_pairs)} paires de démo rafraîchies")
+        from packages.analyse.scoring.ml.annotate import SYNTH_PAIRS_PATH
+
+        if SYNTH_PAIRS_PATH.exists():  # journées générées : une persona par secteur
+            from packages.analyse.scoring.ml.synth.days import persona, synth_dataset
+            from packages.analyse.scoring.ml.synth.sectors import SECTORS
+
+            synth_pairs = load_sample(SYNTH_PAIRS_PATH)
+            fresh = {}
+            for sector in SECTORS:
+                mine = [p for p in synth_pairs if p.get("dataset") == f"synth-{sector.key}"]
+                ds = synth_dataset(sector)
+                for p in refresh_features(mine, ds, _probs(ds), persona(sector)):
+                    fresh[p["item_id"]] = p
+            write_sample([fresh[p["item_id"]] for p in synth_pairs], SYNTH_PAIRS_PATH)
+            print(f"{len(fresh)} paires générées rafraîchies")
     else:
         pairs = build_pairs(dataset, probs)
         pairs += build_targeted_pairs(
