@@ -72,6 +72,7 @@ def build_sample(
                     "sender_kind": kind,
                     "sender": name or email,
                     "title": item.title,
+                    "received_at": item.created_at.isoformat(),
                     "text": (item.content_text or item.snippet)[:TEXT_MAX_CHARS],
                 }
             )
