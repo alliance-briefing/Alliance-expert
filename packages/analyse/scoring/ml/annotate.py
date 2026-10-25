@@ -28,6 +28,7 @@ from packages.analyse.scoring.ml.sample import ANNOTATIONS, SAMPLE_PATH, load_sa
 
 LABELS_PATH = ANNOTATIONS / "intent_labels.jsonl"
 PAIRS_PATH = ANNOTATIONS / "pair_sample.jsonl"
+DEMO_PAIRS_PATH = ANNOTATIONS / "pair_sample_demo.jsonl"  # test de transfert (démo du lot 1)
 PAIR_LABELS_PATH = ANNOTATIONS / "pair_labels.jsonl"
 PAGE = Path(__file__).with_name("annotate.html")
 PAIRS_PAGE = Path(__file__).with_name("annotate_pairs.html")
@@ -290,6 +291,7 @@ def serve(
     labels: Path = LABELS_PATH,
     pairs_path: Path = PAIRS_PATH,
     pair_labels: Path = PAIR_LABELS_PATH,
+    demo_pairs_path: Path = DEMO_PAIRS_PATH,
 ):
     subsets = {
         f.key: set(json.loads((ANNOTATIONS / f.review).read_text(encoding="utf-8")))
@@ -297,11 +299,10 @@ def serve(
         if f.review
     }
     annotator = Annotator(load_sample(sample_path), LabelStore(labels), subsets)
-    pairs = (
-        PairAnnotator(load_sample(pairs_path), LabelStore(pair_labels))
-        if pairs_path.exists()
-        else None
-    )
+    all_pairs = [
+        p for path in (pairs_path, demo_pairs_path) if path.exists() for p in load_sample(path)
+    ]
+    pairs = PairAnnotator(all_pairs, LabelStore(pair_labels)) if all_pairs else None
     return ThreadingHTTPServer(("127.0.0.1", port), make_handler(annotator, pairs))
 
 

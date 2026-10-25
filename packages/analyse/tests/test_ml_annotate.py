@@ -15,7 +15,7 @@ from contracts.models import Item
 from packages.analyse.scoring.ml import annotate
 from packages.analyse.scoring.ml.annotate import Annotator, LabelStore, queue
 from packages.analyse.scoring.ml.graph_convert import GraphDataset, MailExtras
-from packages.analyse.scoring.ml.persona import GRAPH_HELENE
+from packages.analyse.scoring.ml.persona import DEMO_CAMILLE, GRAPH_HELENE
 from packages.analyse.scoring.ml.sample import build_sample, load_sample, template, write_sample
 
 AT = datetime(2026, 10, 7, 8, 0, tzinfo=UTC)
@@ -196,3 +196,21 @@ def test_question_de_revue_ne_pose_que_les_mails_listes(tmp_path):
     assert [mid for mid, _ in annotator.queues["incident"]] == ["m3"]
     assert len(annotator.queues["action"]) == 11  # 10 mails + 1 répétition
     assert annotate.FEATURES[2].review == "review_probleme.json"
+
+
+@pytest.mark.parametrize(
+    ("sender", "kind"),
+    [
+        ("bernard.mercier@reseau-expertis.test", "hiérarchie"),
+        ("valerie.chevalier@reseau-expertis.test", "direction"),
+        ("sophie.nguyen@reseau-expertis.test", "collègue"),
+        ("samira.ouali@horizon-sud.test", "client"),
+        ("antoine.gauthier@particulier.test", "client"),
+        ("contact@garage-tilleuls.test", "fournisseur"),  # pas « prénom.nom », mais pas un automate
+        ("noreply@teams.reseau-expertis.test", "automate"),
+        ("notifications-it@reseau-expertis.test", "automate"),
+        ("newsletter@piecesauto-pro.test", "automate"),
+    ],
+)
+def test_type_d_expediteur_demo(sender, kind):
+    assert DEMO_CAMILLE.sender_kind(sender) == kind

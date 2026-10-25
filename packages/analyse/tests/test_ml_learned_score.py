@@ -17,6 +17,7 @@ from packages.analyse.scoring.ml.learned_score import (
     fit_bradley_terry,
     load_pair_labels,
     train,
+    transfer,
 )
 
 
@@ -108,3 +109,18 @@ def test_etiquettes_de_paires_derniere_reponse(tmp_path):
     ]
     path.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
     assert load_pair_labels(path) == ({"p0": "B"}, {"p0": "B"})
+
+
+def test_transfert_juge_le_modele_sur_d_autres_paires_sans_les_apprendre():
+    pairs, labels = _pairs()
+    model = train(pairs, labels)
+    other, other_labels = _pairs(10)
+    other = {f"d{k}": v | {"item_id": f"d{k}"} for k, v in other.items()}
+    other_labels = {f"d{k}": v for k, v in other_labels.items()}
+    report = transfer(model, other, labels | other_labels)
+    assert report["paires jugées (non équivalentes)"] == 10
+    assert report["accord appris"] == 1.0 and report["accord règles"] == 0.5
+    # les paires de démo ne changent ni la mesure ni le modèle de David
+    repeats = {"p0": labels["p0"], "d0": "="}
+    assert evaluate(pairs, labels | other_labels, repeats) == evaluate(pairs, labels, repeats)
+    assert train(pairs, labels | other_labels) == model
