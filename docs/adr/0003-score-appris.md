@@ -57,15 +57,29 @@ Série ciblée « N+1 » (12 paires) : une demande d'action du N+1 passe avant l
 
 Poids principaux (modèle final, 132 paires) : attend une réponse +2,2 ; alerte +1,1 ; échéance aujourd'hui ou demain +1,1 ; demande une action +1,0 ; échéance plus tard +0,7 ; hiérarchie +0,6 et demande d'action du N+1 +0,3 ; fil long +0,4 ; automate −0,4 ; « pas encore répondu » −0,5 ; fournisseur −0,9.
 
+### Choix du modèle d'embeddings
+MiniLM multilingue (0,22 Go, déjà utilisé par le RAG) contre `multilingual-e5-large` (2,2 Go) : F1 « action » 0,69 contre 0,79, mais « réponse » 0,85 contre 0,84, « incident » 0,67 contre 0,63, et **même accord du score final sur les paires réservées : 0,86** (validation croisée sur l'entraînement : 0,81 contre 0,76). MiniLM est retenu par défaut (26/10) ; e5 reste disponible (`intents --e5`). Le poids de l'interaction « demande d'action du N+1 » change de signe d'un modèle à l'autre (+0,3 avec e5, −0,2 avec MiniLM, la hiérarchie seule passant à +0,75) : 12 paires ciblées ne suffisent pas à la fixer.
+
+### Test de transfert : données de démo du lot 1
+Autre métier (réseau d'expertise automobile), autre persona (Camille Laurent, responsable de l'agence Lyon-Est, N+1 Bernard Mercier), autres modèles de phrases, pas de corps complet (extrait seulement), pas de mails envoyés. 40 paires de 26 matins, jugées par Théo et **jamais apprises** : le modèle est celui entraîné sur les seules données de David.
+
+| | Accord avec Théo (37 paires non équivalentes) |
+|---|---|
+| Score appris (entraîné sur David) | **0,89** (IC 95 % 0,78 – 0,97) |
+| Score par règles | 0,59 (ne départage pas 24 paires sur 37) |
+| Cohérence de Théo (4 répétitions côtés inversés) | 4/4 |
+
+Écart +0,30 (IC 95 % +0,18 – +0,41). Paires au hasard : 0,84 contre 0,66 ; paires serrées : 0,94 contre 0,53. Les 4 erreurs : deux devis de garage, que Théo place avant un message d'expert (le modèle d'intentions, appris sur « Veuillez trouver ci-joint notre devis » chez David, n'y voit pas de demande d'action), une note d'information prise pour un incident, deux messages d'experts proches. Le score par règles n'a pas les tâches dans ces paires (comparaison de mails) : sur le brief réel, ses signaux de tâches restent utiles.
+
 ## Conséquences
 - **Lot 2** : le score appris n'est pas encore branché dans le brief. Il reste à fixer le passage du score des mails au score de l'affaire (maximum des mails, bonus de taille du fil…) et à prévenir Marie-Yoram, qui branche le score.
 - **Pipeline A** : l'étage « ajustement LLM ±15 » reste possible par-dessus, mais rien n'en dépend.
-- **Production** : e5-large (2,2 Go, fastembed ONNX, sans torch) ; poids du score et des intentions versionnés (quelques Ko) ; vecteurs en cache hors du dépôt. Le groupe `nli` (torch) n'a servi qu'à l'essai du NLI.
+- **Production** : MiniLM (0,22 Go, fastembed ONNX, sans torch, déjà utilisé par le RAG) ; poids du score et des intentions versionnés (quelques Ko) ; vecteurs en cache hors du dépôt. Le groupe `nli` (torch) n'a servi qu'à l'essai du NLI.
 - **Réentraîner** : toutes les étiquettes sont versionnées (`scoring/annotations/`, données synthétiques) ; `intents` puis `learned_score` les relisent et donnent les mêmes poids.
 - **Retour arrière** : rien n'est branché ; le score par règles reste la référence.
 
 ## Limites
-- **Données synthétiques à modèles de phrases** : un bon résultat ici ne prouve pas qu'on réussira sur de vrais mails. Il faut refaire la mesure dès que le lot 1 fournit des données réelles ou plus variées.
+- **Données synthétiques à modèles de phrases** : un bon résultat ici ne prouve pas qu'on réussira sur de vrais mails. Le transfert vers la démo du lot 1 (autre métier, autre persona : 0,89) est encourageant, mais les deux jeux restent générés. Il faut refaire la mesure dès que le lot 1 fournit des données réelles.
 - **Un seul annotateur** et 22 paires de mesure : intervalles de confiance larges. L'écart avec les règles est probable, son ampleur incertaine.
 - **Hiérarchie** : sur les 120 premières paires, son poids était presque nul (+0,1) à intention égale ; la série ciblée l'a porté à +0,6, plus +0,3 pour l'interaction. Les mails du N+1 suivent ici les mêmes modèles de phrases que ceux des collègues : à revérifier sur des données réelles.
 - **« Pas encore répondu » a un poids négatif** (−0,5), contre l'intuition : dans ces données, les mails sans réponse d'Hélène sont surtout des automates et des fournisseurs, et ceux auxquels elle a répondu des fils d'affaires actives. C'est une corrélation propre au jeu, pas une règle à garder telle quelle.
