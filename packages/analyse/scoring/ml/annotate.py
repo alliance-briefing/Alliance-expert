@@ -1,6 +1,7 @@
 """Page d'annotation locale : on répond oui / non à une question par mail, au clavier.
 
 `uv run python -m packages.analyse.scoring.ml.annotate` puis http://127.0.0.1:8765
+`… annotate --annotateur paul` : mails générés, étiquettes dans intent_labels_paul.jsonl
 
 Chaque réponse est ajoutée en fin de `scoring/annotations/intent_labels.jsonl` (rien n'est
 jamais réécrit : fermer la page ne perd rien, la dernière réponse à une question compte).
@@ -14,6 +15,7 @@ marqués problème ou contestés par le modèle sont revus, les autres héritent
 
 from __future__ import annotations
 
+import hashlib
 import json
 import random
 import sys
@@ -29,6 +31,10 @@ from packages.analyse.scoring.ml.sample import ANNOTATIONS, SAMPLE_PATH, load_sa
 LABELS_PATH = ANNOTATIONS / "intent_labels.jsonl"
 INTENT_R2_PATH = ANNOTATIONS / "intent_sample_r2.jsonl"  # 2e série (action, réponse)
 ROUND2_FEATURES = ("action", "reponse")
+# Mails générés (synth/), annotés à deux : un fichier d'étiquettes par annotateur.
+SYNTH_PATH = ANNOTATIONS / "synth_sample.jsonl"
+ANNOTATORS = ("theo", "paul")
+SHARED_SHARE = 4  # 1 mail sur 4 annoté par les deux (accord entre annotateurs)
 PAIRS_PATH = ANNOTATIONS / "pair_sample.jsonl"
 DEMO_PAIRS_PATH = ANNOTATIONS / "pair_sample_demo.jsonl"  # test de transfert (démo du lot 1)
 PAIR_LABELS_PATH = ANNOTATIONS / "pair_labels.jsonl"
@@ -83,6 +89,37 @@ FEATURES = (
     ),
 )
 _BY_KEY = {feature.key: feature for feature in FEATURES}
+# Les mails générés viennent de cinq managers différents : questions sans prénom.
+SYNTH_FEATURES = (
+    Feature(
+        "action",
+        "Le mail demande-t-il au destinataire (le manager) de faire quelque chose ?",
+        "Oui : envoyer, valider, relire, signer, traiter, même sans question (« il me faudrait… », "
+        "« prêt pour ta relecture »). Non : informer, remercier, confirmer ce qui est fait, "
+        "s'engager soi-même (« je reviens vers vous »), demander à quelqu'un d'autre, inviter.",
+    ),
+    Feature(
+        "reponse",
+        "L'expéditeur attend-il une réponse du destinataire ?",
+        "Oui : une question, une demande d'avis, un choix de créneau, une invitation. Non : un "
+        "message qui se suffit à lui-même, ou « pas besoin de répondre ».",
+    ),
+)
+
+
+def assigned(rows: list[dict], annotator: str) -> list[dict]:
+    """Les mails d'un annotateur : ceux en commun (1 sur 4, tirés par empreinte de
+    l'identifiant, donc stables) et une moitié des autres, en alternance."""
+    if annotator not in ANNOTATORS:
+        raise ValueError(f"annotateur inconnu : {annotator} (attendu : {', '.join(ANNOTATORS)})")
+
+    def shared(row: dict) -> bool:
+        digest = hashlib.blake2b(row["item_id"].encode(), digest_size=8).digest()
+        return int.from_bytes(digest, "big") % SHARED_SHARE == 0
+
+    rest = sorted((r for r in rows if not shared(r)), key=lambda r: r["item_id"])
+    mine = rest[ANNOTATORS.index(annotator) :: len(ANNOTATORS)]
+    return [r for r in rows if shared(r)] + mine
 
 
 def queue(sample: list[dict], feature: str, seed: int = 0) -> list[tuple[str, bool]]:
@@ -135,11 +172,19 @@ class Annotator:
         sample: list[dict],
         store: LabelStore,
         subsets: dict[str, set[str]] | None = None,
+        features: tuple[Feature, ...] = FEATURES,
+        series: str | None = None,
     ) -> None:
-        """`subsets` : pour une question de revue, les seuls item_id à poser."""
+        """`subsets` : pour une question de revue, les seuls item_id à poser. `series` : une
+        série à part (mails générés) posée telle quelle sur les questions `features`."""
         self.sample = {row["item_id"]: row for row in sample}
         self.store = store
+        self.features = features
+        self._by_key = {f.key: f for f in features}
         subsets = subsets or {}
+        if series:
+            self.queues = {f.key: queue(sample, f"{f.key}:{series}") for f in features}
+            return
         # 1re série, puis 2e série (« round » 2 : action et réponse seulement) : ajouter
         # une série ne change ni l'ordre ni les répétitions de la précédente.
         first = [row for row in sample if row.get("round", 1) == 1]
@@ -160,7 +205,7 @@ class Annotator:
 
     def state(self) -> list[dict]:
         out = []
-        for f in FEATURES:
+        for f in self.features:
             done, total = self._progress(f.key)
             out.append(
                 {"key": f.key, "question": f.question, "guide": f.guide}
@@ -183,7 +228,7 @@ class Annotator:
             payload.get("item_id"),
             payload.get("value"),
         )
-        if feature not in _BY_KEY or item_id not in self.sample or value not in VALUES:
+        if feature not in self._by_key or item_id not in self.sample or value not in VALUES:
             raise ValueError("réponse invalide")
         self.store.record(item_id, feature, value, bool(payload.get("repeat")))
 
@@ -270,7 +315,7 @@ def make_handler(
                 self._json(annotator.state())
             elif url.path == "/api/next":
                 feature = parse_qs(url.query).get("feature", [""])[0]
-                if feature not in _BY_KEY:
+                if feature not in annotator.queues:
                     self._json({"error": "question inconnue"}, HTTPStatus.BAD_REQUEST)
                 else:
                     self._json({"task": annotator.next_task(feature)})
@@ -305,7 +350,14 @@ def serve(
     pair_labels: Path = PAIR_LABELS_PATH,
     demo_pairs_path: Path = DEMO_PAIRS_PATH,
     r2_path: Path = INTENT_R2_PATH,
+    annotator: str | None = None,
+    synth_path: Path = SYNTH_PATH,
 ):
+    if annotator:  # mails générés, fichier d'étiquettes propre à l'annotateur
+        rows = assigned(load_sample(synth_path), annotator)
+        store = LabelStore(labels.with_name(f"intent_labels_{annotator}.jsonl"))
+        handler = make_handler(Annotator(rows, store, features=SYNTH_FEATURES, series="synth"))
+        return ThreadingHTTPServer(("127.0.0.1", port), handler)
     subsets = {
         f.key: set(json.loads((ANNOTATIONS / f.review).read_text(encoding="utf-8")))
         for f in FEATURES
@@ -321,9 +373,20 @@ def serve(
 
 
 def main(argv: list[str]) -> int:
-    port = int(argv[0]) if argv else 8765
-    server = serve(port)
-    print(f"Annotation : http://127.0.0.1:{port}  paires : /paires  (Ctrl+C pour arrêter)")
+    args = list(argv)
+    who = None
+    if "--annotateur" in args:
+        i = args.index("--annotateur")
+        who = args[i + 1].lower() if i + 1 < len(args) else ""
+        del args[i : i + 2]
+    port = int(args[0]) if args else 8765
+    server = serve(port, annotator=who)
+    if who:
+        print(
+            f"Annotation des mails générés ({who}) : http://127.0.0.1:{port}  (Ctrl+C pour arrêter)"
+        )
+    else:
+        print(f"Annotation : http://127.0.0.1:{port}  paires : /paires  (Ctrl+C pour arrêter)")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

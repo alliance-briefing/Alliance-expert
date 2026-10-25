@@ -226,6 +226,29 @@ uv run --group embeddings python -m packages.analyse.scoring.ml.pairs <data>   #
 uv run python -m packages.analyse.scoring.ml.learned_score                      # mesure + poids
 ```
 
+### Robustesse des intentions et données générées (en cours)
+- **Banc CheckList** (`scoring/ml/checklist.py`, `annotations/intent_checklist.json`) : 61
+  vérifications sur des mails fictifs indépendants (cas de base, invariance, direction).
+  « réponse » réussit tout ; « action » échoue sur des demandes explicites ou implicites : le
+  modèle lit le sujet du mail plutôt que l'acte. Deux essais (indices d'actes de langage, 2e série
+  d'étiquettes) ont gagné sur David et reculé sur le banc ou le transfert : écartés, la règle étant
+  de ne retenir un modèle que s'il ne recule sur aucun des trois garde-fous (banc, paires
+  réservées de David, transfert vers la démo).
+- **2e série d'étiquettes** (`scoring/ml/sample_round2.py`) : 120 mails, démo hors paires de démo
+  et mails de David où le modèle hésite ; gardée pour la suite.
+- **Générateur du lot 2** (`scoring/ml/synth/`, spécification `SPEC.md`) : mails isolés de cinq
+  secteurs (conseil, BTP, clinique, e-commerce, collectivité ; pas l'expertise automobile, gardée
+  pour le test), actes de langage × formulations × forme, étiquettes par construction jamais
+  montrées aux annotateurs.
+
+```bash
+uv run python -m packages.analyse.scoring.ml.synth.generator        # 300 mails générés
+uv run python -m packages.analyse.scoring.ml.annotate --annotateur theo   # ou paul
+```
+
+Annotation à deux : un fichier par personne (`intent_labels_theo.jsonl`, `intent_labels_paul.jsonl`),
+un mail sur quatre en commun pour l'accord entre annotateurs, le reste partagé.
+
 ## Commandes
 
 ```bash
@@ -246,6 +269,7 @@ rag/index.py         index RAG par utilisateur (L2.6, R1)
 rag/retrieve.py      historique des affaires du jour (L2.6, R2)
 scoring/score.py     score de priorité par règles (L2.2)
 scoring/ml/          score appris : données Graph, bruit, intentions, échéances (pipeline A)
+scoring/ml/synth/    générateur de mails du lot 2 (SPEC.md)
 scoring/annotations/ échantillon et étiquettes de Théo (versionnés, données synthétiques)
 tests/               fabrique d'Item synthétiques + tests
 ```
