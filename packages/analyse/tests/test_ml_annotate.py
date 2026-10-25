@@ -150,7 +150,14 @@ def test_question_terminee_renvoie_none(tmp_path):
 def server(tmp_path):
     sample_path = tmp_path / "sample.jsonl"
     write_sample(_sample(3), sample_path)
-    httpd = annotate.serve(0, sample_path, tmp_path / "labels.jsonl")
+    httpd = annotate.serve(  # aucun fichier réel : paires absentes
+        0,
+        sample_path,
+        tmp_path / "labels.jsonl",
+        tmp_path / "p.jsonl",
+        tmp_path / "pl.jsonl",
+        tmp_path / "d.jsonl",
+    )
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
     yield f"http://127.0.0.1:{httpd.server_address[1]}"

@@ -274,6 +274,7 @@ def test_serveur_page_et_api_des_paires(tmp_path):
         tmp_path / "l.jsonl",
         tmp_path / "pairs.jsonl",
         tmp_path / "pl.jsonl",
+        tmp_path / "pas-de-demo.jsonl",
     )
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     base = f"http://127.0.0.1:{httpd.server_address[1]}"
