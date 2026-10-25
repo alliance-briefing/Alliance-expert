@@ -7,6 +7,10 @@ générateur fait ce qu'il prétend. Déterministe : même graine, mêmes mails.
 
 `uv run python -m packages.analyse.scoring.ml.synth.generator` écrit
 `scoring/annotations/synth_sample.jsonl` (300 mails, versionné : données fictives).
+
+Version 2 (26/10/2026, après la 1re annotation à deux) : la copie du manager est écrite dans
+les demandes à un tiers, et le registre tu / vous ne se mélange plus. `synth_sample.jsonl`
+reste la version 1, figée : les étiquettes de Théo et Paul y renvoient.
 """
 
 from __future__ import annotations
@@ -51,7 +55,7 @@ TITLES = {
     "question": ("Question rapide", "{Projet}", "Une question", "{O}"),
     "créneau": ("Disponibilités", "Invitation : {reunion}", "{Reunion}"),
     "info": ("Info – {projet}", "Pour info", "{O}", "{Projet}"),
-    "suite": ("{O}", "{Projet}", "Point rapide", "Suite à ton message"),
+    "suite": ("{O}", "{Projet}", "Point rapide", "[Suite à ton message|Suite à votre message]"),
 }
 TITLE_KIND = {
     "demande explicite": "demande",

@@ -79,15 +79,15 @@ BANK: dict[str, tuple[str, ...]] = {
         "Je [te|vous] remonte ce message : ",
     ),
     "demande à un tiers": (
-        "{tiers}, peux-tu {v} {o} {quand} ?",
-        "{tiers}, merci de {v} {o} {quand}.",
+        "[Je te mets en copie|Je vous mets en copie] : {tiers}, peux-tu {v} {o} {quand} ?",
+        "[Je te mets en copie|Je vous mets en copie] : {tiers}, merci de {v} {o} {quand}.",
         "Je demande à {tiers} de {v} {o}.",
         "Je transmets à {tiers}, qui va {v} {o} {quand}.",
         "{tiers} se charge de {v} {o}.",
         "C'est {tiers} qui va {v} {o}, je [te|vous] tiens au courant.",
         "J'ai demandé à {tiers} de {v} {o} {quand}.",
         "{tiers} va {v} {o} dans la journée.",
-        "{tiers}, tu peux t'en occuper ? [Je te mets en copie pour info|Je vous mets en copie pour information].",
+        "{tiers}, tu peux t'en occuper ? [Je te mets en copie pour info|Je vous mets en copie pour information], rien à faire de [ton|votre] côté.",
         "Je laisse {tiers} {v} {o}, [tu n'as rien à faire|vous n'avez rien à faire].",
     ),
     "engagement de l'expéditeur": (
@@ -227,7 +227,7 @@ OPENERS = (
     "Je reviens sur {projet}.",
     "Petit point sur {projet} :",
     "J'espère que tout va bien.",
-    "Pour faire suite à ton message,",
+    "Pour faire suite à [ton|votre] message,",
 )
 CLOSINGS_REQUEST = ("Merci d'avance.", "Merci !", "Bonne journée,", "Cordialement,", "")
 CLOSINGS = ("Bonne journée,", "Cordialement,", "Bien à vous,", "À bientôt,", "Belle journée !", "")
