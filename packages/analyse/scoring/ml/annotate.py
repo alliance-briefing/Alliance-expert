@@ -27,8 +27,12 @@ from urllib.parse import parse_qs, urlparse
 from packages.analyse.scoring.ml.sample import ANNOTATIONS, SAMPLE_PATH, load_sample
 
 LABELS_PATH = ANNOTATIONS / "intent_labels.jsonl"
+PAIRS_PATH = ANNOTATIONS / "pair_sample.jsonl"
+PAIR_LABELS_PATH = ANNOTATIONS / "pair_labels.jsonl"
 PAGE = Path(__file__).with_name("annotate.html")
+PAIRS_PAGE = Path(__file__).with_name("annotate_pairs.html")
 VALUES = ("oui", "non", "?")
+PAIR_VALUES = ("A", "B", "=")  # A d'abord, B d'abord, équivalent
 REPEAT_SHARE = 0.10
 
 
@@ -176,7 +180,48 @@ class Annotator:
         self.store.record(item_id, feature, value, bool(payload.get("repeat")))
 
 
-def make_handler(annotator: Annotator) -> type[BaseHTTPRequestHandler]:
+class PairAnnotator:
+    """Mode « paires » : lequel des deux mails traiter en premier ce matin-là ?
+
+    Une répétition montre la paire côtés inversés (contrôle du biais de position) ; la
+    réponse est ramenée au sens d'origine avant d'être enregistrée.
+    """
+
+    FEATURE = "paire"
+
+    def __init__(self, pairs: list[dict], store: LabelStore) -> None:
+        self.pairs = {pair["item_id"]: pair for pair in pairs}
+        self.store = store
+        self.tasks = queue(pairs, self.FEATURE)
+
+    def state(self) -> dict:
+        done = sum((pid, self.FEATURE, rep) in self.store.answers for pid, rep in self.tasks)
+        return {"done": done, "total": len(self.tasks)}
+
+    def next_task(self) -> dict | None:
+        for pair_id, repeat in self.tasks:
+            if (pair_id, self.FEATURE, repeat) not in self.store.answers:
+                pair = self.pairs[pair_id]
+                a, b = (pair["b"], pair["a"]) if repeat else (pair["a"], pair["b"])
+                shown = ("sender", "sender_kind", "title", "text", "chips")
+                return {"pair_id": pair_id, "repeat": repeat, "day": pair["day"]} | {
+                    "a": {k: a[k] for k in shown},
+                    "b": {k: b[k] for k in shown},
+                }
+        return None
+
+    def answer(self, payload: dict) -> None:
+        pair_id, value, repeat = payload.get("pair_id"), payload.get("value"), payload.get("repeat")
+        if pair_id not in self.pairs or value not in PAIR_VALUES:
+            raise ValueError("réponse invalide")
+        if repeat:  # côtés inversés à l'affichage
+            value = {"A": "B", "B": "A"}.get(value, value)
+        self.store.record(pair_id, self.FEATURE, value, bool(repeat))
+
+
+def make_handler(
+    annotator: Annotator, pairs: PairAnnotator | None = None
+) -> type[BaseHTTPRequestHandler]:
     class Handler(BaseHTTPRequestHandler):
         def _send(self, status: int, body: bytes, kind: str = "application/json") -> None:
             self.send_response(status)
@@ -192,6 +237,12 @@ def make_handler(annotator: Annotator) -> type[BaseHTTPRequestHandler]:
             url = urlparse(self.path)
             if url.path == "/":
                 self._send(HTTPStatus.OK, PAGE.read_bytes(), "text/html")
+            elif url.path == "/paires" and pairs:
+                self._send(HTTPStatus.OK, PAIRS_PAGE.read_bytes(), "text/html")
+            elif url.path == "/api/pairs/state" and pairs:
+                self._json(pairs.state())
+            elif url.path == "/api/pairs/next" and pairs:
+                self._json({"task": pairs.next_task()})
             elif url.path == "/api/state":
                 self._json(annotator.state())
             elif url.path == "/api/next":
@@ -204,12 +255,14 @@ def make_handler(annotator: Annotator) -> type[BaseHTTPRequestHandler]:
                 self._json({"error": "introuvable"}, HTTPStatus.NOT_FOUND)
 
         def do_POST(self) -> None:
-            if urlparse(self.path).path != "/api/answer":
+            path = urlparse(self.path).path
+            target = {"/api/answer": annotator, "/api/pairs/answer": pairs}.get(path)
+            if target is None:
                 self._json({"error": "introuvable"}, HTTPStatus.NOT_FOUND)
                 return
             try:
                 length = int(self.headers.get("Content-Length", "0"))
-                annotator.answer(json.loads(self.rfile.read(length) or b"{}"))
+                target.answer(json.loads(self.rfile.read(length) or b"{}"))
             except (ValueError, json.JSONDecodeError) as exc:
                 self._json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
                 return
@@ -221,20 +274,31 @@ def make_handler(annotator: Annotator) -> type[BaseHTTPRequestHandler]:
     return Handler
 
 
-def serve(port: int = 8765, sample_path: Path = SAMPLE_PATH, labels: Path = LABELS_PATH):
+def serve(
+    port: int = 8765,
+    sample_path: Path = SAMPLE_PATH,
+    labels: Path = LABELS_PATH,
+    pairs_path: Path = PAIRS_PATH,
+    pair_labels: Path = PAIR_LABELS_PATH,
+):
     subsets = {
         f.key: set(json.loads((ANNOTATIONS / f.review).read_text(encoding="utf-8")))
         for f in FEATURES
         if f.review
     }
     annotator = Annotator(load_sample(sample_path), LabelStore(labels), subsets)
-    return ThreadingHTTPServer(("127.0.0.1", port), make_handler(annotator))
+    pairs = (
+        PairAnnotator(load_sample(pairs_path), LabelStore(pair_labels))
+        if pairs_path.exists()
+        else None
+    )
+    return ThreadingHTTPServer(("127.0.0.1", port), make_handler(annotator, pairs))
 
 
 def main(argv: list[str]) -> int:
     port = int(argv[0]) if argv else 8765
     server = serve(port)
-    print(f"Annotation : http://127.0.0.1:{port}  (Ctrl+C pour arrêter)")
+    print(f"Annotation : http://127.0.0.1:{port}  paires : /paires  (Ctrl+C pour arrêter)")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
