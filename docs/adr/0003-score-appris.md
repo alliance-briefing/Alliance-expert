@@ -1,5 +1,5 @@
 # ADR-0003 : score de priorité appris (pipeline A) — caractéristiques lisibles et comparaisons de paires
-Date : 2026-10-25 · Statut : proposé
+Date : 2026-10-25, mise à jour le 2026-10-26 · Statut : proposé
 Décideurs : lot 2 (Théo Szappanyos), à présenter à David
 
 ## Contexte
@@ -71,6 +71,59 @@ Autre métier (réseau d'expertise automobile), autre persona (Camille Laurent, 
 
 Écart +0,30 (IC 95 % +0,18 – +0,41). Paires au hasard : 0,84 contre 0,66 ; paires serrées : 0,94 contre 0,53. Les 4 erreurs : deux devis de garage, que Théo place avant un message d'expert (le modèle d'intentions, appris sur « Veuillez trouver ci-joint notre devis » chez David, n'y voit pas de demande d'action), une note d'information prise pour un incident, deux messages d'experts proches. Le score par règles n'a pas les tâches dans ces paires (comparaison de mails) : sur le brief réel, ses signaux de tâches restent utiles.
 
+## Mise à jour du 26/10 : robustesse, données générées, annotation à deux, banc à l'aveugle
+**Diagnostic.** Un banc de tests de comportement (CheckList, 61 vérifications sur des mails fictifs
+indépendants, `scoring/ml/checklist.py`) montre que « réponse » est solide mais que « action » lit
+le sujet du mail plutôt que l'acte : « je reviens vers vous » passait pour une demande,
+« Merci de signer le bon de commande » non. Cause : 70 demandes d'action étiquetées, dans deux
+styles seulement.
+
+**Essais écartés, mesurés.**
+- Indices d'actes de langage : +0,21 de F1 sur David, mais recul sur le banc et sur le
+  transfert (le modèle avait appris que chez David les demandes sont des questions).
+- SetFit (MiniLM réajusté par apprentissage contrastif) : 24 min d'entraînement sur processeur,
+  F1 « action » 0,48 contre 0,69 sur la démo, rien de mieux sur le banc.
+
+**Données générées** (`scoring/ml/synth/`, spécification `SPEC.md`) : mails isolés de cinq secteurs
+(conseil, BTP, clinique, e-commerce, collectivité ; pas l'expertise automobile, gardée pour le
+test), actes de langage × formulations × forme, étiquettes par construction. Puis des journées
+de cinq managers sur trois semaines (affaires avec relance, réponse de la manager, clôture ;
+automates, lettres d'information, invitations avec événement).
+
+**Annotation à deux** (Théo et Paul, un fichier chacun, un quart en commun, désaccords arbitrés) :
+
+| Tâche | Accord brut | Kappa de Cohen |
+|---|---|---|
+| Intention « action » (74 mails communs) | 95 % | 0,89 |
+| Intention « réponse » | 91 % | 0,79 |
+| Priorité des paires (47 communes) | 79 % (86 % hors « équivalent ») | 0,60 (0,72) |
+
+Accord de chacun avec les étiquettes de construction : 90 à 95 %. Convention fixée à l'arbitrage :
+une demande posée en question attend une réponse.
+
+**Biais découvert : les pastilles.** Les paires de David et de la démo ont été jugées en voyant
+les intentions calculées par un modèle (Théo suit la pastille « réponse » 95 % du temps). Elles
+avantagent ce modèle et ne départagent pas deux modèles d'intentions. Nouveau juge : **80 paires
+réservées des journées générées, jugées à l'aveugle** (fonction de l'expéditeur, ancienneté, fil,
+réponse déjà envoyée ; aucune intention calculée), par deux annotateurs.
+
+**Choix du modèle d'intentions** (règle fixée avant la mesure : le candidat est retenu s'il fait
+au moins aussi bien que le modèle actuel sur les 80 réservées) :
+
+| Intentions (régression logistique sur MiniLM) | 80 réservées à l'aveugle | David réservées | Démo |
+|---|---|---|---|
+| Entraînées sur David (181 mails) | 0,72 | 0,73 | 0,89 |
+| **Entraînées sur 601 mails (David, démo hors paires, mails générés)** | **0,78** | **0,77** | 0,84 |
+| Score par règles | 0,58 | 0,61 | 0,59 |
+
+Le candidat est retenu (écart probable mais non démontré : environ 4 paires sur 74). Sur 70 mails
+de démo étiquetés à la main, les mails générés font passer « action » de 0,62 à 0,69 de F1.
+
+**Modèle final** (score appris sur 108 paires de David et 80 paires générées) : **0,80**
+(IC 95 % 0,70 – 0,89) sur les 80 réservées à l'aveugle, contre 0,58 pour le score par règles,
+qui ne départage pas 56 paires sur 74 ; 0,77 sur les réservées de David ; 0,78 sur la démo.
+Plafond réaliste : l'accord entre les deux annotateurs, 86 % hors « équivalent ».
+
 ## Conséquences
 - **Lot 2** : le score appris n'est pas encore branché dans le brief. Il reste à fixer le passage du score des mails au score de l'affaire (maximum des mails, bonus de taille du fil…) et à prévenir Marie-Yoram, qui branche le score.
 - **Pipeline A** : l'étage « ajustement LLM ±15 » reste possible par-dessus, mais rien n'en dépend.
@@ -79,6 +132,11 @@ Autre métier (réseau d'expertise automobile), autre persona (Camille Laurent, 
 - **Retour arrière** : rien n'est branché ; le score par règles reste la référence.
 
 ## Limites
+- **Poids instables pour les caractéristiques rares** (réunion dans les 48 h, échéance dans
+  2 ou 3 jours, fil long) : leur signe change d'un entraînement à l'autre. « Pas encore répondu »
+  reste négatif (−0,9) : à vérifier sur des données réelles avant de l'utiliser comme raison.
+- **Penchant pour la gauche** chez un annotateur à l'aveugle (A choisi 64 fois sur 98) : neutralisé
+  en moyenne par le tirage au hasard des côtés, mais source de bruit.
 - **Données synthétiques à modèles de phrases** : un bon résultat ici ne prouve pas qu'on réussira sur de vrais mails. Le transfert vers la démo du lot 1 (autre métier, autre persona : 0,89) est encourageant, mais les deux jeux restent générés. Il faut refaire la mesure dès que le lot 1 fournit des données réelles.
 - **Un seul annotateur** et 22 paires de mesure : intervalles de confiance larges. L'écart avec les règles est probable, son ampleur incertaine.
 - **Hiérarchie** : sur les 120 premières paires, son poids était presque nul (+0,1) à intention égale ; la série ciblée l'a porté à +0,6, plus +0,3 pour l'interaction. Les mails du N+1 suivent ici les mêmes modèles de phrases que ceux des collègues : à revérifier sur des données réelles.

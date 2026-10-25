@@ -124,3 +124,27 @@ def test_transfert_juge_le_modele_sur_d_autres_paires_sans_les_apprendre():
     repeats = {"p0": labels["p0"], "d0": "="}
     assert evaluate(pairs, labels | other_labels, repeats) == evaluate(pairs, labels, repeats)
     assert train(pairs, labels | other_labels) == model
+
+
+def test_paires_a_deux_et_mesure_par_groupe(tmp_path):
+    from packages.analyse.scoring.ml.learned_score import benchmarks, merged_pair_labels
+
+    def write(name, rows):
+        (tmp_path / f"pair_labels_{name}.jsonl").write_text(
+            "".join(
+                json.dumps({"item_id": i, "feature": "paire", "value": v, "repeat": False}) + "\n"
+                for i, v in rows
+            ),
+            encoding="utf-8",
+        )
+
+    write("theo", [("s1", "A"), ("s2", "A"), ("s3", "B")])
+    write("paul", [("s1", "A"), ("s2", "B"), ("s4", "=")])
+    write("arbitrage", [("s2", "=")])
+    assert merged_pair_labels(tmp_path) == {"s1": "A", "s2": "=", "s3": "B", "s4": "="}
+
+    pairs, labels = _pairs()
+    groups = {"réservées": [i for i, p in pairs.items() if p["heldout"]]}
+    report = benchmarks(pairs, labels, groups)["réservées"]
+    assert report["paires jugées (non équivalentes)"] == 12
+    assert report["accord appris"] == 1.0 and report["accord règles"] == 0.5

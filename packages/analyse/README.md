@@ -220,6 +220,11 @@ sur 22 ; cohérence de Théo 0,92.
 Transfert vers la démo du lot 1 (autre métier, persona Camille Laurent, 40 paires jamais apprises) :
 0,89 (IC 95 % 0,78-0,97) contre 0,59 pour les règles. Embeddings : MiniLM par défaut (même score
 final qu'e5-large, 10 fois plus léger) ; `intents --e5` pour e5.
+**Depuis le 26/10** (ADR-0003, mise à jour) : intentions entraînées sur 601 mails (David, démo hors
+paires, mails générés annotés à deux) ; score appris sur 108 paires de David et 80 paires de
+journées générées. Mesure principale : **0,80** (IC 95 % 0,70-0,89) sur les 80 paires réservées
+des journées générées, jugées à l'aveugle par deux annotateurs, contre 0,58 pour le score par
+règles ; plafond réaliste : l'accord entre annotateurs, 86 % hors « équivalent ».
 
 ```bash
 uv run --group embeddings python -m packages.analyse.scoring.ml.pairs <data>   # paires
