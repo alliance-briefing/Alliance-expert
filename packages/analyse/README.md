@@ -210,6 +210,19 @@ appris bat les règles. Réserve : données synthétiques, mots-clés écrits en
   garde le float16 du fichier, 11 fois plus lent sur CPU : charger en `dtype=torch.float32`.
 - Le test sur le jeu complet de David tourne si `ALLIANCE_GRAPH_DIR` pointe vers son `data/`.
 
+**Score appris** (`scoring/ml/learned_score.py`, décision et limites : `docs/adr/0003-score-appris.md`).
+Fiche de chaque mail à 8 h 30 (`scoring/ml/features.py` : expéditeur, intentions, échéance, fil
+sur 30 jours, fraîcheur, demande d'action du N+1), poids appris par Bradley-Terry sur 132
+comparaisons de paires de Théo (`scoring/ml/pairs.py`, page `/paires` de l'annotation).
+Score 0-100 (50 = mail médian) et jusqu'à 3 raisons. Sur 24 paires réservées : accord avec Théo
+0,86 (IC 95 % 0,73-1,00) contre 0,61 pour le score par règles, qui ne départage pas 15 paires
+sur 22 ; cohérence de Théo 0,92.
+
+```bash
+uv run --group embeddings python -m packages.analyse.scoring.ml.pairs <data>   # paires
+uv run python -m packages.analyse.scoring.ml.learned_score                      # mesure + poids
+```
+
 ## Commandes
 
 ```bash

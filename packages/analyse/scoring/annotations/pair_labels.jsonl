@@ -130,3 +130,16 @@
 {"item_id": "p077", "feature": "paire", "value": "A", "repeat": false, "at": "2026-10-25T03:32:26+00:00"}
 {"item_id": "p094", "feature": "paire", "value": "A", "repeat": false, "at": "2026-10-25T03:32:29+00:00"}
 {"item_id": "p074", "feature": "paire", "value": "B", "repeat": true, "at": "2026-10-25T03:32:35+00:00"}
+{"item_id": "p121", "feature": "paire", "value": "B", "repeat": false, "at": "2026-10-25T03:42:21+00:00"}
+{"item_id": "p126", "feature": "paire", "value": "B", "repeat": false, "at": "2026-10-25T03:42:28+00:00"}
+{"item_id": "p124", "feature": "paire", "value": "A", "repeat": false, "at": "2026-10-25T03:42:40+00:00"}
+{"item_id": "p123", "feature": "paire", "value": "B", "repeat": false, "at": "2026-10-25T03:42:44+00:00"}
+{"item_id": "p128", "feature": "paire", "value": "B", "repeat": false, "at": "2026-10-25T03:42:49+00:00"}
+{"item_id": "p130", "feature": "paire", "value": "A", "repeat": false, "at": "2026-10-25T03:42:59+00:00"}
+{"item_id": "p124", "feature": "paire", "value": "A", "repeat": true, "at": "2026-10-25T03:43:04+00:00"}
+{"item_id": "p127", "feature": "paire", "value": "A", "repeat": false, "at": "2026-10-25T03:43:29+00:00"}
+{"item_id": "p125", "feature": "paire", "value": "A", "repeat": false, "at": "2026-10-25T03:43:37+00:00"}
+{"item_id": "p120", "feature": "paire", "value": "B", "repeat": false, "at": "2026-10-25T03:43:43+00:00"}
+{"item_id": "p122", "feature": "paire", "value": "A", "repeat": false, "at": "2026-10-25T03:43:57+00:00"}
+{"item_id": "p129", "feature": "paire", "value": "A", "repeat": false, "at": "2026-10-25T03:44:03+00:00"}
+{"item_id": "p131", "feature": "paire", "value": "A", "repeat": false, "at": "2026-10-25T03:44:08+00:00"}
