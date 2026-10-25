@@ -116,6 +116,7 @@ DEMO_CAMILLE = Persona(
             "assuralpes.test",
             "assurance-quebec.test",
             "particulier.test",
+            "solveo.test",  # Solvéo Assurances (ajouté le 26/10 : assureur oublié)
         }
     ),
 )

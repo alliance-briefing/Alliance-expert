@@ -27,6 +27,8 @@ from urllib.parse import parse_qs, urlparse
 from packages.analyse.scoring.ml.sample import ANNOTATIONS, SAMPLE_PATH, load_sample
 
 LABELS_PATH = ANNOTATIONS / "intent_labels.jsonl"
+INTENT_R2_PATH = ANNOTATIONS / "intent_sample_r2.jsonl"  # 2e série (action, réponse)
+ROUND2_FEATURES = ("action", "reponse")
 PAIRS_PATH = ANNOTATIONS / "pair_sample.jsonl"
 DEMO_PAIRS_PATH = ANNOTATIONS / "pair_sample_demo.jsonl"  # test de transfert (démo du lot 1)
 PAIR_LABELS_PATH = ANNOTATIONS / "pair_labels.jsonl"
@@ -138,11 +140,16 @@ class Annotator:
         self.sample = {row["item_id"]: row for row in sample}
         self.store = store
         subsets = subsets or {}
+        # 1re série, puis 2e série (« round » 2 : action et réponse seulement) : ajouter
+        # une série ne change ni l'ordre ni les répétitions de la précédente.
+        first = [row for row in sample if row.get("round", 1) == 1]
+        second = [row for row in sample if row.get("round", 1) == 2]
         self.queues = {
             f.key: queue(
-                [row for row in sample if f.key not in subsets or row["item_id"] in subsets[f.key]],
+                [row for row in first if f.key not in subsets or row["item_id"] in subsets[f.key]],
                 f.key,
             )
+            + (queue(second, f"{f.key}:2") if second and f.key in ROUND2_FEATURES else [])
             for f in FEATURES
         }
 
@@ -297,13 +304,15 @@ def serve(
     pairs_path: Path = PAIRS_PATH,
     pair_labels: Path = PAIR_LABELS_PATH,
     demo_pairs_path: Path = DEMO_PAIRS_PATH,
+    r2_path: Path = INTENT_R2_PATH,
 ):
     subsets = {
         f.key: set(json.loads((ANNOTATIONS / f.review).read_text(encoding="utf-8")))
         for f in FEATURES
         if f.review
     }
-    annotator = Annotator(load_sample(sample_path), LabelStore(labels), subsets)
+    rows = load_sample(sample_path) + (load_sample(r2_path) if r2_path.exists() else [])
+    annotator = Annotator(rows, LabelStore(labels), subsets)
     all_pairs = [
         p for path in (pairs_path, demo_pairs_path) if path.exists() for p in load_sample(path)
     ]

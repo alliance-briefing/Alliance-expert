@@ -346,9 +346,10 @@ def main(argv: list[str]) -> int:
     name = E5_MODEL if "--e5" in argv else DEFAULT_MODEL
     embedder = embedder_for(name)
     cache = VectorCache(cache_path(embedder))
-    model, report = train(
-        load_sample(), lambda texts: cache.embed(embedder, texts), embedder_name=name
-    )
+    from packages.analyse.scoring.ml.annotate import INTENT_R2_PATH
+
+    sample = load_sample() + (load_sample(INTENT_R2_PATH) if INTENT_R2_PATH.exists() else [])
+    model, report = train(sample, lambda texts: cache.embed(embedder, texts), embedder_name=name)
     model.save()
     print("\n".join(report))
     print(f"(apprises : validation croisée imbriquée 5 plis x 5 ; modèle → {MODEL_PATH.name})")
