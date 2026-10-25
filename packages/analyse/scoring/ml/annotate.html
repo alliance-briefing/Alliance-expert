@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Annotation des mails</title>
+<style>
+  :root {
+    --bg: #f6f5f1; --card: #ffffff; --fg: #1c1c1a; --muted: #6d6c66; --line: #e3e1da;
+    --accent: #2f5bd3; --yes: #1f8a4c; --no: #b8432f; --unsure: #8a7a1f; --chip: #eceae3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #151514; --card: #1e1e1c; --fg: #ecebe5; --muted: #9b9a93; --line: #34332f;
+      --accent: #7d9cf0; --yes: #4cc27f; --no: #ec7a63; --unsure: #d6c25a; --chip: #2a2a27; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 20px 16px 40px; }
+  nav { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  nav button { flex: 1 1 180px; text-align: left; border: 1px solid var(--line);
+    background: var(--card); color: var(--fg); border-radius: 10px; padding: 8px 12px;
+    cursor: pointer; font: inherit; }
+  nav button[aria-current="true"] { border-color: var(--accent);
+    box-shadow: inset 0 0 0 1px var(--accent); }
+  nav .name { font-weight: 600; font-size: 13px; }
+  nav .count { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .bar { height: 4px; background: var(--line); border-radius: 2px; margin-top: 6px;
+    overflow: hidden; }
+  .bar span { display: block; height: 100%; background: var(--accent); width: 0; }
+  h1 { font-size: 22px; line-height: 1.3; margin: 8px 0 4px; }
+  .guide { color: var(--muted); margin: 0 0 16px; font-size: 14px; }
+  article { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 18px 20px; min-height: 220px; }
+  .meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px;
+    font-size: 13px; color: var(--muted); }
+  .chip { background: var(--chip); color: var(--fg); border-radius: 999px; padding: 1px 10px;
+    font-size: 12px; }
+  .title { font-weight: 650; font-size: 17px; margin-bottom: 10px; }
+  .text { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+  .keys button { border: 1px solid var(--line); background: var(--card); color: var(--fg);
+    border-radius: 10px; padding: 12px 8px; font: inherit; font-weight: 600; cursor: pointer; }
+  .keys kbd { display: block; font: 12px ui-monospace, monospace; color: var(--muted);
+    font-weight: 400; margin-top: 2px; }
+  .keys .yes { border-color: var(--yes); color: var(--yes); }
+  .keys .no { border-color: var(--no); color: var(--no); }
+  .keys .unsure { border-color: var(--unsure); color: var(--unsure); }
+  .keys button.flash { background: var(--chip); }
+  .help { color: var(--muted); font-size: 13px; margin-top: 12px; }
+  .done { text-align: center; padding: 60px 0; color: var(--muted); }
+  .error { color: var(--no); }
+</style>
+</head>
+<body>
+<main>
+  <nav id="tabs" aria-label="Questions"></nav>
+  <h1 id="question">Chargement…</h1>
+  <p class="guide" id="guide"></p>
+  <article id="card" aria-live="polite"></article>
+  <div class="keys">
+    <button class="no" data-value="non">Non<kbd>← ou N</kbd></button>
+    <button class="unsure" data-value="?">Je ne sais pas<kbd>↓ ou ?</kbd></button>
+    <button class="yes" data-value="oui">Oui<kbd>→ ou O</kbd></button>
+  </div>
+  <p class="help">Retour arrière : revenir au mail précédent pour corriger ·
+    chaque réponse est enregistrée aussitôt, vous pouvez fermer la page à tout moment.</p>
+</main>
+<script>
+"use strict";
+let state = [], feature = null, task = null, history = [], busy = false;
+const $ = (id) => document.getElementById(id);
+
+async function api(path, body) {
+  const res = await fetch(path, body ? {
+    method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)
+  } : {});
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+function renderTabs() {
+  const nav = $("tabs");
+  nav.replaceChildren();
+  for (const f of state) {
+    const b = document.createElement("button");
+    b.setAttribute("aria-current", String(f.key === feature));
+    const name = document.createElement("div"); name.className = "name";
+    name.textContent = f.question.replace(/ \?$/, "");
+    const count = document.createElement("div"); count.className = "count";
+    count.textContent = `${f.done} / ${f.total}`;
+    const bar = document.createElement("div"); bar.className = "bar";
+    const fill = document.createElement("span");
+    fill.style.width = `${(100 * f.done / f.total).toFixed(1)}%`;
+    bar.append(fill); b.append(name, count, bar);
+    b.addEventListener("click", () => select(f.key));
+    nav.append(b);
+  }
+}
+
+function renderTask() {
+  const f = state.find((s) => s.key === feature);
+  $("question").textContent = f.question;
+  $("guide").textContent = f.guide;
+  const card = $("card");
+  card.replaceChildren();
+  card.className = "";
+  if (!task) {
+    const p = document.createElement("p"); p.className = "done";
+    p.textContent = "Terminé pour cette question. Choisissez-en une autre en haut.";
+    card.append(p);
+    return;
+  }
+  // Le contenu d'un mail est une donnée : toujours textContent, jamais innerHTML.
+  const meta = document.createElement("div"); meta.className = "meta";
+  const kind = document.createElement("span"); kind.className = "chip";
+  kind.textContent = task.sender_kind;
+  const who = document.createElement("span"); who.textContent = task.sender;
+  meta.append(kind, who);
+  const title = document.createElement("div"); title.className = "title";
+  title.textContent = task.title || "(sans objet)";
+  const text = document.createElement("div"); text.className = "text";
+  text.textContent = task.text;
+  card.append(meta, title, text);
+}
+
+async function refresh() {
+  state = await api("/api/state");
+  task = (await api(`/api/next?feature=${feature}`)).task;
+  renderTabs(); renderTask();
+}
+
+async function select(key) {
+  feature = key; history = [];
+  try { localStorage.setItem("annotate.feature", key); } catch (e) { /* stockage indisponible */ }
+  await refresh();
+}
+
+async function answer(value) {
+  if (!task || busy) return;
+  busy = true;
+  const btn = document.querySelector(`.keys [data-value="${CSS.escape(value)}"]`);
+  btn.classList.add("flash"); setTimeout(() => btn.classList.remove("flash"), 150);
+  try {
+    await api("/api/answer", {feature, item_id: task.item_id, value, repeat: task.repeat});
+    history.push(task);
+    await refresh();
+  } catch (e) {
+    $("card").textContent = `Erreur : ${e.message}`; $("card").className = "error";
+  } finally { busy = false; }
+}
+
+function back() {
+  if (!history.length) return;
+  task = history.pop();
+  renderTask();
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (k === "arrowright" || k === "o") answer("oui");
+  else if (k === "arrowleft" || k === "n") answer("non");
+  else if (k === "arrowdown" || k === "?") answer("?");
+  else if (k === "backspace") back();
+  else return;
+  e.preventDefault();
+});
+for (const b of document.querySelectorAll(".keys button")) {
+  b.addEventListener("click", () => answer(b.dataset.value));
+}
+
+(async () => {
+  state = await api("/api/state");
+  let saved = null;
+  try { saved = localStorage.getItem("annotate.feature"); } catch (e) { /* idem */ }
+  await select(state.some((f) => f.key === saved) ? saved : state[0].key);
+})();
+</script>
+</body>
+</html>
