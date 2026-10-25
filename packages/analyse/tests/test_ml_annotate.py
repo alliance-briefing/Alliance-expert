@@ -127,7 +127,7 @@ def test_reponses_ajoutees_la_derniere_compte_et_relues(tmp_path):
     relu = Annotator(_sample(5), LabelStore(path))
     assert relu.store.answers[(first["item_id"], "action", False)] == "oui"
     assert relu.next_task("action")["item_id"] != first["item_id"]
-    assert [s["done"] for s in relu.state()] == [1, 0, 0, 0]
+    assert [s["done"] for s in relu.state()] == [1, 0, 0, 0, 0]
     for bad in (
         {"feature": "x", "item_id": "m0", "value": "oui"},
         {"feature": "action", "item_id": "inconnu", "value": "oui"},
@@ -140,10 +140,10 @@ def test_reponses_ajoutees_la_derniere_compte_et_relues(tmp_path):
 def test_question_terminee_renvoie_none(tmp_path):
     annotator = Annotator(_sample(1), LabelStore(tmp_path / "l.jsonl"))
     for _ in range(2):
-        task = annotator.next_task("probleme")
+        task = annotator.next_task("echeance")
         if task:
             annotator.answer(task | {"value": "?"})
-    assert annotator.next_task("probleme") is None
+    assert annotator.next_task("echeance") is None
 
 
 @pytest.fixture
@@ -178,7 +178,7 @@ def test_serveur_page_etat_tache_reponse(server):
         and b"textContent" in page
         and b"innerHTML" not in page.replace(b"jamais innerHTML", b"")
     )
-    assert len(json.loads(_get(server + "/api/state")[1])) == 4
+    assert len(json.loads(_get(server + "/api/state")[1])) == 5
     task = json.loads(_get(server + "/api/next?feature=action")[1])["task"]
     assert _post(server + "/api/answer", task | {"value": "oui"}) == (200, {"ok": True})
     for url, code in ((server + "/api/next?feature=x", 400), (server + "/nope", 404)):
@@ -189,3 +189,10 @@ def test_serveur_page_etat_tache_reponse(server):
         with pytest.raises(urllib.error.HTTPError) as err:
             _post(server + path, body)
         assert err.value.code == code
+
+
+def test_question_de_revue_ne_pose_que_les_mails_listes(tmp_path):
+    annotator = Annotator(_sample(10), LabelStore(tmp_path / "l.jsonl"), {"incident": {"m3"}})
+    assert [mid for mid, _ in annotator.queues["incident"]] == ["m3"]
+    assert len(annotator.queues["action"]) == 11  # 10 mails + 1 répétition
+    assert annotate.FEATURES[2].review == "review_probleme.json"

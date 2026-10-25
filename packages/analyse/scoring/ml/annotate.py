@@ -6,6 +6,10 @@ Chaque réponse est ajoutée en fin de `scoring/annotations/intent_labels.jsonl`
 jamais réécrit : fermer la page ne perd rien, la dernière réponse à une question compte).
 Environ 10 % des mails reviennent une seconde fois, sans l'annoncer, pour mesurer la
 cohérence de l'annotateur. Le serveur n'écoute que la machine locale.
+
+Une question de revue (`Feature.review`) ne porte que sur les mails listés dans son fichier :
+« problème » a été scindé en « incident » et « alerte » le 25/10/2026 ; seuls les mails
+marqués problème ou contestés par le modèle sont revus, les autres héritent de « non ».
 """
 
 from __future__ import annotations
@@ -33,6 +37,7 @@ class Feature:
     key: str
     question: str
     guide: str  # le critère précis, affiché sous la question, pour rester cohérent
+    review: str | None = None  # fichier (JSON {item_id: raison}) des seuls mails à revoir
 
 
 FEATURES = (
@@ -49,10 +54,19 @@ FEATURES = (
         "Non : un message qui se suffit à lui-même. Invitation à une réunion : oui.",
     ),
     Feature(
-        "probleme",
-        "Le mail signale-t-il un problème ?",
-        "Oui : incident, retard, erreur, refus, insatisfaction, alerte de sécurité. "
-        "Non : un fonctionnement normal, même s'il demande une action, une invitation.",
+        "incident",
+        "Le mail signale-t-il un incident ou un blocage ?",
+        "Oui : panne, incident, point bloquant, retard, erreur, refus, insatisfaction. "
+        "Non : une alerte automatique (question suivante), un fonctionnement normal, "
+        "une invitation.",
+        review="review_probleme.json",
+    ),
+    Feature(
+        "alerte",
+        "Le mail est-il une alerte de sécurité ou financière ?",
+        "Oui : connexion ou appareil inhabituel, mouvement bancaire inhabituel, fraude, "
+        "compte compromis. Non : relevé, virement reçu, rappel de routine, incident de projet.",
+        review="review_probleme.json",
     ),
     Feature(
         "echeance",
@@ -109,10 +123,23 @@ class LabelStore:
 class Annotator:
     """Ce que la page demande : l'état des questions, la tâche suivante, une réponse."""
 
-    def __init__(self, sample: list[dict], store: LabelStore) -> None:
+    def __init__(
+        self,
+        sample: list[dict],
+        store: LabelStore,
+        subsets: dict[str, set[str]] | None = None,
+    ) -> None:
+        """`subsets` : pour une question de revue, les seuls item_id à poser."""
         self.sample = {row["item_id"]: row for row in sample}
         self.store = store
-        self.queues = {f.key: queue(sample, f.key) for f in FEATURES}
+        subsets = subsets or {}
+        self.queues = {
+            f.key: queue(
+                [row for row in sample if f.key not in subsets or row["item_id"] in subsets[f.key]],
+                f.key,
+            )
+            for f in FEATURES
+        }
 
     def _progress(self, feature: str) -> tuple[int, int]:
         tasks = self.queues[feature]
@@ -195,7 +222,12 @@ def make_handler(annotator: Annotator) -> type[BaseHTTPRequestHandler]:
 
 
 def serve(port: int = 8765, sample_path: Path = SAMPLE_PATH, labels: Path = LABELS_PATH):
-    annotator = Annotator(load_sample(sample_path), LabelStore(labels))
+    subsets = {
+        f.key: set(json.loads((ANNOTATIONS / f.review).read_text(encoding="utf-8")))
+        for f in FEATURES
+        if f.review
+    }
+    annotator = Annotator(load_sample(sample_path), LabelStore(labels), subsets)
     return ThreadingHTTPServer(("127.0.0.1", port), make_handler(annotator))
 
 
