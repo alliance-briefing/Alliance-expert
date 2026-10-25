@@ -145,6 +145,8 @@ VECTOR_NAMES = (
     "hiérarchie dans le fil",
     "reçu depuis moins de 24 h",
     "réunion dans les 48 h",
+    # Critère de David : la hiérarchie pèse sur l'importance d'une action, pas seule
+    "demande d'action du N+1",
 )
 
 
@@ -161,5 +163,6 @@ def vectorize(f: MailFeatures) -> np.ndarray:
         float(f.hierarchy_in_thread),
         float(f.fresh),
         float(f.meeting_soon),
+        float(f.sender_kind == "hiérarchie") * f.action,
     ]
     return np.array(values, dtype=float)

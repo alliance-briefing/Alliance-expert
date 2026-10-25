@@ -102,18 +102,7 @@ def build_pairs(
     n_heldout: int = N_HELDOUT,
 ) -> list[dict]:
     rng = random.Random(seed)
-    config = ScoringConfig(user_emails=frozenset({persona.address}), hierarchy=persona.hierarchy)
-    first = min(i.created_at for i in dataset.items).date() + timedelta(days=3)
-    last = max(i.created_at for i in dataset.items).date()
-    mornings: dict[date, list[tuple[Item, MailFeatures, int]]] = {}
-    for n in range((last - first).days + 1):
-        day = first + timedelta(days=n)
-        now = brief_instant(day)
-        items = candidates(dataset, day)
-        if len(items) >= 4:
-            feats = mail_features(items, dataset, now, persona, probs)
-            rules = [score_case(Case(i.item_id, (i,)), now, config)[0] for i in items]
-            mornings[day] = list(zip(items, feats, rules, strict=True))
+    mornings = _mornings(dataset, probs, persona)
     days, used, seen, pairs = sorted(mornings), Counter(), set(), []
     while len(pairs) < n_pairs:
         close = len(pairs) % 2 == 1
@@ -146,6 +135,83 @@ def build_pairs(
         )
     heldout = set(rng.sample(range(len(pairs)), n_heldout))
     return [{"item_id": f"p{n:03d}", "heldout": n in heldout} | p for n, p in enumerate(pairs)]
+
+
+Option = tuple[Item, MailFeatures, int]  # (mail, fiche, score par règles)
+
+
+def _mornings(
+    dataset: GraphDataset, probs: dict[str, dict[str, float]], persona: Persona
+) -> dict[date, list[Option]]:
+    """Les candidats de chaque matin (au moins 4), avec leur fiche et leur score par règles."""
+    config = ScoringConfig(user_emails=frozenset({persona.address}), hierarchy=persona.hierarchy)
+    first = min(i.created_at for i in dataset.items).date() + timedelta(days=3)
+    last = max(i.created_at for i in dataset.items).date()
+    mornings: dict[date, list[Option]] = {}
+    for n in range((last - first).days + 1):
+        day = first + timedelta(days=n)
+        now = brief_instant(day)
+        items = candidates(dataset, day)
+        if len(items) >= 4:
+            feats = mail_features(items, dataset, now, persona, probs)
+            rules = [score_case(Case(i.item_id, (i,)), now, config)[0] for i in items]
+            mornings[day] = list(zip(items, feats, rules, strict=True))
+    return mornings
+
+
+def build_targeted_pairs(
+    dataset: GraphDataset,
+    probs: dict[str, dict[str, float]],
+    exclude: set[frozenset[str]],
+    persona: Persona = GRAPH_HELENE,
+    seed: int = 1,
+    n_pairs: int = 12,
+    first_id: int = N_PAIRS,
+) -> list[dict]:
+    """2e série : une demande d'action du N+1 face à une demande d'action d'un autre type
+    d'expéditeur (2 sur 3), ou face à un mail du N+1 sans demande (1 sur 3). Elle sert à
+    apprendre l'interaction « demande d'action du N+1 » ; aucune n'est réservée."""
+    rng = random.Random(seed)
+    mornings = _mornings(dataset, probs, persona)
+    asks = [
+        (day, o)
+        for day, opts in sorted(mornings.items())
+        for o in opts
+        if o[1].sender_kind == "hiérarchie" and o[1].action >= 0.5
+    ]
+    pairs, seen = [], set(exclude)
+    for _ in range(50 * n_pairs):
+        if len(pairs) == n_pairs or not asks:
+            break
+        day, a = rng.choice(asks)
+        versus_boss = len(pairs) % 3 == 2
+        others = [
+            o
+            for o in mornings[day]
+            if o[0].item_id != a[0].item_id
+            and (
+                (o[1].sender_kind == "hiérarchie" and o[1].action < 0.5)
+                if versus_boss
+                else (o[1].sender_kind not in ("hiérarchie", "automate") and o[1].action >= 0.5)
+            )
+        ]
+        if not others:
+            continue
+        b = rng.choice(others)
+        key = frozenset((a[0].item_id, b[0].item_id))
+        if key in seen:
+            continue
+        seen.add(key)
+        if rng.random() < 0.5:
+            a, b = b, a
+        now = brief_instant(day)
+        pairs.append(
+            {"day": day.isoformat(), "kind": "ciblée N+1", "a": _side(*a, now), "b": _side(*b, now)}
+        )
+    return [
+        {"item_id": f"p{first_id + n:03d}", "heldout": False, "round": 2} | p
+        for n, p in enumerate(pairs)
+    ]
 
 
 def _balanced(rng: random.Random, options: list[tuple[Item, MailFeatures, int]]):
@@ -183,6 +249,9 @@ def main(argv: list[str]) -> int:
     cache, embedder = VectorCache(CACHE_DIR / "e5_vectors.npz"), e5_embedder()
     probs = intent_probs(received, IntentModel.load(), lambda t: cache.embed(embedder, t))
     pairs = build_pairs(dataset, probs)
+    pairs += build_targeted_pairs(
+        dataset, probs, {frozenset((p["a"]["item_id"], p["b"]["item_id"])) for p in pairs}
+    )
     write_sample(pairs, PAIRS_PATH)
     kinds = Counter(p["kind"] for p in pairs)
     print(

@@ -192,7 +192,17 @@ class PairAnnotator:
     def __init__(self, pairs: list[dict], store: LabelStore) -> None:
         self.pairs = {pair["item_id"]: pair for pair in pairs}
         self.store = store
-        self.tasks = queue(pairs, self.FEATURE)
+        # Une série après l'autre (« round », 1 par défaut) : ajouter une série ne change
+        # ni l'ordre ni les répétitions de celles déjà annotées.
+        rounds = sorted({pair.get("round", 1) for pair in pairs})
+        self.tasks = [
+            task
+            for r in rounds
+            for task in queue(
+                [pair for pair in pairs if pair.get("round", 1) == r],
+                self.FEATURE if r == 1 else f"{self.FEATURE}:{r}",
+            )
+        ]
 
     def state(self) -> dict:
         done = sum((pid, self.FEATURE, rep) in self.store.answers for pid, rep in self.tasks)

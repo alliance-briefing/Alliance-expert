@@ -287,3 +287,12 @@ def test_serveur_page_et_api_des_paires(tmp_path):
     finally:
         httpd.shutdown()
         httpd.server_close()
+
+
+def test_une_seconde_serie_vient_apres_sans_changer_la_premiere(tmp_path):
+    first = [_pair(f"p{n}") for n in range(20)]
+    second = [_pair(f"q{n}") | {"round": 2} for n in range(10)]
+    before = PairAnnotator(first, LabelStore(tmp_path / "a.jsonl")).tasks
+    after = PairAnnotator(first + second, LabelStore(tmp_path / "b.jsonl")).tasks
+    assert after[: len(before)] == before
+    assert {pid for pid, _ in after[len(before) :]} == {f"q{n}" for n in range(10)}
