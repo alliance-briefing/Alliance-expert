@@ -93,11 +93,17 @@ def e5_embedder() -> PrefixedEmbedder:
     return PrefixedEmbedder(FastEmbedder(E5_MODEL), "query: ")
 
 
+def cache_path(embedder: Embedder) -> Path:
+    """Un fichier de cache par modèle : leurs vecteurs n'ont pas la même dimension."""
+    return CACHE_DIR / f"vectors_{re.sub(r'[^A-Za-z0-9]+', '_', embedder.name).strip('_')}.npz"
+
+
 class VectorCache:
     """Vecteurs par (modèle, empreinte du texte), enregistrés dans un fichier .npz.
 
     La clé est le texte et non l'item : deux mails au texte identique ne sont calculés
-    qu'une fois. Le fichier reste sur la machine, hors du dépôt.
+    qu'une fois. Le fichier reste sur la machine, hors du dépôt ; un fichier par modèle
+    (`cache_path`), sinon les dimensions se mélangent.
     """
 
     def __init__(self, path: Path | None) -> None:
@@ -121,6 +127,8 @@ class VectorCache:
                 missing, embedder.embed([t for _, t in missing]), strict=True
             ):
                 self.vectors[k] = vector
+            if len({v.shape for v in self.vectors.values()}) > 1:
+                raise ValueError("un cache ne doit servir qu'à un seul modèle (cache_path)")
             self.save()
         return np.array([self.vectors[k] for k in keys], dtype=np.float32)
 
@@ -300,7 +308,7 @@ def train(
         E, texts = E_all[[row[i] for i in keep]], [texts_by_id[i] for i in keep]
         p, r, f = nested_cv(E, texts, y, feature, repeats).mean(axis=0)
         config = select(E, texts, y, feature)
-        method = "e5 + LR" + (" + indice" if config.use_hint else "")
+        method = "embeddings + LR" + (" + indice" if config.use_hint else "")
         report.append(f"{feature:<17} {method:<25} {p:>9.2f} {r:>7.2f} {f:>5.2f}")
         weights[feature] = fit_logistic(design(E, texts, feature, config.use_hint), y, config.l2)
         hints[feature] = config.use_hint
@@ -325,7 +333,8 @@ def train(
 
 
 def main(argv: list[str]) -> int:
-    embedder, cache = e5_embedder(), VectorCache(CACHE_DIR / "e5_vectors.npz")
+    embedder = e5_embedder()
+    cache = VectorCache(cache_path(embedder))
     model, report = train(load_sample(), lambda texts: cache.embed(embedder, texts))
     model.save()
     print("\n".join(report))

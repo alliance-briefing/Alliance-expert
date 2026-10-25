@@ -29,10 +29,10 @@ from packages.analyse.scoring.ml.features import (
 )
 from packages.analyse.scoring.ml.graph_convert import GraphDataset, load_graph_dataset
 from packages.analyse.scoring.ml.intents import (
-    CACHE_DIR,
     LEARNED,
     IntentModel,
     VectorCache,
+    cache_path,
     e5_embedder,
     intent_text,
 )
@@ -246,7 +246,8 @@ def main(argv: list[str]) -> int:
         for i in dataset.items
         if i.source == "mail" and not dataset.extras[i.item_id].is_sent and not noise_reason(i)
     ]
-    cache, embedder = VectorCache(CACHE_DIR / "e5_vectors.npz"), e5_embedder()
+    embedder = e5_embedder()
+    cache = VectorCache(cache_path(embedder))
     probs = intent_probs(received, IntentModel.load(), lambda t: cache.embed(embedder, t))
     pairs = build_pairs(dataset, probs)
     pairs += build_targeted_pairs(
