@@ -27,7 +27,7 @@ def create_app(
     app = FastAPI(title="Alliance Briefing API")
     app.state.items = item_store or _default_item_store()
     app.state.briefs = brief_store or MemoryBriefStore()
-    app.state.generator = generator or generate_brief
+    app.state.generator = generator or _default_generator()
     app.state.audit = audit or LogAuditSink()
     app.state.auth_mode = auth_mode if auth_mode is not None else os.getenv("AUTH_MODE", "")
     errors.install(app)
@@ -46,6 +46,16 @@ def create_app(
         return {"user_id": user}
 
     return app
+
+
+def _default_generator() -> BriefGenerator:
+    """Le générateur du lot 2 ; avec DEMO_BRIEFS=annotations, les briefs de référence annotés
+    (démonstration de l'interface uniquement, voir demo_briefs.py)."""
+    if os.getenv("DEMO_BRIEFS") == "annotations":
+        from alliance_api.demo_briefs import annotated_generator
+
+        return annotated_generator(generate_brief, os.getenv("DEMO_ANNOTATOR", "guillaume-carrier"))
+    return generate_brief
 
 
 def _default_item_store() -> ItemStore:
