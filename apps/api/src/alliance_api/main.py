@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from alliance_api import briefs, errors, items, ui
 from alliance_api.audit import AuditSink, LogAuditSink
@@ -33,6 +34,7 @@ def create_app(
     app.include_router(briefs.router)
     app.include_router(items.router)
     app.include_router(ui.router)
+    app.mount("/static", StaticFiles(directory=ui.STATIC_DIR), name="static")
 
     @app.get("/health")
     def health() -> dict[str, str]:

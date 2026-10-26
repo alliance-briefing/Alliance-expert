@@ -1,74 +1,210 @@
 {% extends "base.html" %}
+{% from "_ui.html" import icon, tools %}
+{% from "_entry.html" import row, detail %}
 {% block title %}Brief du {{ day.strftime("%d/%m/%Y") }} — Alliance Briefing{% endblock %}
-{% block nav %}
-<form method="post" action="/logout" class="inline">
-  <span class="muted">{{ user }}</span>
-  <button type="submit">Se déconnecter</button>
-</form>
-{% endblock %}
-{% block content %}
-<form method="get" action="/" class="inline">
-  <div>
-    <label for="date">Jour</label>
-    <input type="date" id="date" name="date" value="{{ day.isoformat() }}" required>
-  </div>
-  <button type="submit">Afficher</button>
-</form>
+{% block body_class %}page-app{% endblock %}
 
-{% if error %}
-<p class="box error" role="alert">{{ error.message }}</p>
-{% endif %}
+{% macro count(n, one, many) %}<strong data-count="{{ n }}">{{ n }}</strong> {{ one if n == 1 else many }}{% endmacro %}
 
-{% if brief is none %}
-<p>Aucun brief n'a encore été généré pour le {{ day.strftime("%d/%m/%Y") }}.</p>
-<form method="post" action="/generate">
-  <input type="hidden" name="date" value="{{ day.isoformat() }}">
-  <button type="submit">Générer le brief</button>
-</form>
-{% else %}
-<p class="muted">Généré le {{ brief.generated_at.strftime("%d/%m/%Y à %H:%M") }}.</p>
+{% block body %}
+<div class="app">
+  <nav class="rail" aria-label="Navigation principale">
+    <a class="rail-logo" href="/" aria-label="Alliance Briefing, accueil">{{ icon("sparkle", 20) }}</a>
+    <ul class="rail-links">
+      <li><a href="#top" class="is-active" title="Accueil">{{ icon("home", 21) }}<span class="sr-only">Accueil</span></a></li>
+      <li><a href="#c-essentiel" title="L'essentiel du jour">{{ icon("list", 21) }}<span class="sr-only">L'essentiel du jour</span></a></li>
+      <li><a href="#c-agenda" title="Agenda du jour">{{ icon("calendar", 21) }}<span class="sr-only">Agenda du jour</span></a></li>
+      <li><a href="#c-feeds" title="Sources connectées">{{ icon("plug", 21) }}<span class="sr-only">Sources connectées</span></a></li>
+    </ul>
+    <div class="rail-foot">
+      {{ tools("up") }}
+      <form method="post" action="/logout">
+        <button type="submit" class="rail-btn" title="Se déconnecter ({{ user }})">{{ icon("logout", 20) }}<span class="sr-only">Se déconnecter</span></button>
+      </form>
+    </div>
+  </nav>
 
-{% if brief.warnings or hidden %}
-<div class="box warn" role="status">
-  <h2>Alertes</h2>
-  <ul>
-    {% for warning in brief.warnings %}<li>{{ warning }}</li>{% endfor %}
-    {% if hidden %}<li>{{ hidden }} entrée(s) masquée(s) : source introuvable.</li>{% endif %}
-  </ul>
+  <main id="contenu" class="main">
+    <header class="hero" id="top">
+      <div class="hero-text">
+        <p class="hero-date">{{ day_label | capitalize }}{% if is_today %}, aujourd'hui{% endif %}</p>
+        <div class="greeting-row">
+          <h1 class="greeting" data-split>{{ greeting }} {{ name }}</h1>
+          <span class="greeting-spark" aria-hidden="true">{{ icon("sparkle", 34) }}</span>
+        </div>
+        {% if brief %}
+        <p class="lead">Votre assistant a passé en revue {{ count(brief.stats.items_in, "élément", "éléments") }} ce matin et en a retenu {{ count(ranked | length, "qui demande", "qui demandent") }} votre attention.
+          {% if ranked %}À faire en premier : <a class="lead-link" href="#d-{{ ranked[0].uid }}" data-open="d-{{ ranked[0].uid }}">{{ ranked[0].headline }}</a>.{% endif %}</p>
+        {% else %}
+        <p class="lead">Votre assistant est prêt à préparer le brief du {{ day_label }}.</p>
+        {% endif %}
+
+        <div class="toolbar">
+          <form method="get" action="/" class="daynav" aria-label="Choisir le jour">
+            <a class="icon-btn" href="/?date={{ prev_day.isoformat() }}" title="Jour précédent">{{ icon("chevron-left", 18) }}<span class="sr-only">Jour précédent</span></a>
+            <label for="date" class="sr-only">Jour</label>
+            <input type="date" id="date" name="date" value="{{ day.isoformat() }}" required data-autosubmit>
+            <a class="icon-btn" href="/?date={{ next_day.isoformat() }}" title="Jour suivant">{{ icon("chevron-right", 18) }}<span class="sr-only">Jour suivant</span></a>
+            <button type="submit" class="btn btn--ghost btn--sm nojs">Afficher</button>
+          </form>
+          {% if brief %}
+          <form method="post" action="/generate" data-generate>
+            <input type="hidden" name="date" value="{{ day.isoformat() }}">
+            <button type="submit" class="btn btn--ghost btn--sm">{{ icon("refresh", 16) }}<span data-label>Régénérer le brief</span></button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+      <div class="hero-orb" aria-hidden="true">
+        <div class="orb" data-orb><canvas></canvas></div>
+        <span class="star" style="--x: 8%; --y: 22%; --d: 0s"></span>
+        <span class="star" style="--x: 88%; --y: 12%; --d: 1.2s"></span>
+        <span class="star" style="--x: 94%; --y: 70%; --d: 2.1s"></span>
+        <span class="star" style="--x: 18%; --y: 84%; --d: .6s"></span>
+        <span class="star" style="--x: 60%; --y: 2%; --d: 1.7s"></span>
+      </div>
+    </header>
+
+    {% if error %}
+    <p class="alert alert--error" role="alert">{{ icon("alert", 18) }}<span>Brief indisponible : {{ error.message }}. Choisissez un autre jour.</span></p>
+    {% endif %}
+
+    {% if brief and (brief.warnings or hidden) %}
+    <div class="alert alert--warn" role="status">
+      {{ icon("alert", 18) }}
+      <div>
+        <h2>Alertes</h2>
+        <ul>
+          {% for warning in brief.warnings %}<li>{{ warning }}</li>{% endfor %}
+          {% if hidden %}<li>{{ hidden }} entrée(s) masquée(s) : source introuvable.</li>{% endif %}
+        </ul>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if brief is none and not has_items and not error %}
+    <section class="empty card">
+      <span class="empty-icon">{{ icon("calendar", 28) }}</span>
+      <h2>Aucune donnée collectée le {{ day_label }}.</h2>
+      <p>Le brief se prépare à partir des mails, de l'agenda et des tâches relevés le matin. Rien n'a été collecté ce jour-là.</p>
+      <a class="btn btn--ghost" href="/?date={{ prev_day.isoformat() }}">{{ icon("chevron-left", 18) }}Voir le jour précédent</a>
+    </section>
+    {% elif brief is none %}
+    <section class="empty card">
+      <span class="empty-icon">{{ icon("sparkle", 28) }}</span>
+      <h2>Aucun brief n'a encore été généré pour le {{ day.strftime("%d/%m/%Y") }}.</h2>
+      <p>L'assistant va lire les mails, l'agenda et les tâches collectés ce matin, puis ne garder que l'essentiel.</p>
+      <form method="post" action="/generate" data-generate>
+        <input type="hidden" name="date" value="{{ day.isoformat() }}">
+        <button type="submit" class="btn btn--primary btn--lg">{{ icon("sparkle", 18) }}<span data-label>Générer le brief</span></button>
+      </form>
+    </section>
+    {% else %}
+
+    <div class="grid">
+      <section class="card card--essentiel" id="c-essentiel" aria-labelledby="h-essentiel" data-spotlight>
+        <header class="card-head">
+          <span class="card-icon">{{ icon("list", 18) }}</span>
+          <h2 id="h-essentiel">L'essentiel du jour</h2>
+          <span class="card-sub">du plus important au moins important</span>
+        </header>
+        <div class="filters" role="group" aria-label="Filtrer par rubrique">
+          <button type="button" class="filter" data-filter="all" aria-pressed="true">Tout<span>{{ ranked | length }}</span></button>
+          {% for section in sections %}
+          {% set n = ranked | selectattr("kind", "equalto", section.kind) | list | length %}
+          <button type="button" class="filter" data-filter="{{ section.kind }}" aria-pressed="false"{% if not n %} disabled{% endif %}>{{ icon(section.style.icon, 15) }}{{ section.label }}<span>{{ n }}</span></button>
+          {% endfor %}
+        </div>
+        {% if ranked %}
+        <ol class="entries" data-filtered>
+          {% for view in ranked %}{{ row(view, loop.index) }}{% endfor %}
+        </ol>
+        {% if others %}
+        <details class="others">
+          <summary>{{ icon("chevron-right", 16) }}Voir {{ "l'autre élément" if others | length == 1 else "les " ~ (others | length) ~ " autres éléments" }} du brief</summary>
+          <ol class="entries" start="{{ ranked | length + 1 }}">
+            {% for view in others %}{{ row(view, ranked | length + loop.index) }}{% endfor %}
+          </ol>
+        </details>
+        {% endif %}
+        {% else %}
+        <p class="empty-line">{{ icon("circle-check", 18) }}Rien qui demande votre attention aujourd'hui.</p>
+        {% endif %}
+      </section>
+
+      <div class="side">
+        <section class="card card--agenda" id="c-agenda" aria-labelledby="h-agenda" data-spotlight>
+          <header class="card-head">
+            <span class="card-icon card-icon--meetings">{{ icon("calendar", 18) }}</span>
+            <h2 id="h-agenda">Agenda du jour</h2>
+            {% if agenda %}<span class="badge badge--meetings">{{ agenda | length }}</span>{% endif %}
+          </header>
+          {% if agenda %}
+          <ol class="agenda">
+            {% for slot in agenda %}
+            <li class="slot{% if slot.uid %} slot--brief{% endif %}">
+              <span class="slot-hour">{{ slot.hour }}</span>
+              <div class="slot-body">
+                <p class="slot-title">{{ slot.title or "(sans titre)" }}</p>
+                {% if slot.place %}<p class="slot-place">{{ slot.place }}</p>{% endif %}
+              </div>
+              {% if slot.uid %}
+              <button type="button" class="slot-open" data-open="d-{{ slot.uid }}" aria-haspopup="dialog" title="Dans le brief : voir le détail">{{ icon("sparkle", 15) }}<span class="sr-only">Dans le brief, voir le détail</span></button>
+              {% endif %}
+              <a class="slot-link" href="{{ slot.url }}" target="_blank" rel="noopener noreferrer" title="Ouvrir dans l'agenda">{{ icon("external", 15) }}<span class="sr-only">Voir la source : {{ slot.title }}</span></a>
+            </li>
+            {% endfor %}
+          </ol>
+          {% else %}
+          <p class="empty-line">{{ icon("circle-check", 18) }}Aucun rendez-vous aujourd'hui.</p>
+          {% endif %}
+        </section>
+
+        {% set stats = brief.stats %}
+        {% set kept = (100 - (retained * 100 / stats.items_in)) | round | int if stats.items_in else 0 %}
+        <section class="card card--sift" aria-labelledby="h-sift">
+          <div class="sift">
+            <div>
+              <h2 class="sift-title" id="h-sift">Tri du jour</h2>
+              <p class="sift-text">{{ retained }} éléments retenus sur {{ stats.items_in }}, le reste a été écarté pour vous.</p>
+            </div>
+            <div class="ring" style="--value: {{ kept }}" role="img" aria-label="{{ kept }} % des éléments écartés">
+              <svg viewBox="0 0 44 44" aria-hidden="true"><circle class="ring-track" cx="22" cy="22" r="18"/><circle class="ring-bar" cx="22" cy="22" r="18" pathLength="100"/></svg>
+              <span><span data-count="{{ kept }}">{{ kept }}</span> %</span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <section class="card card--feeds" id="c-feeds" aria-labelledby="h-feeds" data-spotlight>
+        <header class="card-head">
+          <span class="card-icon card-icon--feeds">{{ icon("plug", 18) }}</span>
+          <h2 id="h-feeds">Sources connectées</h2>
+          {% if collected %}<span class="card-sub">collecte de {{ collected }}</span>{% endif %}
+        </header>
+        <ul class="feeds">
+          {% for feed in feeds %}
+          <li class="feed">
+            <span class="feed-icon">{{ icon(feed.icon, 18) }}</span>
+            <div class="feed-body">
+              <p class="feed-name">{{ feed.label }}</p>
+              <p class="feed-meta"><span data-count="{{ feed.count }}">{{ feed.count }}</span> {{ feed.unit }} analysés</p>
+            </div>
+            <span class="status {{ 'status--on' if feed.count else 'status--off' }}">{{ "Synchronisée" if feed.count else "Rien de nouveau" }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </section>
+    </div>
+
+    {% if brief.generator.llm == "annotation" %}
+    <p class="footnote">Aperçu de démonstration : brief de référence établi à la main pour cette journée.</p>
+    {% else %}
+    <p class="footnote">Généré le {{ brief.generated_at.strftime("%d/%m/%Y à %H:%M") }} par {{ "les règles de priorisation" if brief.generator.llm == "rules" else "le modèle " ~ brief.generator.llm }}.</p>
+    {% endif %}
+
+    {% for section in sections %}{% for view in section.entries %}{{ detail(view, section.label) }}{% endfor %}{% endfor %}
+    {% endif %}
+  </main>
 </div>
-{% endif %}
-
-{% for section in sections %}
-<section aria-labelledby="s{{ loop.index }}">
-  <h2 id="s{{ loop.index }}">{{ section.label }}</h2>
-  {% if section.entries %}
-  <ol class="entries">
-    {% for view in section.entries %}
-    <li class="entry">
-      <p><strong>{{ view.entry.text }}</strong></p>
-      <p class="muted">Priorité {{ view.entry.priority_score }}/100 —
-        {{ view.entry.priority_reasons | join(" ; ") }}</p>
-      {% if view.entry.recommended_action %}<p>Action conseillée : {{ view.entry.recommended_action }}</p>{% endif %}
-      <ul class="sources">
-        {% for source in view.sources %}
-        <li>
-          <a href="{{ source.url }}" target="_blank" rel="noopener noreferrer">Voir la source<span class="muted"> : {{ source.title or "(sans objet)" }}</span></a>
-          {% if source.snippet %}<br><span class="muted">Extrait : « {{ source.snippet }} »</span>{% endif %}
-        </li>
-        {% endfor %}
-      </ul>
-    </li>
-    {% endfor %}
-  </ol>
-  {% else %}
-  <p class="muted">Rien dans cette section.</p>
-  {% endif %}
-</section>
-{% endfor %}
-
-<form method="post" action="/generate">
-  <input type="hidden" name="date" value="{{ day.isoformat() }}">
-  <button type="submit">Régénérer le brief</button>
-</form>
-{% endif %}
 {% endblock %}
