@@ -15,12 +15,19 @@ from collections import Counter
 from collections.abc import Callable, Sequence
 from datetime import date as Date
 from datetime import datetime
+from typing import Literal
 
 from contracts.models import Brief, Entry, Generator, Item, Section, Stats
 from contracts.models.brief import SectionKind
 from packages.analyse.aggregate.cases import Case, group_into_cases
 from packages.analyse.aggregate.rules import meetings_of_day, overdue_tasks, unread_mails
 from packages.analyse.clock import PARIS, is_all_day, to_paris
+from packages.analyse.scoring.learned import (
+    GENERATOR,
+    CaseScore,
+    LearnedScorer,
+    learned_case_scores,
+)
 from packages.analyse.scoring.score import STANDARD, score_case
 
 # Seuil de score à partir duquel une affaire sans mail non lu entre dans « À traiter ».
@@ -45,11 +52,17 @@ Wording = Callable[[list[Item]], tuple[str, str]]
 
 
 def generate_brief(
-    items: Sequence[Item], user: str, date: Date | str, *, now: datetime | None = None
+    items: Sequence[Item],
+    user: str,
+    date: Date | str,
+    *,
+    now: datetime | None = None,
+    scorer: LearnedScorer | Literal["auto"] | None = "auto",
 ) -> Brief:
     """Brief du jour `date` pour `user`, construit par règles à partir de `items`.
 
     `now` fixe `generated_at` (utile aux tests) ; par défaut, l'heure courante.
+    `scorer` : score appris des affaires ("auto" : selon `ALLIANCE_SCORE`, None : règles).
     Le résultat ne dépend que des entrées, sauf `generated_at` et `stats.latency_ms`.
     """
     started = time.perf_counter()
@@ -72,6 +85,14 @@ def generate_brief(
     case_scores: dict[str, tuple[int, list[str]]] = (
         {case.case_id: score_case(case, _now) for case in cases} if _now else {}
     )
+    # Score appris (pipeline A) pour les affaires qui ont un mail à noter ; les autres
+    # gardent le score par règles. Repli annoncé si le modèle manque.
+    learned: dict[str, CaseScore] = {}
+    if _now:
+        learned, unavailable = learned_case_scores(cases, mine, user, _now, scorer)
+        if unavailable:
+            warnings.append(unavailable)
+    case_scores.update({case_id: (s.score, s.reasons) for case_id, s in learned.items()})
 
     # Réunions du jour par item_id.
     today_events: set[str] = {e.item_id for e in meetings_of_day(mine, day)}
@@ -118,8 +139,9 @@ def generate_brief(
     actions_cases.sort(key=lambda c: (-case_scores.get(c.case_id, (0,))[0], c.case_id))
     actions_cases = actions_cases[:ACTIONS_LIMIT]
     # Pour chaque affaire : les mails non lus (newest-first) ; si aucun, l'item le plus ancien.
+    # Sans mail non lu : le mail qui porte le score appris, sinon le premier élément.
     actions_groups: list[list[Item]] = [
-        unread_by_case.get(c.case_id) or [c.items[0]] for c in actions_cases
+        unread_by_case.get(c.case_id) or [_best_item(c, learned)] for c in actions_cases
     ]
 
     sections = [
@@ -164,7 +186,12 @@ def generate_brief(
         owner_user_id=user,
         date=day,
         generated_at=to_paris(now or datetime.now(PARIS)),
-        generator=Generator(llm="rules"),
+        # « rules » tant que le score appris n'a noté aucune affaire (repli, ALLIANCE_SCORE).
+        generator=(
+            Generator(llm=GENERATOR, llm_version=next(iter(learned.values())).model)
+            if learned
+            else Generator(llm="rules")
+        ),
         sections=sections,
         stats=Stats(
             items_in=len(items),
@@ -229,6 +256,13 @@ def _section(
             )
         )
     return Section(kind=kind, entries=entries)
+
+
+def _best_item(case: Case, learned: dict[str, CaseScore]) -> Item:
+    if case.case_id in learned:
+        best = learned[case.case_id].best_mail_id
+        return next(item for item in case.items if item.item_id == best)
+    return case.items[0]
 
 
 def _cancelled_in_case(case: Case, today_events: set[str]) -> list[Item]:
@@ -310,8 +344,18 @@ def _title(item: Item) -> str:
 
 
 def _mails_wording(mails: list[Item]) -> tuple[str, str]:
-    """`mails` du plus récent au plus ancien ; le plus récent donne le titre et la date."""
-    received = to_paris(mails[0].created_at).strftime("%d/%m à %H:%M")
+    """`mails` du plus récent au plus ancien ; le plus récent donne le titre et la date.
+
+    Une affaire sans mail non lu montre son mail le mieux noté, ou son premier élément :
+    le texte ne dit « non lu » que s'il l'est."""
+    first = mails[0]
+    received = to_paris(first.created_at).strftime("%d/%m à %H:%M")
+    if first.source != "mail":
+        noun = NOUNS[first.source][0]
+        updated = to_paris(first.updated_at).strftime("%d/%m")
+        return f"{noun.capitalize()} : {_title(first)}", f"dernière mise à jour le {updated}"
+    if first.is_read is not False:
+        return f"Mail : {_title(first)}", f"reçu le {received}"
     if len(mails) == 1:
         return f"Mail non lu : {_title(mails[0])}", f"non lu, reçu le {received}"
     return (

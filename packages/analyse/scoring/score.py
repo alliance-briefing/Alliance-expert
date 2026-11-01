@@ -95,6 +95,13 @@ def score_case(
     return score, [signal.reason for signal in ranked][:MAX_REASONS] or [STANDARD]
 
 
+def task_and_meeting_signals(case: Case, now: datetime) -> list[Signal]:
+    """Signaux des tâches (retard, échéance) et des réunions de l'affaire : ce que le score
+    appris des mails (`scoring/learned.py`) ne voit pas, ajouté par-dessus."""
+    signals = (_deadline(case.items, now), _meeting(case.items, now))
+    return [signal for signal in signals if signal is not None]
+
+
 # --- signaux ------------------------------------------------------------------------------------
 
 
