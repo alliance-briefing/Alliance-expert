@@ -328,27 +328,20 @@ Le modèle d'intentions actuel a été entraîné sur 601 mails, dont des mails 
 </div>
 
 <div class="task data">
-<header>M1 · Déménagement des générateurs vers le lot 1 <small>02/11 → 05/11 · socle · Théo</small> <span class="tag l1">Lot 1</span></header>
+<header>M1-M2 · Monde simulé multi-sources, écrit à neuf dans le lot 1 <small>02/11 → 12/11 · socle · Théo</small> <span class="tag l1">Lot 1</span></header>
 <dl>
-<dt>Objectif</dt><dd>Ranger la fabrication des données là où elle doit être, en la cloisonnant du générateur d'évaluation.</dd>
-<dt>Sortie</dt><dd><ul><li><code>packages/collect/trainset/</code> : générateur de mails isolés, journées, spécification, tests, déplacés depuis <code>packages/analyse/scoring/ml/synth/</code>.</li><li>Données générées versionnées dans <code>trainset/data/</code>.</li><li>Le lot 2 lit ces données par un chargeur, sans plus rien générer.</li></ul></dd>
-<dt>Acceptation</dt><dd>Mêmes sorties à graine égale (comparaison octet par octet). Un test vérifie que ni <code>trainset/</code> ni <code>packages/analyse/</code> n'importent <code>packages.collect.synth</code> (P1). Tous les tests passent.</dd>
+<dt>Objectif</dt><dd>Des journées réalistes de managers variés, où les affaires traversent mails, agenda, tâches et fichiers, étiquetées par construction selon la grille de M0.</dd>
+<dt>Pourquoi à neuf</dt><dd>Décision du 01/11 (M1 et M2 fusionnés) : l'ancien générateur (<code>scoring/ml/synth/</code>) produit l'ancienne étiquette (action / réponse oui-non) et ne connaît presque que les mails. Le déplacer à l'octet près pour le réécrire ensuite serait du travail perdu. Il reste <b>figé</b> dans le lot 2, uniquement pour reproduire le score appris actuel, et sera supprimé quand M6 l'aura remplacé. On n'en reprend que ce qui a fait ses preuves : les secteurs et leurs annuaires, la vie d'une affaire (ouverture, relance, réponse, clôture), le déterminisme par graine.</dd>
+<dt>Sortie</dt><dd><ul><li><code>packages/collect/trainset/</code>, sans aucun import de <code>packages.collect.synth</code> ni de <code>packages.analyse</code>.</li><li><b>Simulateur</b> : personas (≥ 12 métiers), organigramme, clients et fournisseurs ; affaires vivantes (§4.2) avec liens entre sources (réunion ↔ fichier ↔ tâche) ; automates, bruit, pièges. Il décide des faits, de l'horloge et des étiquettes.</li><li><b>Écrivain par gabarits</b> : transforme les faits en texte. L'écrivain LLM (M3) prendra les mêmes faits.</li><li>Pour chaque élément : l'<code>Item</code> du contrat A et, à part, ses faits et étiquettes (<code>scenario.jsonl</code> : action, urgence, alerte, échéance, affaire).</li><li>Métiers réservés à T-gen. Données versionnées dans <code>trainset/data/</code>, lues par le lot 2 avec un chargeur.</li></ul></dd>
+<dt>Acceptation</dt><dd>100 % des <code>Item</code> valident le contrat A. Au moins 600 journées de manager. Rapport de distribution (actions par source, part de bruit, pièges présents). Déterministe à graine égale. Un test vérifie le cloisonnement (P1) en lisant nos seuls fichiers.</dd>
 </dl>
 </div>
 
 <div class="task data">
-<header>M2 · Monde simulé multi-sources <small>04/11 → 12/11 · socle · Théo</small> <span class="tag l1">Lot 1</span></header>
+<header>M3 · Écrivain LLM local <small>02/11 → 15/11, en parallèle de M1-M2 · ambition · Théo (PC fixe, RTX 4060)</small> <span class="tag l1">Lot 1</span></header>
 <dl>
-<dt>Objectif</dt><dd>Des journées réalistes de managers variés, où les affaires traversent mails, agenda, tâches et fichiers.</dd>
-<dt>Sortie</dt><dd><ul><li>Personas (≥ 12 métiers), organigramme, clients et fournisseurs.</li><li>Affaires vivantes (§4.2), automates, bruit, pièges.</li><li>Pour chaque élément : l'<code>Item</code> du contrat A et, à part, ses faits et étiquettes (<code>scenario.jsonl</code> : action, urgence, échéance, affaire).</li><li>Métiers réservés à T-gen.</li></ul></dd>
-<dt>Acceptation</dt><dd>100 % des <code>Item</code> valident le contrat A. Au moins 600 journées de manager. Rapport de distribution (actions par source, part de bruit, pièges présents). Déterministe à graine égale.</dd>
-</dl>
-</div>
-
-<div class="task data">
-<header>M3 · Écrivain LLM local <small>05/11 → 15/11 · ambition · Théo (PC fixe, RTX 4060)</small> <span class="tag l1">Lot 1</span></header>
-<dl>
-<dt>Objectif</dt><dd>Casser la répétition des gabarits : même faits, textes vraiment variés.</dd>
+<dt>Objectif</dt><dd>Casser la répétition des gabarits : même faits, textes vraiment variés. Le LLM <b>écrit</b>, il ne <b>simule</b> pas : les faits et les étiquettes viennent toujours du simulateur.</dd>
+<dt>Sonde d'abord</dt><dd>Avancée au 02/11, avant de dépendre du LLM : installer Ollama sur le PC fixe, faire écrire 20 éléments par un 7B à partir de faits fournis à la main, les annoter à l'aveugle avec la grille et comparer avec l'étiquette voulue. Si moins de 16 sur 20 sont conformes, on revoit les consignes ou le modèle avant de produire un corpus.</dd>
 <dt>Sortie</dt><dd><ul><li>Rédaction par Ollama et un modèle 7B compressé (référence : Qwen 2.5 7B Instruct ; repli 3B sur le portable).</li><li>Consignes versionnées : registre, longueur, style, fautes.</li><li>Contrôles automatiques : faits présents, aucun nom ni adresse inventé, langue, longueur. Rejet puis nouvelle rédaction.</li><li>Corpus versionné, avec modèle, consigne et graine.</li></ul></dd>
 <dt>Acceptation</dt><dd>≥ 8 000 éléments rédigés. ≥ 95 % passent les contrôles automatiques. Sur un échantillon de 5 % relu à la main, ≥ 90 % sont conformes à leurs faits. Bien plus de « modèles de phrases » distincts qu'avec les gabarits (mesure de l'ADR-0003).</dd>
 <dt>Repli</dt><dd>Si le LLM déçoit, enrichir les banques de gabarits et étendre M2. Le reste du plan ne dépend pas de M3.</dd>
@@ -429,8 +422,8 @@ Le modèle d'intentions actuel a été entraîné sur 601 mails, dont des mails 
 <h2 id="planning">8. Planning</h2>
 <div class="scroll"><table>
 <tr><th>Semaine</th><th>Données</th><th>Modèle</th><th>Annotation / éval</th><th>Jalon</th></tr>
-<tr><td>02/11 → 08/11</td><td>M1 déménagement · M2 personas et affaires · M3 premiers essais LLM</td><td>Référence réentraînée sans la démo</td><td>M0 calibrage de la grille · M4 outil</td><td>Grille validée (kappa)</td></tr>
-<tr><td>09/11 → 15/11</td><td>M2 terminé · M3 corpus</td><td>M6 premiers réajustements</td><td>M5 jeux gelés · M7 tour 1</td><td><b>11/11 · v0.3.0</b> (férié)</td></tr>
+<tr><td>02/11 → 08/11</td><td>M1-M2 simulateur à neuf : personas et affaires · M3 sonde LLM (20 éléments)</td><td>Référence réentraînée sans la démo</td><td>M0 calibrage de la grille · M4 outil</td><td>Grille validée (kappa)</td></tr>
+<tr><td>09/11 → 15/11</td><td>M1-M2 terminé · M3 corpus</td><td>M6 premiers réajustements</td><td>M5 jeux gelés · M7 tour 1</td><td><b>11/11 · v0.3.0</b> (férié)</td></tr>
 <tr><td>16/11 → 22/11</td><td>Corrections selon les erreurs vues</td><td>M6 choix du modèle · M8 priorité et liaison</td><td>M7 tours 2 à 5</td><td>—</td></tr>
 <tr><td>23/11 → 29/11</td><td>—</td><td>M9 sélection · M10 intégration</td><td>Mesures finales sur T-gen et T-démo</td><td><b>25/11 · gel</b></td></tr>
 <tr><td>30/11 → 09/12</td><td>—</td><td>Corrections seulement</td><td>Ablations · test caché (lot 3) · rapport</td><td><b>09/12 · rendu</b></td></tr>
@@ -456,7 +449,7 @@ Le modèle d'intentions actuel a été entraîné sur 601 mails, dont des mails 
 <tr><td>Fiche lisible, paires, Bradley-Terry, raisons (<code>scoring/ml/</code>)</td><td><b>Gardé</b>, étendu aux 4 sources et aux affaires</td></tr>
 <tr><td>Branchement du score appris dans le brief (<code>scoring/learned.py</code>, PR du 01/11)</td><td><b>Gardé</b> : c'est le point d'entrée du nouveau modèle</td></tr>
 <tr><td>Règle de bruit, règle d'échéance, persona</td><td>Gardés ; le persona devient une donnée du simulateur</td></tr>
-<tr><td>Générateur de mails et journées (<code>scoring/ml/synth/</code>)</td><td><b>Déplacé</b> vers <code>packages/collect/trainset/</code> (M1), puis étendu (M2)</td></tr>
+<tr><td>Générateur de mails et journées (<code>scoring/ml/synth/</code>)</td><td><b>Figé</b> dans le lot 2 pour reproduire le score appris actuel, supprimé après M6. Remplacé par un simulateur écrit à neuf dans <code>packages/collect/trainset/</code> (M1-M2), qui en reprend les secteurs, la vie des affaires et le déterminisme</td></tr>
 <tr><td>Page d'annotation, banc CheckList</td><td>Gardés, étendus (M4, M6)</td></tr>
 <tr><td>Étiquettes actuelles (intentions action / réponse / incident, paires)</td><td>Réutilisées comme amorce. La nouvelle grille est plus riche : une partie sera <b>réannotée</b></td></tr>
 <tr><td>Modèle d'intentions entraîné avec la démo</td><td><b>Refait</b> sans la démo (P1)</td></tr>
@@ -476,6 +469,8 @@ Le modèle d'intentions actuel a été entraîné sur 601 mails, dont des mails 
 <li>Cloisonnement : générateur d'entraînement séparé du générateur d'évaluation, qui n'est jamais lu.</li>
 <li>Une PR par tâche, sans limite de lignes.</li>
 <li>RAG : la recherche dans l'historique est gardée pour regrouper, décrire et contextualiser ; pas de LLM à alimenter en production.</li>
+<li>M1 et M2 fusionnés : simulateur écrit à neuf pour la grille, ancien générateur figé puis supprimé après M6 ; sonde LLM (M3) avancée au 02/11, en parallèle.</li>
+<li>Guide d'annotation figé après le calibrage Théo / Paul ; règles de décision écrites (§6.1) ; données de David en test seul.</li>
 </ul>
 
 <footer>Plan du modèle de briefing · lot 2 (référent global : Théo Szappanyos) · à relire avec l'équipe et à présenter à David · chaque tâche ouvrira une issue GitHub (M0 à M10).</footer>
