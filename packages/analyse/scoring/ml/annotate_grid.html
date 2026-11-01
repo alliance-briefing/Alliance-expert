@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grille d'actions</title>
+<style>
+  :root {
+    --bg: #f6f5f1; --card: #ffffff; --fg: #1c1c1a; --muted: #6d6c66; --line: #e3e1da;
+    --accent: #2f5bd3; --accent-bg: #e7edfb; --warn: #b8432f; --chip: #eceae3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #151514; --card: #1e1e1c; --fg: #ecebe5; --muted: #9b9a93; --line: #34332f;
+      --accent: #7d9cf0; --accent-bg: #1f2a45; --warn: #ec7a63; --chip: #2a2a27; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 900px; margin: 0 auto; padding: 18px 16px 40px; }
+  .context { color: var(--muted); font-size: 13.5px; margin: 0 0 10px; }
+  .progress { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted);
+    font-variant-numeric: tabular-nums; margin-bottom: 12px; }
+  .bar { flex: 1; height: 5px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .bar span { display: block; height: 100%; background: var(--accent); width: 0; }
+  article { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px 20px; min-height: 200px; }
+  .source { display: inline-block; background: var(--chip); border-radius: 999px; padding: 1px 10px;
+    font-size: 12px; font-weight: 600; margin-right: 6px; }
+  .when { color: var(--muted); font-size: 13px; }
+  .title { font-weight: 650; font-size: 18px; margin: 8px 0 10px; overflow-wrap: anywhere; }
+  table { border-collapse: collapse; font-size: 14px; margin-bottom: 10px; }
+  td { padding: 2px 12px 2px 0; vertical-align: top; }
+  td:first-child { color: var(--muted); white-space: nowrap; }
+  .text { white-space: pre-wrap; overflow-wrap: anywhere; border-left: 3px solid var(--line);
+    padding-left: 12px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted);
+    margin: 16px 0 6px; }
+  .choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+  .choices button { border: 1px solid var(--line); background: var(--card); color: var(--fg);
+    border-radius: 10px; padding: 8px 6px; font: inherit; cursor: pointer; text-align: center; }
+  .choices button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-bg);
+    font-weight: 650; }
+  .choices kbd { display: block; font: 12px ui-monospace, monospace; color: var(--muted); }
+  .alert[aria-pressed="true"] { border-color: var(--warn) !important; color: var(--warn); }
+  .row { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+  .row button { border: 1px solid var(--line); background: var(--card); color: var(--fg);
+    border-radius: 10px; padding: 10px 16px; font: inherit; cursor: pointer; }
+  .row .go { border-color: var(--accent); color: var(--accent); font-weight: 650; }
+  .hint { color: var(--muted); font-size: 13px; margin-top: 10px; }
+  .error { color: var(--warn); min-height: 1.5em; }
+  .done { text-align: center; padding: 50px 0; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <p class="context" id="context"></p>
+  <div class="progress"><span id="count">…</span><div class="bar"><span id="bar"></span></div></div>
+  <article id="card" aria-live="polite">Chargement…</article>
+
+  <h2>Action principale (la plus engageante : Décider &gt; Faire &gt; Répondre &gt; Préparer &gt; Relire &gt; S'informer &gt; Rien)</h2>
+  <div class="choices" id="actions"></div>
+  <h2>Urgence déclarée (le ton écrit)</h2>
+  <div class="choices" id="urgency"></div>
+  <h2>Alerte (sécurité, banque, incident bloquant, injection)</h2>
+  <div class="choices"><button class="alert" id="alert" aria-pressed="false">Alerte<kbd>A</kbd></button></div>
+
+  <div class="row">
+    <button id="back">← Précédent</button>
+    <button class="go" id="go">Valider (Entrée)</button>
+  </div>
+  <p class="error" id="error"></p>
+  <p class="hint">Touches : 1 à 7 action · U N S urgence · A alerte · Entrée valider · Retour arrière précédent.
+    Guide : <code>scoring/annotations/guide-annotation.md</code>.</p>
+</main>
+<script>
+const ACTIONS = [
+  ["repondre", "Répondre"], ["faire", "Faire"], ["decider", "Décider / valider"],
+  ["preparer", "Préparer"], ["relire", "Relire"], ["informer", "S'informer"], ["rien", "Rien"],
+];
+const URGENCY = [["urgent", "Urgent", "u"], ["normal", "Normal", "n"], ["sans_urgence", "Sans urgence", "s"]];
+const SOURCES = { mail: "Mail", calendar: "Réunion", task: "Tâche", file: "Fichier" };
+let cases = [], answers = {}, index = 0, current = null;
+
+const $ = (id) => document.getElementById(id);
+
+function el(tag, attrs = {}, text = "") {
+  const node = document.createElement(tag);
+  Object.entries(attrs).forEach(([k, v]) => node.setAttribute(k, v));
+  if (text) node.textContent = text;
+  return node;
+}
+
+function buildChoices() {
+  ACTIONS.forEach(([key, label], i) => {
+    const b = el("button", { "data-key": key, "aria-pressed": "false" }, label);
+    b.append(el("kbd", {}, String(i + 1)));
+    b.onclick = () => pick("action", key);
+    $("actions").append(b);
+  });
+  URGENCY.forEach(([key, label, kbd]) => {
+    const b = el("button", { "data-key": key, "aria-pressed": "false" }, label);
+    b.append(el("kbd", {}, kbd.toUpperCase()));
+    b.onclick = () => pick("urgence", key);
+    $("urgency").append(b);
+  });
+  $("alert").onclick = () => pick("alerte", !current.alerte);
+  $("go").onclick = submit;
+  $("back").onclick = back;
+}
+
+function pick(field, value) {
+  current[field] = value;
+  renderChoices();
+}
+
+function renderChoices() {
+  $("actions").querySelectorAll("button").forEach((b) =>
+    b.setAttribute("aria-pressed", String(b.dataset.key === current.action)));
+  $("urgency").querySelectorAll("button").forEach((b) =>
+    b.setAttribute("aria-pressed", String(b.dataset.key === current.urgence)));
+  $("alert").setAttribute("aria-pressed", String(current.alerte));
+}
+
+function renderCard() {
+  const done = cases.filter((c) => answers[c.item_id]).length;
+  $("count").textContent = `${done} / ${cases.length}`;
+  $("bar").style.width = `${(100 * done) / cases.length}%`;
+  const card = $("card");
+  card.replaceChildren();
+  if (index >= cases.length) {
+    card.append(el("div", { class: "done" }, "Terminé, merci ! Vous pouvez fermer la page."));
+    current = null;
+    return;
+  }
+  const c = cases[index];
+  const head = el("div");
+  head.append(el("span", { class: "source" }, SOURCES[c.source] || c.source));
+  head.append(el("span", { class: "when" }, c.when));
+  card.append(head, el("div", { class: "title" }, c.title));
+  const table = el("table");
+  c.fields.forEach(([k, v]) => {
+    const tr = el("tr");
+    tr.append(el("td", {}, k), el("td", {}, v));
+    table.append(tr);
+  });
+  card.append(table);
+  if (c.text) card.append(el("div", { class: "text" }, c.text));
+  const previous = answers[c.item_id];
+  current = previous ? { ...previous } : { action: null, urgence: "normal", alerte: false };
+  renderChoices();
+  $("error").textContent = "";
+}
+
+async function submit() {
+  if (!current) return;
+  if (!current.action) { $("error").textContent = "Choisissez une action (touches 1 à 7)."; return; }
+  const c = cases[index];
+  const body = { item_id: c.item_id, ...current };
+  const r = await fetch("/api/grid/answer", { method: "POST", body: JSON.stringify(body) });
+  if (!r.ok) { $("error").textContent = (await r.json()).error || "Erreur d'enregistrement."; return; }
+  answers[c.item_id] = { ...current };
+  index += 1;
+  renderCard();
+}
+
+function back() {
+  if (index > 0) { index -= 1; renderCard(); }
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (k === "enter") { e.preventDefault(); submit(); return; }
+  if (k === "backspace") { e.preventDefault(); back(); return; }
+  if (!current) return;
+  if (k >= "1" && k <= "7") pick("action", ACTIONS[Number(k) - 1][0]);
+  const u = URGENCY.find(([, , key]) => key === k);
+  if (u) pick("urgence", u[0]);
+  if (k === "a") pick("alerte", !current.alerte);
+});
+
+(async () => {
+  const data = await (await fetch("/api/grid")).json();
+  $("context").textContent = data.context;
+  cases = data.cases;
+  answers = data.answers;
+  index = cases.findIndex((c) => !answers[c.item_id]);
+  if (index < 0) index = cases.length;
+  buildChoices();
+  renderCard();
+})();
+</script>
+</body>
+</html>

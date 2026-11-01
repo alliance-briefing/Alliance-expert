@@ -221,3 +221,102 @@ def test_question_de_revue_ne_pose_que_les_mails_listes(tmp_path):
 )
 def test_type_d_expediteur_demo(sender, kind):
     assert DEMO_CAMILLE.sender_kind(sender) == kind
+
+
+# --- grille d'actions (M0) ---------------------------------------------------------------------
+
+
+def test_cas_de_calibrage_couvrent_les_4_sources():
+    cases = load_sample(annotate.GRID_CALIBRATION_PATH)
+
+    assert len(cases) == 40 and len({c["item_id"] for c in cases}) == 40
+    assert Counter(c["source"] for c in cases) == {
+        "mail": 10,
+        "calendar": 10,
+        "task": 10,
+        "file": 10,
+    }
+    assert all(c["title"] and c["when"] and c["fields"] for c in cases)
+
+
+def test_kappa_de_cohen():
+    assert annotate.cohen_kappa(["a", "b", "a"], ["a", "b", "a"]) == pytest.approx(1.0)
+    assert annotate.cohen_kappa(["a", "a"], ["a", "a"]) == pytest.approx(1.0)
+    assert annotate.cohen_kappa(["a", "b", "a", "b"], ["a", "a", "b", "b"]) == pytest.approx(0.0)
+    with pytest.raises(ValueError):
+        annotate.cohen_kappa([], [])
+
+
+@pytest.fixture
+def grid_server(tmp_path):
+    cases = [
+        {
+            "item_id": f"cal:m{i}",
+            "source": "mail",
+            "title": f"T{i}",
+            "when": "hier",
+            "fields": [["De", "x"]],
+            "text": "",
+        }
+        for i in range(3)
+    ]
+    write_sample(cases, tmp_path / "grid.jsonl")
+    httpd = annotate.serve(
+        0, labels=tmp_path / "labels.jsonl", annotator="paul", grid_mode=True,
+        grid_path=tmp_path / "grid.jsonl",
+    )  # fmt: skip
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    yield f"http://127.0.0.1:{httpd.server_address[1]}", tmp_path
+    httpd.shutdown()
+    httpd.server_close()
+
+
+def test_serveur_grille_enregistre_et_relit_la_derniere_reponse(grid_server):
+    url, folder = grid_server
+    status, page = _get(url + "/")
+    assert status == 200 and b"textContent" in page and b"innerHTML" not in page
+    state = json.loads(_get(url + "/api/grid")[1])
+    assert len(state["cases"]) == 3 and state["answers"] == {} and "8 h 30" in state["context"]
+    first = state["cases"][0]["item_id"]
+    answer = {"item_id": first, "action": "faire", "urgence": "normal", "alerte": False}
+    assert _post(url + "/api/grid/answer", answer) == (200, {"ok": True})
+    assert _post(url + "/api/grid/answer", answer | {"action": "decider"}) == (200, {"ok": True})
+    assert (
+        annotate.load_grid_labels(folder / "grid_labels_paul.jsonl")[first]["action"] == "decider"
+    )
+    for bad in ({"item_id": first, "action": "x", "urgence": "normal", "alerte": False},
+                {"item_id": first, "action": "faire", "urgence": "normal", "alerte": "non"},
+                {"item_id": "inconnu", "action": "faire", "urgence": "normal", "alerte": False}):  # fmt: skip
+        with pytest.raises(urllib.error.HTTPError) as err:
+            _post(url + "/api/grid/answer", bad)
+        assert err.value.code == 400
+
+
+def test_annotateur_de_grille_inconnu_refuse(tmp_path):
+    with pytest.raises(ValueError):
+        annotate.serve(0, labels=tmp_path / "l.jsonl", annotator="inconnu", grid_mode=True)
+
+
+def test_rapport_d_accord_kappa_et_desaccords(tmp_path):
+    cases = [{"item_id": f"cal:t{i}", "title": f"Tâche {i}"} for i in range(4)]
+    write_sample(cases, tmp_path / "grid.jsonl")
+    theo = ["faire", "decider", "rien", "faire"]
+    paul = ["faire", "decider", "rien", "relire"]
+    for who, actions in (("theo", theo), ("paul", paul)):
+        rows = [
+            {"item_id": f"cal:t{i}", "action": a, "urgence": "normal", "alerte": False}
+            for i, a in enumerate(actions)
+        ]
+        (tmp_path / f"grid_labels_{who}.jsonl").write_text(
+            "".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8"
+        )
+
+    report = annotate.grid_agreement(tmp_path, tmp_path / "grid.jsonl")
+
+    assert "paul / theo : 4 éléments en commun" in report
+    assert "action   accord 75%" in report
+    assert "≠ cal:t3 « Tâche 3 » : action relire / faire" in report
+    assert annotate.grid_agreement(tmp_path / "vide", tmp_path / "grid.jsonl").startswith(
+        "Pas encore"
+    )
