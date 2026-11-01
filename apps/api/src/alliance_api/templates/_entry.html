@@ -1,0 +1,95 @@
+{# Une entrée du brief : `row` = aperçu court sur la page d'accueil,
+   `detail` = panneau latéral avec tout le reste (raisons, sources, participants…). #}
+{% from "_ui.html" import icon %}
+
+{% macro row(view, position) %}
+{% set s = view.main %}
+<li class="entry">
+  <span class="entry-rank entry-rank--{{ view.level }}" aria-label="Priorité {{ position }}">{{ position }}</span>
+  <div class="entry-body" data-section="{{ view.kind }}">
+    <p class="entry-meta entry-meta--{{ s.kind }}">{{ icon(KIND_ICONS.get(s.kind, "file"), 14) }}<span>{{ view.meta }}</span>{% if s.unread %}<span class="dot" title="Non lu"></span><span class="sr-only">non lu</span>{% endif %}</p>
+    <p class="entry-title">{{ view.headline }}</p>
+    <p class="entry-reason">{{ view.entry.priority_reasons[0] }}{% if view.sources | length > 1 %}<span class="chip">+{{ view.sources | length - 1 }} lié{{ "s" if view.sources | length > 2 }}</span>{% endif %}</p>
+  </div>
+  <button type="button" class="entry-open" data-open="d-{{ view.uid }}" aria-haspopup="dialog">Détails</button>
+  <ul class="entry-links">
+    <li><a href="{{ s.url }}" target="_blank" rel="noopener noreferrer" title="Ouvrir la source">{{ icon("external", 16) }}<span class="sr-only">Voir la source : {{ s.title or "(sans objet)" }}</span></a></li>
+  </ul>
+</li>
+{% endmacro %}
+
+{% set SECTION_ICONS = {"actions": "circle-check", "meetings": "calendar", "overdue": "alarm", "files": "file"} %}
+{% set KIND_LABELS = {"mail": "Mail", "calendar": "Événement", "task": "Tâche", "file": "Fichier"} %}
+{% set KIND_ICONS = {"mail": "mail", "calendar": "calendar", "task": "check", "file": "file"} %}
+{% set OPEN_IN = {"mail": "Ouvrir le mail", "calendar": "Ouvrir dans l'agenda", "task": "Ouvrir la tâche", "file": "Ouvrir le fichier"} %}
+
+{% macro detail(view, section_label) %}
+{% set e = view.entry %}
+<dialog class="drawer" id="d-{{ view.uid }}" aria-labelledby="d-{{ view.uid }}-title">
+  <div class="drawer-inner">
+    <header class="drawer-head">
+      <span class="drawer-kind drawer-kind--{{ view.kind }}">{{ icon(SECTION_ICONS.get(view.kind, "file"), 16) }}{{ section_label }}</span>
+      <button type="button" class="icon-btn" data-close aria-label="Fermer le détail">{{ icon("x", 20) }}</button>
+    </header>
+
+    <h2 class="drawer-title" id="d-{{ view.uid }}-title">{{ view.headline }}</h2>
+
+    <div class="meter meter--{{ view.level }}">
+      <div class="meter-text"><strong>Priorité {{ e.priority_score }}/100</strong><span>{{ view.level | capitalize }}</span></div>
+      <div class="meter-track" aria-hidden="true"><span style="--score: {{ e.priority_score }}"></span></div>
+    </div>
+
+    <section class="drawer-block">
+      <h3>{{ icon("sparkle", 16) }}Résumé du brief</h3>
+      <p class="summary">{{ e.text }}</p>
+    </section>
+
+    <section class="drawer-block">
+      <h3>{{ icon("target", 16) }}Pourquoi c'est dans votre brief</h3>
+      <ul class="reasons">{% for reason in e.priority_reasons %}<li>{{ reason }}</li>{% endfor %}</ul>
+    </section>
+
+    {% if e.recommended_action %}
+    <section class="drawer-block drawer-block--action">
+      <h3>{{ icon("circle-check", 16) }}Action conseillée</h3>
+      <p>{{ e.recommended_action }}</p>
+    </section>
+    {% endif %}
+
+    {% if e.claims %}
+    <section class="drawer-block">
+      <h3>{{ icon("list", 16) }}Points relevés</h3>
+      <ul class="reasons">{% for claim in e.claims %}<li>{{ claim.text }}</li>{% endfor %}</ul>
+    </section>
+    {% endif %}
+
+    <section class="drawer-block">
+      <h3>{{ icon("file", 16) }}Source{{ "s" if view.sources | length > 1 }} ({{ view.sources | length }})</h3>
+      <ul class="sources">
+        {% for source in view.sources %}
+        <li class="source">
+          <div class="source-head">
+            <span class="source-icon">{{ icon(KIND_ICONS.get(source.kind, "file"), 16) }}</span>
+            <div>
+              <p class="source-kind">{{ KIND_LABELS.get(source.kind, "Élément") }}{% if source.unread %}<span class="pill pill--iris">non lu</span>{% endif %}{% if source.important %}<span class="pill pill--coral">important</span>{% endif %}</p>
+              <p class="source-title">{{ source.title or "(sans objet)" }}</p>
+            </div>
+          </div>
+          <dl class="facts">
+            {% if source.sender %}<div><dt>{{ "Organisateur" if source.kind == "calendar" else "De" }}</dt><dd>{{ source.sender }}</dd></div>{% endif %}
+            {% if source.recipients %}<div><dt>{{ "Participants" if source.kind == "calendar" else "Assigné à" if source.kind == "task" else "À" }}</dt><dd>{{ source.recipients | join(", ") }}</dd></div>{% endif %}
+            {% if source.kind == "calendar" and source.snippet %}<div><dt>Précisions</dt><dd>{{ source.snippet }}</dd></div>{% endif %}
+            {% if source.due %}<div><dt>Échéance</dt><dd>{{ source.due }}</dd></div>{% endif %}
+            {% if source.when %}<div><dt>{{ "Quand" if source.kind == "calendar" else "Reçu" if source.kind == "mail" else "Créé" }}</dt><dd>{{ source.when }}</dd></div>{% endif %}
+          </dl>
+          {% if source.snippet and source.kind != "calendar" %}<blockquote class="snippet">Extrait : « {{ source.snippet }} »</blockquote>{% endif %}
+          <a class="btn btn--ghost btn--sm" href="{{ source.url }}" target="_blank" rel="noopener noreferrer">{{ icon("external", 16) }}Voir la source<span class="sr-only"> : {{ source.title or "(sans objet)" }}</span></a>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <p class="drawer-foot">{{ icon("shield", 14) }}Chaque information de ce brief est reliée à sa source d'origine.</p>
+  </div>
+</dialog>
+{% endmacro %}

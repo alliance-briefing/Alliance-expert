@@ -3,63 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
   <title>{% block title %}Alliance Briefing{% endblock %}</title>
-  <style>
-    /* Contrastes WCAG AA : texte #1b1b1b et liens #0b57d0 sur blanc (> 4,5:1). */
-    :root { --text: #1b1b1b; --muted: #4a4a4a; --link: #0b57d0; --line: #d0d0d0;
-            --warn-bg: #fff4ce; --warn-line: #8a6100; --error-bg: #fde7e9; --error-line: #a4262c; }
-    * { box-sizing: border-box; }
-    body { margin: 0; font: 16px/1.5 system-ui, sans-serif; color: var(--text); background: #fff; }
-    header, main { max-width: 52rem; margin: 0 auto; padding: 1rem; }
-    header { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center;
-             justify-content: space-between; border-bottom: 1px solid var(--line); }
-    h1 { font-size: 1.25rem; margin: 0; }
-    h2 { font-size: 1.1rem; margin: 1.5rem 0 .5rem; }
-    a { color: var(--link); }
-    a:focus-visible, button:focus-visible, input:focus-visible { outline: 3px solid var(--link); outline-offset: 2px; }
-    button, input { font: inherit; min-height: 2.75rem; padding: .25rem .75rem; }
-    form.inline { display: flex; flex-wrap: wrap; gap: .5rem; align-items: end; }
-    label { display: block; font-weight: 600; }
-    .muted { color: var(--muted); }
-    .box { padding: .75rem 1rem; border-left: 4px solid; margin: 1rem 0; }
-    .warn { background: var(--warn-bg); border-color: var(--warn-line); }
-    .error { background: var(--error-bg); border-color: var(--error-line); }
-    ol.entries { padding-left: 1.25rem; }
-    ol.entries > li { margin-bottom: 1rem; overflow-wrap: anywhere; }
-    .sources { margin: .25rem 0 0; padding-left: 1rem; }
-    /* Menu « Outils » : <details> natif, ouvrable au clavier sans JavaScript. */
-    .bar { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
-    .tools { position: relative; }
-    .tools summary { cursor: pointer; display: flex; align-items: center; min-height: 2.75rem;
-                     padding: .25rem .75rem; border: 1px solid var(--line); border-radius: 4px; }
-    .tools summary:focus-visible { outline: 3px solid var(--link); outline-offset: 2px; }
-    .tools ul { position: absolute; right: 0; z-index: 1; width: min(18rem, calc(100vw - 2rem));
-                margin: .25rem 0 0; padding: .5rem 0; list-style: none; background: #fff;
-                border: 1px solid var(--line); border-radius: 4px; }
-    .tools li a { display: block; padding: .5rem 1rem; }
-    .tools li small { display: block; color: var(--muted); }
-  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..700&family=Figtree:wght@400..700&display=swap">
+  <link rel="stylesheet" href="/static/app.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%238B7CFF' d='M12 3c.4 4.6 2.4 6.6 7 7-4.6.4-6.6 2.4-7 7-.4-4.6-2.4-6.6-7-7 4.6-.4 6.6-2.4 7-7Z'/%3E%3C/svg%3E">
+  <script id="js-flag">document.documentElement.classList.add("js")</script>
+  <script src="/static/app.js" defer></script>
 </head>
-<body>
-  <header>
-    <h1>Alliance Briefing</h1>
-    <div class="bar">
-      {% block nav %}{% endblock %}
-      <details class="tools">
-        <summary>Outils</summary>
-        <ul>
-          <li><a href="/">Brief du jour<small>Interface manager</small></a></li>
-          <li><a href="/docs" target="_blank" rel="noopener">Swagger UI<small>Tester l'API (/docs)</small></a></li>
-          <li><a href="/redoc" target="_blank" rel="noopener">ReDoc<small>Documentation de l'API (/redoc)</small></a></li>
-          <li><a href="/openapi.json" target="_blank" rel="noopener">Schéma OpenAPI<small>JSON brut (/openapi.json)</small></a></li>
-          <li><a href="/me" target="_blank" rel="noopener">Session<small>Utilisateur connecté (/me)</small></a></li>
-          <li><a href="/health" target="_blank" rel="noopener">Santé<small>État du serveur (/health)</small></a></li>
-        </ul>
-      </details>
-    </div>
-  </header>
-  <main id="contenu">
-    {% block content %}{% endblock %}
-  </main>
+<body class="{% block body_class %}{% endblock %}">
+  <a class="skip" href="#contenu">Aller au contenu</a>
+  {% block body %}{% endblock %}
 </body>
 </html>

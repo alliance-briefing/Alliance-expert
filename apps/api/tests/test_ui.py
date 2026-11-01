@@ -118,6 +118,51 @@ def test_jour_sans_collecte_message_lisible(client: TestClient) -> None:
     assert "aucune collecte pour ce jour" in response.text
 
 
+def test_chaque_bouton_detail_ouvre_un_panneau(client: TestClient) -> None:
+    page = _brief_page(_logged_in(client))
+    targets = set(re.findall(r'data-open="(d-[a-z]+-\d+)"', page))
+    panels = set(re.findall(r'<dialog class="drawer" id="(d-[a-z]+-\d+)"', page))
+    assert targets and targets == panels
+
+
+def test_l_essentiel_garde_7_elements_et_replie_les_autres(tmp_path: Path) -> None:
+    items = [make_item(USER_A, n, thread_id=f"conv:{n}", title=f"Sujet {n}") for n in range(1, 10)]
+    write_day(tmp_path, USER_A, DAY, items)
+
+    def nine_entries(items: Sequence[Item], user: str, day: date | str, **kw: object) -> Brief:
+        data = generate_brief(items, user, day).model_dump(mode="json")
+        data["sections"] = [
+            {
+                "kind": "actions",
+                "entries": [
+                    {
+                        "rank": n,
+                        "priority_score": 100 - n,
+                        "priority_reasons": [f"raison {n}"],
+                        "text": f"Sujet {n}",
+                        "source_item_ids": [f"mail:{USER_A}-{n}"],
+                    }
+                    for n in range(1, 10)
+                ],
+            }
+        ]
+        return Brief.model_validate(data)
+
+    store = DemoItemStore(tmp_path)
+    client = TestClient(create_app(item_store=store, generator=nine_entries, auth_mode="demo"))
+    page = _brief_page(_logged_in(client))
+    top, others = page.split('<details class="others">')
+    assert top.count('<li class="entry">') == 7
+    assert others.count('<li class="entry">') == 2
+    assert "Voir les 2 autres éléments du brief" in page
+
+
+def test_jour_sans_collecte_ne_propose_pas_de_generer(client: TestClient) -> None:
+    page = _logged_in(client).get("/?date=2026-01-01").text
+    assert "Aucune donnée collectée" in page
+    assert "Générer le brief" not in page
+
+
 def test_un_utilisateur_ne_voit_pas_le_brief_d_un_autre(client: TestClient) -> None:
     _brief_page(_logged_in(client, USER_A))
     page = _logged_in(client, USER_B).get(f"/?date={DAY}").text
