@@ -89,6 +89,7 @@ footer{margin-top:60px;color:var(--muted);font-size:13px;border-top:1px solid va
   <a href="#donnees" class="l1">4. Données</a>
   <a href="#annotation" class="l1">5. Annotation</a>
   <a href="#evaluation" class="l3">6. Évaluation</a>
+  <a href="#regles" class="l3">&nbsp;&nbsp;6.1 Règles de décision</a>
   <b>Exécution</b>
   <a href="#taches" class="l2">7. Tâches M0 à M10</a>
   <a href="#planning">8. Planning</a>
@@ -228,7 +229,7 @@ Sur la démo, les liens « même référence » étaient justes, mais <b>tous</b
 <tr><td>Entraînement</td><td><code>collect/trainset/</code>, métiers d'entraînement, deux écrivains</td><td>Apprendre, régler, apprentissage actif</td><td>—</td></tr>
 <tr><td>T-gen (gelé)</td><td><code>collect/trainset/</code>, <b>métiers réservés</b> et formulations réservées</td><td>Mesure principale, jugée à l'aveugle par deux annotateurs</td><td>Entraînement, réglage</td></tr>
 <tr><td>T-démo (gelé)</td><td>Journées de démo du lot 1 (Alliance-Experts)</td><td>Test de transfert vers le vrai domaine</td><td>Entraînement (y compris les 120 mails de démo déjà étiquetés)</td></tr>
-<tr><td>Données Graph de David</td><td>Jeu externe, persona Hélène</td><td>Second test de transfert ; entraînement possible, décidé en M0</td><td>Mélange avec T-démo</td></tr>
+<tr><td>Données Graph de David</td><td>Jeu externe, persona Hélène</td><td>Second test de transfert uniquement (décidé en M0, §6.1)</td><td>Mélange avec T-démo</td></tr>
 <tr><td>Test caché du lot 3</td><td>Lot 1 / lot 3 (<code>synth/</code>, graine réservée)</td><td>Évaluation finale, faite par le lot 3</td><td>Tout accès avant la v0.9.0</td></tr>
 </table></div>
 
@@ -287,6 +288,31 @@ Le modèle d'intentions actuel a été entraîné sur 601 mails, dont des mails 
 <li>Avec ou sans historique retrouvé (RAG) : pour la liaison des affaires et pour la priorité.</li>
 <li>Transfert : T-gen → T-démo → données de David.</li>
 </ul>
+
+<h3 id="regles">6.1 Règles de décision, écrites avant toute mesure (M0, P3)</h3>
+<p>Ces règles sont écrites avant le premier chiffre pour qu'aucun choix ne soit ajusté sur le résultat qu'on espère. Changer une règle après coup reste possible, à condition d'écrire pourquoi <b>avant</b> de remesurer, et de le signaler dans le rapport.</p>
+
+<div class="box rule"><b>Règles générales</b>
+<ul>
+<li><b>G1 · On choisit sur la validation, on mesure sur les jeux gelés.</b> Les réglages, les candidats et les seuils sont choisis sur une validation tirée de l'entraînement (20 %, coupée par persona et par affaire, jamais mail par mail, pour éviter les quasi-doublons). T-gen, T-démo et les données de David ne servent qu'à la mesure finale du candidat retenu. Chaque lecture d'un jeu gelé est journalisée (date, commit, chiffre).</li>
+<li><b>G2 · Un écart ne compte que s'il dépasse le bruit.</b> Différence mesurée par rééchantillonnage (1 000 tirages, graine fixe) : un gain n'est retenu que si l'intervalle à 95 % exclut zéro. Sinon, c'est une égalité.</li>
+<li><b>G3 · À égalité, le plus simple gagne</b> : règles, puis modèle gelé, puis modèle réajusté ; à défaut, le moins de paramètres, de dépendances et de latence.</li>
+<li><b>G4 · Trois graines par candidat entraîné.</b> On décide sur la moyenne et on publie l'écart entre graines.</li>
+<li><b>G5 · Les exigences de sûreté sont des vetos, pas des compromis.</b> Une alerte manquée (rappel des alertes &lt; 0,95 sur la validation), une injection qui change le brief, un élément d'un autre utilisateur ou postérieur au jour, un brief hors contrat B : le candidat est écarté, quel que soit son score.</li>
+<li><b>G6 · Échec assumé.</b> Si aucun candidat ne passe l'acceptation, on livre la référence (ou les règles) et on publie le résultat négatif. On n'abaisse pas un seuil après avoir vu les chiffres.</li>
+</ul></div>
+
+<div class="scroll"><table>
+<tr><th>Tâche</th><th>Choix</th><th>Règle</th></tr>
+<tr><td>M6</td><td>Quel encodeur ?</td><td>Candidats : MiniLM gelé + régression (référence), MiniLM réajusté, un second encodeur multilingue réajusté. Classement par F1 macro de l'action sur la validation, sous les contraintes ≤ 30 ms par élément et ≤ 300 Mo, et le veto G5. Le premier est mesuré une fois sur T-gen et T-démo : il remplace la référence s'il atteint l'acceptation de M6. S'il gagne sur T-gen mais perd sur T-démo, le transfert est raté : la référence reste en production et l'écart va au rapport.</td></tr>
+<tr><td>M7</td><td>Garder l'apprentissage actif ?</td><td>Après 3 tours, on compare à budget égal avec le témoin au hasard (F1 sur la validation, G2). Gain : on continue. Égalité ou perte : tirage au hasard avec la seule règle de diversité, plus simple (G3). Le résultat est publié dans les deux cas.</td></tr>
+<tr><td>M8</td><td>Bradley-Terry ou boosting par paires ?</td><td>Bradley-Terry par défaut, car ses raisons se lisent directement. Le boosting ne le remplace que s'il gagne au moins 0,03 d'accord sur les paires de validation, avec un intervalle qui exclut zéro.</td></tr>
+<tr><td>M8</td><td>Liaison apprise des affaires ?</td><td>Gardée si F1 des liens ≥ règles L2.1 sur la validation, sans aucune fusion entre utilisateurs ni élément postérieur au jour (veto). Sinon, on garde les règles L2.1.</td></tr>
+<tr><td>M8</td><td>Historique retrouvé (RAG) ?</td><td>Gardé seulement si l'ablation montre un gain (G2) sur la liaison ou sur l'accord des paires. Sinon, retiré : une brique de moins à défendre.</td></tr>
+<tr><td>M9</td><td>Nombre d'entrées, seuil adaptatif</td><td>Réglés sur des journées simulées de validation, jamais sur le jeu de développement du lot 3, qui ne sert qu'à la mesure finale. Veto : zéro « ne doit pas figurer » dans le top 3, injections sans effet.</td></tr>
+<tr><td>M9</td><td>Score appris ou règles par défaut ?</td><td>Le score appris est le mode par défaut du brief seulement s'il bat le brief par règles sur le jeu de développement du lot 3 (acceptation de M9). Sinon, <code>ALLIANCE_SCORE=regles</code> devient le défaut et le score appris reste disponible.</td></tr>
+<tr><td>M0</td><td>Données de David</td><td><b>Test seul</b> : second test de transfert (persona Hélène), jamais à l'entraînement ni au réglage. C'est notre seul jeu écrit hors de nos générateurs : l'utiliser pour apprendre supprimerait la seule preuve indépendante que le modèle généralise.</td></tr>
+</table></div>
 
 <!-- ============================================================ -->
 <h2 id="taches">7. Tâches M0 à M10</h2>
