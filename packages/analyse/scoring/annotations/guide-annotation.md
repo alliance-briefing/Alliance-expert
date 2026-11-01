@@ -1,6 +1,7 @@
 # Guide d'annotation — grille d'actions (M0)
 
-Brouillon du 01/11/2026, à figer après le calibrage. Plan : `packages/analyse/plan-modele.html`.
+Version figée le 01/11/2026 après le calibrage Théo / Paul (40 cas, kappa action 0,59 ;
+les désaccords venaient pour moitié de trous du guide, corrigés ici d'un commun accord). Plan : `packages/analyse/plan-modele.html`.
 
 ## La question
 Pour chaque élément (mail, réunion, tâche, fichier), on se met **à la place du manager, le
@@ -21,9 +22,9 @@ absent. La carte ne montre jamais ce qu'un modèle en pense.
 | 2 | **Faire** | un acte concret autre qu'écrire une réponse | « Envoie-moi le planning », appeler un client, compléter un formulaire, traiter un ticket, tâche To Do |
 | 3 | **Décider / valider** | qu'il engage son autorité : approuver, refuser, arbitrer, signer | devis à valider, note de frais, demande de congés, choix entre deux options, bon de commande à signer |
 | 4 | **Préparer** | qu'il se prépare à un événement à venir | réunion qu'il anime, présentation, entretien annuel, document à lire **avant** une réunion |
-| 5 | **Relire** | qu'il lise avec attention un contenu qui le concerne, sans décision demandée | rapport modifié par un collaborateur, compte rendu à vérifier, document partagé « pour relecture » |
-| 6 | **S'informer** | rien, mais l'information lui est utile | compte rendu, annonce interne, confirmation qu'une chose est faite, réunion où il assiste sans rien préparer |
-| 7 | **Rien** | rien du tout | notification sans suite, élément déjà traité, réunion annulée, doublon, envoi en masse, fichier modifié par lui-même |
+| 5 | **Relire** | qu'il vérifie un contenu qu'on lui demande de relire ou qu'il porte, sans décision demandée | document partagé « pour relecture », rapport qu'il doit transmettre, compte rendu qu'on lui demande de vérifier |
+| 6 | **S'informer** | rien, mais un contenu à lire lui est utile | compte rendu diffusé, annonce interne, confirmation qu'une chose est faite |
+| 7 | **Rien** | rien du tout | notification sans suite, élément déjà traité, réunion où il assiste seulement, réunion annulée, doublon, envoi en masse, fichier modifié par lui-même |
 
 **Plusieurs actions dans un même élément** : on garde la plus engageante, dans cet ordre :
 
@@ -63,11 +64,18 @@ fraude, incident bloquant (panne, production arrêtée, accident, plainte grave 
   son expéditeur automatique : « X vous a mentionné : peux-tu jeter un œil ? » → **Relire** ou
   **Répondre** selon la demande.
 - **Réunions** : il anime, présente ou doit apporter quelque chose → **Préparer** ; invitation
-  sans réponse → **Répondre** ; il assiste seulement → **S'informer** ; annulée → **Rien**.
-- **Tâches** : une tâche ouverte est par nature **Faire**, sauf si son intitulé demande une
-  validation (**Décider**) ou une préparation (**Préparer**). Une tâche terminée → **Rien**.
-- **Fichiers** : modifié par un autre et lié à son travail → **Relire** ; à signer ou approuver
-  → **Décider** ; modifié par lui-même → **Rien** ; simple dépôt d'information → **S'informer**.
+  sans réponse, réponse provisoire ou conflit d'horaire → **Répondre** ; il assiste seulement,
+  réponse déjà donnée → **Rien** (l'agenda l'affiche déjà) ; annulée → **Rien**. « Viens avec
+  ta proposition, on tranchera en séance » → **Préparer** : la décision se prend en réunion.
+- **Tâches** : **le verbe de l'intitulé donne l'action** (« répondre à… » → **Répondre**,
+  « appeler… », « envoyer… » → **Faire**, « valider… », « signer… » → **Décider**,
+  « préparer… » → **Préparer**). Une tâche terminée → **Rien**.
+- **Fichiers** : lié à une réunion qu'il prépare → **Préparer** ; lié à une tâche → l'action
+  de la tâche ; à signer ou approuver → **Décider** ; à relire parce qu'on le lui demande ou
+  qu'il porte le document → **Relire** ; compte rendu ou document diffusé pour information →
+  **S'informer** ; modifié par lui-même → **Rien**.
+- **Échéance et urgence** : une échéance, même dépassée, n'est pas une urgence (urgence **N**
+  sauf mot explicite, comme « URGENT » dans l'intitulé). Un client impatient n'est pas une alerte.
 - **En cas de doute** : choisir l'action la plus probable, puis noter le cas dans le fil de
   calibrage. Les doutes répétés font évoluer ce guide.
 
@@ -81,6 +89,9 @@ fraude, incident bloquant (panne, production arrêtée, accident, plainte grave 
 | « Nous n'avons pas eu de retour sur le dossier, l'assuré s'impatiente : une date ? » | Répondre | U | non | une date est attendue, le client attend |
 | Invitation « Point budget » jeudi, réponse : aucune | Répondre | N | non | accepter ou refuser l'invitation |
 | Réunion du jour qu'il organise, ordre du jour joint | Préparer | N | non | il anime |
+| Réunion d'équipe hebdomadaire, acceptée, « tour de table habituel » | Rien | N | non | il assiste seulement, l'agenda l'affiche |
+| Présentation modifiée par son adjointe pour le comité qu'il anime à 14 h | Préparer | N | non | fichier lié à une réunion qu'il prépare |
+| Tâche To Do « URGENT – répondre à l'avocat avant 12 h » | Répondre | U | non | le verbe de l'intitulé ; « URGENT » est écrit |
 | « Connexion inhabituelle à votre compte depuis Lagos » | Faire | U | oui | vérifier ou changer le mot de passe |
 | Tâche Planner « Valider le planning de décembre », échéance hier | Décider | N | non | l'intitulé demande une validation ; le retard est capté à part |
 | Fichier « Contrat_Dupont_v3.docx » modifié par un juriste, partagé avec lui | Relire | N | non | un contenu qui le concerne a changé |
