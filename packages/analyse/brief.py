@@ -21,11 +21,15 @@ from contracts.models.brief import SectionKind
 from packages.analyse.aggregate.cases import Case, group_into_cases
 from packages.analyse.aggregate.rules import meetings_of_day, overdue_tasks, unread_mails
 from packages.analyse.clock import PARIS, is_all_day, to_paris
+from packages.analyse.scoring.score import STANDARD, score_case
 
-# Score fixe par section : le vrai barème arrive avec L2.2 (score de priorité expliqué).
-SCORES: dict[SectionKind, int] = {"overdue": 70, "actions": 60, "meetings": 50}
-# Nombre maximal d'affaires (et non de mails) dans la section « à traiter ».
-ACTIONS_LIMIT = 5
+# Seuil de score à partir duquel une affaire sans mail non lu entre dans « À traiter ».
+# 50 = score neutre : toute affaire avec au moins un signal net positif est incluse.
+ACTIONS_THRESHOLD = 50
+# Nombre maximal d'affaires dans la section « à traiter ».
+ACTIONS_LIMIT = 7
+# Score fixe pour les réunions : triées par heure, leur score ne porte pas l'ordre.
+MEETINGS_SCORE = 50
 NO_TITLE = "(sans objet)"
 NOTHING_TO_REPORT = "Aucun élément à signaler pour cette journée."
 # Noms des éléments liés, au singulier et au pluriel, dans l'ordre d'affichage.
@@ -60,13 +64,96 @@ def generate_brief(
     collected_at = max((item.collected_at for item in mine), default=None)
     overdue = overdue_tasks(mine, collected_at) if collected_at else []
 
-    case_of = {item.item_id: case for case in group_into_cases(mine) for item in case.items}
-    actions = _by_case(unread_mails(mine, limit=None), case_of)[:ACTIONS_LIMIT]
-    meetings = [[event] for event in meetings_of_day(mine, day)]
+    cases = group_into_cases(mine)
+    case_of: dict[str, Case] = {item.item_id: case for case in cases for item in case.items}
+    _now = collected_at  # alias pour le score (même valeur que pour les retards)
+
+    # Score par affaire. Sans collected_at (liste vide), on ne peut pas scorer.
+    case_scores: dict[str, tuple[int, list[str]]] = (
+        {case.case_id: score_case(case, _now) for case in cases} if _now else {}
+    )
+
+    # Réunions du jour par item_id.
+    today_events: set[str] = {e.item_id for e in meetings_of_day(mine, day)}
+    # Affaires qui ont au moins une réunion du jour.
+    meeting_case_ids: set[str] = {case_of[eid].case_id for eid in today_events if eid in case_of}
+
+    # Tâches en retard par affaire.
+    overdue_ids: set[str] = {t.item_id for t in overdue}
+    overdue_case_ids: set[str] = {case_of[tid].case_id for tid in overdue_ids if tid in case_of}
+
+    # Mails non lus, triés du plus récent au plus ancien (ordre conservé pour le rendu).
+    unread_sorted = unread_mails(mine, limit=None)
+    unread_ids: set[str] = {m.item_id for m in unread_sorted}
+    unread_case_ids: set[str] = {case_of[mid].case_id for mid in unread_ids if mid in case_of}
+    # Regroupement des mails non lus par affaire, dans l'ordre du plus récent au plus ancien.
+    unread_by_case: dict[str, list[Item]] = {}
+    for m in unread_sorted:
+        unread_by_case.setdefault(case_of[m.item_id].case_id, []).append(m)
+
+    # Tâches en retard regroupées par affaire, dans l'ordre due_at le plus ancien en premier.
+    overdue_by_case: dict[str, list[Item]] = {}
+    for t in overdue:  # overdue_tasks renvoie déjà (due_at, item_id) croissant
+        overdue_by_case.setdefault(case_of[t.item_id].case_id, []).append(t)
+
+    # --- Partition des affaires : meetings > overdue > actions ---
+    # Réunions : une entrée par événement (une par heure), pas une par affaire.
+    meeting_events = meetings_of_day(mine, day)  # déjà triés par heure
+    meeting_groups: list[list[Item]] = [[event] for event in meeting_events]
+
+    non_meeting_cases = [c for c in cases if c.case_id not in meeting_case_ids]
+
+    overdue_cases = [c for c in non_meeting_cases if c.case_id in overdue_case_ids]
+    overdue_cases.sort(key=lambda c: (-case_scores.get(c.case_id, (0,))[0], c.case_id))
+    overdue_groups: list[list[Item]] = [overdue_by_case[c.case_id] for c in overdue_cases]
+
+    actions_cases = [
+        c
+        for c in non_meeting_cases
+        if c.case_id not in overdue_case_ids
+        and (
+            c.case_id in unread_case_ids or case_scores.get(c.case_id, (0,))[0] > ACTIONS_THRESHOLD
+        )
+    ]
+    actions_cases.sort(key=lambda c: (-case_scores.get(c.case_id, (0,))[0], c.case_id))
+    actions_cases = actions_cases[:ACTIONS_LIMIT]
+    # Pour chaque affaire : les mails non lus (newest-first) ; si aucun, l'item le plus ancien.
+    actions_groups: list[list[Item]] = [
+        unread_by_case.get(c.case_id) or [c.items[0]] for c in actions_cases
+    ]
+
     sections = [
-        _section("actions", actions, _mails_wording, case_of),
-        _section("meetings", meetings, lambda group: _meeting_wording(group[0], day), case_of),
-        _section("overdue", _by_case(overdue, case_of), _tasks_wording, case_of),
+        _section(
+            "actions",
+            actions_groups,
+            _mails_wording,
+            case_of,
+            case_scores,
+            overdue_ids,
+            today_events,
+            _now,
+        ),
+        _section(
+            "meetings",
+            meeting_groups,
+            lambda group: _meeting_wording(group[0], day),
+            case_of,
+            case_scores,
+            overdue_ids,
+            today_events,
+            _now,
+            fixed_score=MEETINGS_SCORE,
+        ),
+        _section(
+            "overdue",
+            overdue_groups,
+            _tasks_wording,
+            case_of,
+            case_scores,
+            overdue_ids,
+            today_events,
+            _now,
+        ),
     ]
     if not any(section.entries for section in sections):
         warnings.append(NOTHING_TO_REPORT)
@@ -91,40 +178,117 @@ def generate_brief(
     )
 
 
-def _by_case(selected: list[Item], case_of: dict[str, Case]) -> list[list[Item]]:
-    """Réunit les éléments sélectionnés par affaire, en gardant l'ordre de la sélection."""
-    groups: dict[str, list[Item]] = {}
-    for item in selected:
-        groups.setdefault(case_of[item.item_id].case_id, []).append(item)
-    return list(groups.values())
-
-
 def _section(
-    kind: SectionKind, groups: list[list[Item]], wording: Wording, case_of: dict[str, Case]
+    kind: SectionKind,
+    groups: list[list[Item]],
+    wording: Wording,
+    case_of: dict[str, Case],
+    case_scores: dict[str, tuple[int, list[str]]],
+    overdue_ids: set[str],
+    today_events: set[str],
+    now: datetime | None,
+    *,
+    fixed_score: int | None = None,
 ) -> Section:
     entries = []
     for rank, group in enumerate(groups, start=1):
-        text, reason = wording(group)
+        text, fallback_reason = wording(group)
         case = case_of[group[0].item_id]
+
+        score, score_reasons = case_scores.get(case.case_id, (fixed_score or 50, [STANDARD]))
+        displayed_score = fixed_score if fixed_score is not None else score
+
+        # Raisons du score, sans STANDARD (décision 3).
+        filtered_reasons = [r for r in score_reasons if r != STANDARD]
+
         shown = {item.item_id for item in group}
-        # Les autres éléments de l'affaire sont cités : la raison qui les annonce a sa source.
         others = [item for item in case.items if item.item_id not in shown]
+        context = _context(case, others, now, today_events) if others else None
+
+        # Raisons finales (max 4) : jusqu'à 3 raisons du score, puis la raison de contexte.
+        # Repli sur la raison de rédaction si le score est neutre (STANDARD filtré).
+        if filtered_reasons:
+            reasons: list[str] = filtered_reasons[:3]
+            if context:
+                reasons = reasons[:3] + [context]
+        else:
+            reasons = [context] if context else [fallback_reason]
+
+        # Tous les items de l'affaire sont cités, sans doublon (contrat B, décision 6).
+        # Les réunions annulées sont incluses (décision 5).
+        cancelled = _cancelled_in_case(case, today_events)
+        all_items = list(dict.fromkeys(item.item_id for item in group + others + cancelled))
+
         entries.append(
             Entry(
                 rank=rank,
-                priority_score=SCORES[kind],
-                priority_reasons=[reason, _context(case, others)] if others else [reason],
+                priority_score=displayed_score,
+                priority_reasons=reasons,
                 text=text,
-                source_item_ids=list(dict.fromkeys(item.item_id for item in group + others)),
+                source_item_ids=all_items,
             )
         )
     return Section(kind=kind, entries=entries)
 
 
-def _context(case: Case, others: list[Item]) -> str:
-    """« dossier 2026-3025 : aussi 1 réunion, 1 tâche »."""
-    counts = Counter(item.source for item in others)
-    parts = [f"{counts[s]} {NOUNS[s][counts[s] > 1]}" for s in NOUNS if counts[s]]
+def _cancelled_in_case(case: Case, today_events: set[str]) -> list[Item]:
+    """Réunions annulées de l'affaire, non comptées dans today_events."""
+    return [
+        item
+        for item in case.items
+        if item.source == "calendar" and _is_cancelled(item) and item.item_id not in today_events
+    ]
+
+
+def _is_cancelled(event: Item) -> bool:
+    calendar = event.attributes.calendar if event.attributes else None
+    return calendar is not None and calendar.is_cancelled is True
+
+
+def _context(
+    case: Case,
+    others: list[Item],
+    now: datetime | None,
+    today_events: set[str],
+) -> str | None:
+    """« dossier 2026-3025 : aussi 1 mail, 1 tâche en retard, 1 réunion annulée »."""
+    counts: Counter[str] = Counter()
+    for item in others:
+        if item.source == "calendar":
+            if _is_cancelled(item) and item.item_id not in today_events:
+                counts["calendar_cancelled"] += 1
+            elif item.item_id in today_events:
+                counts["calendar"] += 1
+            # réunions annulées déjà dans le groupe (today_events) ignorées ici
+        elif item.source == "task":
+            key = "task_overdue" if (now and item.is_overdue(now)) else "task"
+            counts[key] += 1
+        else:
+            counts[item.source] += 1
+
+    if not counts:
+        return None
+
+    parts = []
+    if counts["mail"]:
+        n = counts["mail"]
+        parts.append(f"{n} {NOUNS['mail'][n > 1]}")
+    if counts["calendar"]:
+        n = counts["calendar"]
+        parts.append(f"{n} {NOUNS['calendar'][n > 1]}")
+    if counts["calendar_cancelled"]:
+        n = counts["calendar_cancelled"]
+        parts.append(f"{n} réunion{'s' if n > 1 else ''} annulée{'s' if n > 1 else ''}")
+    if counts["task_overdue"]:
+        n = counts["task_overdue"]
+        parts.append(f"{n} tâche{'s' if n > 1 else ''} en retard")
+    if counts["task"]:
+        n = counts["task"]
+        parts.append(f"{n} {NOUNS['task'][n > 1]}")
+    if counts["file"]:
+        n = counts["file"]
+        parts.append(f"{n} {NOUNS['file'][n > 1]}")
+
     return f"{_case_name(case)} : aussi {', '.join(parts)}"
 
 

@@ -49,7 +49,7 @@ def test_brief_affiche_sections_score_raisons_et_sources(client: TestClient) -> 
     page = _brief_page(_logged_in(client))
     for label in ("À traiter", "Réunions", "Retards"):
         assert label in page
-    assert "Priorité 60/100" in page
+    assert "Priorité 70/100" in page  # native_importance=high → +20 → score 70
     assert f'href="https://outlook.reseau-expertis.test/mail/id/{USER_A}-2"' in page
 
 

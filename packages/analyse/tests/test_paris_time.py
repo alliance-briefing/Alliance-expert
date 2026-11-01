@@ -95,7 +95,8 @@ def test_mail_and_task_dates_are_written_in_paris_time() -> None:
     actions, _, overdue = generate_brief(items, USER, DAY, now=NOW).sections
 
     assert actions.entries[0].priority_reasons == ["non lu, reçu le 07/10 à 00:30"]
-    assert overdue.entries[0].priority_reasons == ["échéance dépassée depuis le 05/10"]
+    # tâche en retard → signal +25 → raison de score (pas la raison de rédaction)
+    assert overdue.entries[0].priority_reasons == ["tâche en retard"]
 
 
 # --- generated_at --------------------------------------------------------------------------------

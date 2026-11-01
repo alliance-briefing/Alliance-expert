@@ -2,7 +2,7 @@
 
 Transforme les `Item` d'un utilisateur (contrat A) en `Brief` (contrat B).
 
-## État actuel : brief à base de règles (L2.0), par affaires (L2.1)
+## État actuel : brief à base de règles + score de priorité (L2.0–L2.2), par affaires (L2.1)
 
 ```python
 from contracts.demo_data import load_items
@@ -11,25 +11,34 @@ from packages.analyse import generate_brief
 brief = generate_brief(load_items("2026-10-07"), "u_demo_001", "2026-10-07")
 ```
 
-| Section | Règle | Une entrée = | Ordre |
-|---|---|---|---|
-| `actions` | mails non lus, 5 affaires au plus | les mails non lus d'une affaire | mail non lu le plus récent d'abord |
-| `meetings` | événements non annulés (`attributes.calendar.is_cancelled`) qui occupent au moins une partie du jour | une réunion (jamais fusionnée : une heure par entrée) | heure de début |
-| `overdue` | tâches en retard à l'heure de la collecte (`Item.is_overdue`) | les tâches en retard d'une affaire | échéance la plus ancienne d'abord |
+| Section | Règle de sélection | Une entrée = | Ordre | `priority_score` |
+|---|---|---|---|---|
+| `actions` | affaires sans réunion du jour : mail non lu **ou** score > 50 ; 7 au plus | les mails non lus d'une affaire (ou l'item le plus ancien si pas de mail non lu) | score décroissant, ex aequo par `case_id` | score réel (`score_case`) |
+| `meetings` | événements non annulés qui occupent au moins une partie du jour ; une affaire déjà dans `meetings` ne crée **aucune** entrée dans les autres sections | une réunion (une par heure, jamais fusionnée) | heure de début | 50 fixe (ordre par heure, pas par score) |
+| `overdue` | affaires sans réunion du jour et avec au moins une tâche en retard | les tâches en retard d'une affaire | score décroissant, ex aequo par `case_id` | score réel (`score_case`) |
 
-Si l'affaire contient d'autres éléments, l'entrée les annonce dans une deuxième raison
-(« dossier 2026-3025 : aussi 1 réunion, 1 tâche ») et les cite dans `source_item_ids` :
-aucune phrase sans source.
+**Raisons** (`priority_reasons`, max 4) : jusqu'à 3 raisons de `score_case` (sans « élément
+professionnel standard »), puis la raison de contexte de l'affaire si elle a d'autres éléments
+(« dossier 2026-3025 : aussi 1 mail, 1 tâche en retard »). Repli sur la raison de rédaction
+quand le score est neutre et qu'il n'y a pas de contexte.
+
+**Réunions annulées** (`attributes.calendar.is_cancelled`) : elles ne génèrent pas d'entrée dans
+`meetings`, mais si une réunion annulée appartient à une affaire, elle est annoncée dans la raison
+de contexte (« 1 réunion annulée ») et citée dans `source_item_ids`.
+
+Toutes les réunions du jour d'une affaire restent dans `meetings` ; leurs autres éléments
+(mails non lus, tâches en retard…) sont résumés dans la raison de contexte de chaque entrée.
+Exception : deux réunions de la même affaire le même jour → deux entrées (une par heure).
 
 - Isolation : seuls les items dont `owner_user_id` est l'utilisateur demandé sont lus ; les autres sont comptés dans `warnings`.
-- Déterminisme : même entrée, même brief, quel que soit l'ordre des items (hors `generated_at` et `stats.latency_ms`).
+- Déterminisme : même entrée, même brief, quel que soit l'ordre des items (hors `generated_at` et `stats.latency_ms`). « Maintenant » = `collected_at` le plus récent, jamais `datetime.now()`.
 - Les textes ne reprennent que les titres et les dates, jamais le contenu des mails.
 - Heure de Paris (`clock.py`) : toutes les dates sont lues en Europe/Paris quel que soit le décalage
   reçu (un item en UTC venant de Graph est donc bien placé), `generated_at` compris. Exception :
   une journée entière, dont les dates se lisent telles quelles. Elle est donnée par
   `attributes.calendar.is_all_day` (contrat A 1.1) ; sans ce bloc (items 1.0), on la déduit :
   minuit à minuit dans son propre décalage.
-- Scores fixes par section (retards 70, actions 60, réunions 50) en attendant le score expliqué (L2.2).
+- Score : `score_case` (L2.2, `scoring/score.py`) ; réunions : score fixe 50 (ordre par heure).
 - `generator.llm = "rules"` : aucun LLM, aucun coût.
 
 ## Agrégation en affaires (L2.1, niveaux 1 et 2)
