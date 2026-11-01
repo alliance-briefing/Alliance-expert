@@ -1,0 +1,4 @@
+# Corpus régénérable (uv run python -m packages.collect.trainset) : seuls le manifeste
+# et l'échantillon sont versionnés.
+items/
+scenario/
