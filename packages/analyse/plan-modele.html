@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plan du modèle de briefing</title>
+<style>
+:root{
+  --bg:#fbfaf9;--fg:#1d1b20;--muted:#5c5a63;--line:#dcd8e0;--card:#fff;--code:#f3f0f6;
+  --l1:#0f766e;--l1b:#e2f4f1;--l2:#6d28d9;--l2b:#efe8fb;--l3:#c2410c;--l3b:#fdeadf;--ok:#166534;--warn:#92400e;--warnb:#fef3c7;--bad:#991b1b;--badb:#fee2e2;
+}
+@media (prefers-color-scheme:dark){
+:root{--bg:#141318;--fg:#ecebf0;--muted:#a3a0ad;--line:#33303b;--card:#1c1a21;--code:#25222c;
+  --l1:#5eead4;--l1b:#0e2b28;--l2:#c4b5fd;--l2b:#241a3d;--l3:#fdba74;--l3b:#3a2010;--ok:#86efac;--warn:#fcd34d;--warnb:#3a2e0c;--bad:#fca5a5;--badb:#3b1414}
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:16px}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{display:grid;grid-template-columns:260px minmax(0,1fr);max-width:1240px;margin:0 auto}
+nav{position:sticky;top:0;align-self:start;height:100vh;overflow:auto;padding:24px 16px;border-right:1px solid var(--line);font-size:14px}
+nav b{display:block;margin:14px 0 4px;color:var(--muted);font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+nav a{display:block;padding:3px 0;color:var(--fg);text-decoration:none}
+nav a:hover{text-decoration:underline}
+nav a.l1{color:var(--l1)}nav a.l2{color:var(--l2)}nav a.l3{color:var(--l3)}
+main{padding:32px 32px 80px;min-width:0}
+h1{font-size:30px;margin:0 0 4px;line-height:1.2}
+h2{font-size:23px;margin:48px 0 10px;padding-top:12px;border-top:2px solid var(--line)}
+h3{font-size:18px;margin:28px 0 8px}
+p{margin:8px 0}
+.sub{color:var(--muted);margin:0 0 18px}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;background:var(--code);padding:1px 5px;border-radius:4px}
+table{border-collapse:collapse;width:100%;margin:10px 0 18px;font-size:14px;background:var(--card)}
+th,td{border:1px solid var(--line);padding:7px 9px;vertical-align:top;text-align:left}
+th{background:var(--code);font-weight:600}
+.scroll{overflow-x:auto}
+ul,ol{margin:6px 0 10px 22px;padding:0}
+li{margin:3px 0}
+.box{border:1px solid var(--line);border-left-width:5px;border-radius:8px;padding:10px 14px;margin:14px 0;background:var(--card)}
+.box.warn{border-left-color:var(--warn);background:var(--warnb)}
+.box.rule{border-left-color:var(--l2)}
+.box.ok{border-left-color:var(--ok)}
+.box.todo{border-left-color:var(--l3)}
+.box>b:first-child{display:block;margin-bottom:2px}
+.tag{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:99px;border:1px solid currentColor;margin-right:4px}
+.tag.l1{color:var(--l1)}.tag.l2{color:var(--l2)}.tag.l3{color:var(--l3)}
+.tag.socle{color:var(--ok)}.tag.ambition{color:var(--l2)}.tag.bonus{color:var(--muted)}
+.task{border:1px solid var(--line);border-radius:8px;background:var(--card);margin:12px 0}
+.task>header{padding:8px 12px;font-weight:600;border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;background:var(--l2b)}
+.task.data>header{background:var(--l1b)}
+.task.ship>header{background:var(--l3b)}
+.task>header small{font-weight:400;color:var(--muted)}
+.task dl{margin:0;padding:8px 12px;display:grid;grid-template-columns:130px minmax(0,1fr);gap:4px 10px;font-size:14.5px}
+.task dt{color:var(--muted);font-weight:600}
+.task dd{margin:0}
+.task dd ul{margin:0 0 0 18px}
+.pipe{display:flex;flex-wrap:wrap;gap:6px;align-items:stretch;margin:14px 0}
+.pipe .st{flex:1 1 130px;border:1px solid var(--line);border-radius:8px;background:var(--card);padding:8px 10px;font-size:13.5px}
+.pipe .st b{display:block;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.pipe .st.ml{border-color:var(--l2);background:var(--l2b)}
+.pipe .st.rule{border-color:var(--l1);background:var(--l1b)}
+.legend{font-size:13px;color:var(--muted)}
+footer{margin-top:60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:12px}
+@media (max-width:900px){
+ .wrap{display:block}
+ nav{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line)}
+ main{padding:20px 16px 60px}
+ .task dl{grid-template-columns:1fr}
+}
+@media print{
+ :root{--bg:#fff;--fg:#000;--card:#fff;--code:#f2f2f2;--line:#bbb}
+ nav{display:none}.wrap{display:block}main{padding:0}
+ .task,.box,table{break-inside:avoid}
+ body{font-size:11.5px}
+ *{print-color-adjust:exact;-webkit-print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav>
+  <strong>Modèle de briefing<br>Plan de construction</strong>
+  <b>Comprendre</b>
+  <a href="#bref">0. En bref</a>
+  <a href="#contexte">1. Pourquoi ce plan</a>
+  <a href="#principes">2. Principes non négociables</a>
+  <a href="#archi">3. Architecture du modèle</a>
+  <a href="#rag">&nbsp;&nbsp;3.4 La place du RAG</a>
+  <b>Matière première</b>
+  <a href="#donnees" class="l1">4. Données</a>
+  <a href="#annotation" class="l1">5. Annotation</a>
+  <a href="#evaluation" class="l3">6. Évaluation</a>
+  <a href="#regles" class="l3">&nbsp;&nbsp;6.1 Règles de décision</a>
+  <b>Exécution</b>
+  <a href="#taches" class="l2">7. Tâches M0 à M10</a>
+  <a href="#planning">8. Planning</a>
+  <a href="#risques">9. Risques</a>
+  <a href="#existant">10. Ce qu'on garde, déplace, refait</a>
+  <a href="#decisions">11. Décisions du 01/11</a>
+</nav>
+<main>
+
+<h1>Plan de construction du modèle de briefing</h1>
+<p class="sub">Classer, prioriser et regrouper les mails, réunions, tâches et fichiers d'un manager, puis en tirer son brief du matin. Modèle original, local, sans API extérieure. Rédigé le 01/11/2026 · référent : Théo Szappanyos · statut : proposé.</p>
+
+<!-- ============================================================ -->
+<h2 id="bref">0. En bref</h2>
+
+<div class="box rule"><b>L'objectif</b>
+Construire de bout en bout le « cerveau » du briefing. Pour chaque élément du matin, il dit ce que le manager doit en faire et à quel point c'est prioritaire. Il regroupe les éléments en affaires et choisit les 3 à 7 qui méritent le brief. Le texte est produit par gabarits et vérifié par la garde (L2.4). Tout tourne en local, sur processeur, et chaque décision s'explique.</div>
+
+<table>
+<tr><th>Question</th><th>Réponse du plan</th></tr>
+<tr><td>Quelles sources ?</td><td>Mails, agenda, tâches (Microsoft To Do / Planner) et fichiers (métadonnées). Teams est reporté : il n'existe pas dans le contrat A.</td></tr>
+<tr><td>Pour qui ?</td><td><b>Des managers en général</b> : l'entraînement couvre de nombreux métiers. Le manager d'Alliance-Experts sert de domaine de test, jamais vu à l'entraînement.</td></tr>
+<tr><td>Avec quelles données ?</td><td>Un monde simulé fixe les faits et les étiquettes. Deux écrivains rédigent les textes : nos gabarits, et un LLM local hors production. Les données réelles sont impossibles (client silencieux, connecteurs Graph en attente).</td></tr>
+<tr><td>Quels modèles ?</td><td>Des modèles ouverts pré-entraînés que nous réajustons : un encodeur multilingue pour comprendre chaque élément, des poids de priorité appris sur des comparaisons de paires, et une liaison des affaires apprise.</td></tr>
+<tr><td>Avec quelle vérité ?</td><td>Les étiquettes du simulateur servent à l'entraînement. Les mesures reposent <b>toujours</b> sur des jugements humains à l'aveugle (Théo, Paul, Guillaume), et l'apprentissage actif choisit ce qui vaut la peine d'être annoté.</td></tr>
+<tr><td>Pour quand ?</td><td>Socle prêt au <b>gel du 25/11</b>, puis mesures, ablations et rapport jusqu'au rendu du <b>09/12</b>.</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="contexte">1. Pourquoi ce plan</h2>
+<ul>
+<li><b>Aucune donnée réelle n'arrivera.</b> Alliance-Experts ne répond pas, et les connecteurs Microsoft Graph du lot 1 ne sont pas prêts.</li>
+<li><b>Le score appris actuel ne couvre que les mails</b> (ADR-0003, branché dans le brief le 01/11). Il est entraîné sur les données Graph de David, sur nos mails générés et sur la démo. Les tâches, réunions et fichiers sont encore notés par des règles.</li>
+<li><b>Nos générateurs sont rangés dans le lot 2</b> (<code>scoring/ml/synth/</code>). Ils produisent des données, ce qui est le rôle du lot 1.</li>
+<li><b>Le modèle est la pièce maîtresse du projet</b>, celle que David évaluera en expert. On travaille pour apprendre : on préfère une démarche rigoureuse et mesurée à un résultat flatteur mais fragile.</li>
+<li><b>Théo est référent global</b> depuis le 01/11 : il peut intervenir dans les lots 1 et 3 pour débloquer l'équipe.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="principes">2. Principes non négociables</h2>
+
+<div class="box warn"><b>P1 · Cloisonnement de l'évaluation</b>
+Le générateur de démo et d'évaluation du lot 1 (<code>packages/collect/synth/</code>, qui produit aussi le jeu de test caché du lot 3) n'est <b>ni lu ni copié</b>. On n'en garde que le format de sortie, les <code>Item</code> du contrat A. Nos données d'entraînement viennent d'un générateur séparé (<code>packages/collect/trainset/</code>). Les journées de démo et le jeu caché ne servent qu'à mesurer. <code>truth.json</code> n'est jamais lu.</div>
+
+<div class="box warn"><b>P2 · La vérité de mesure est humaine et aveugle</b>
+Les étiquettes de construction du simulateur entraînent le modèle, jamais elles ne le notent. Tout chiffre annoncé vient de jugements humains faits <b>sans voir</b> les sorties d'un modèle. Sans cette règle, la mesure avantage le modèle qui a produit les indices, comme on l'a constaté avec les pastilles le 26/10.</div>
+
+<div class="box rule"><b>P3 · Mesurer avant de choisir</b>
+Chaque choix (modèle, données, seuil) est fixé par une règle écrite <b>avant</b> la mesure, par exemple « le candidat remplace l'actuel s'il fait au moins aussi bien sur le jeu gelé ». Les jeux de mesure sont gelés avant tout réglage.</div>
+
+<div class="box rule"><b>P4 · Local, déterministe, explicable</b>
+En production : sur processeur, sans réseau, mêmes entrées, même sortie. Chaque score s'accompagne de ses raisons. Le LLM local ne sert qu'à <b>fabriquer</b> des données, hors produit. Ses sorties sont versionnées, car on ne les régénère pas à l'identique.</div>
+
+<div class="box rule"><b>P5 · Un brief faux est pire qu'un brief absent</b>
+Le texte vient de gabarits, et chaque affirmation cite sa source (garde L2.4). Si le modèle échoue, le brief se replie sur les règles et l'annonce. Une journée calme donne un brief court.</div>
+
+<!-- ============================================================ -->
+<h2 id="archi">3. Architecture du modèle</h2>
+
+<div class="pipe">
+  <div class="st rule"><b>1 · Filtrer</b>Isolation par utilisateur, bruit certain (envois en masse)</div>
+  <div class="st ml"><b>2 · Comprendre</b>Encodeur réajusté : action attendue, urgence déclarée, alerte</div>
+  <div class="st rule"><b>3 · Décrire</b>Fiche lisible par élément et par affaire (expéditeur, échéance, fil…)</div>
+  <div class="st ml"><b>4 · Regrouper</b>Candidats retrouvés dans l'historique (RAG), liaison « même affaire ? » apprise, règles de garde</div>
+  <div class="st ml"><b>5 · Prioriser</b>Poids appris sur paires (Bradley-Terry), élément puis affaire</div>
+  <div class="st ml"><b>6 · Sélectionner</b>3 à 7 entrées, seuil adaptatif, sections, action recommandée</div>
+  <div class="st rule"><b>7 · Rédiger</b>Gabarits + garde L2.4 (contrat B)</div>
+</div>
+<p class="legend">Violet : appris sur nos données. Vert : règles déterministes.</p>
+
+<h3>3.1 La grille d'actions, commune à toutes les sources</h3>
+<p>Au lieu d'un classifieur par type d'élément, une seule question pour tout : <b>« qu'attend-on du manager ? »</b>. Le brief en découle presque directement, ainsi que le champ <code>recommended_action</code> du contrat B.</p>
+<table>
+<tr><th>Action principale</th><th>Exemples</th><th>Action recommandée (gabarit)</th></tr>
+<tr><td>Répondre</td><td>Question d'un client, relance, demande d'avis</td><td>« Répondre à {expéditeur} sur {objet} »</td></tr>
+<tr><td>Faire</td><td>Envoyer un document, appeler, traiter un ticket, tâche To Do</td><td>« {verbe} avant {échéance} »</td></tr>
+<tr><td>Décider / valider</td><td>Devis à approuver, note de frais, arbitrage demandé</td><td>« Valider {objet} »</td></tr>
+<tr><td>Préparer</td><td>Réunion qu'il organise, présentation, point avec le N+1</td><td>« Préparer {réunion} de {heure} »</td></tr>
+<tr><td>Relire</td><td>Fichier modifié par un autre, contrat partagé, compte rendu à vérifier (signer relève de « Décider / valider »)</td><td>« Relire {fichier} »</td></tr>
+<tr><td>S'informer</td><td>Compte rendu, note d'information, annonce interne</td><td>(pas d'action ; seulement si l'affaire est active)</td></tr>
+<tr><td>Rien</td><td>Notification sans suite, mail déjà traité, réunion annulée</td><td>(hors brief)</td></tr>
+</table>
+<p>S'y ajoutent deux attributs : l'<b>urgence déclarée</b> (urgent, normal, « rien d'urgent ») et l'<b>alerte ou incident</b> (sécurité, banque, blocage). L'action principale a une seule valeur par élément, ce qui la rend plus rapide à annoter et plus fiable à mesurer (kappa) qu'un choix multiple.</p>
+
+<h3>3.2 Les fiches lisibles par source</h3>
+<div class="scroll"><table>
+<tr><th>Source</th><th>Caractéristiques (en plus de l'action et de l'urgence)</th></tr>
+<tr><td>Mail</td><td>Fonction de l'expéditeur (hiérarchie, direction, collègue, client, fournisseur, automate, avec l'auteur réel d'une notification), échéance écrite, balle dans son camp, longueur du fil, hiérarchie dans le fil, fraîcheur, destinataire direct ou en copie</td></tr>
+<tr><td>Agenda</td><td>Commence dans combien d'heures, il organise ou non, réponse en attente, participants externes ou hiérarchie, conflit avec une autre réunion, déplacée ou annulée, document lié à préparer</td></tr>
+<tr><td>Tâche</td><td>Jours de retard ou heures avant l'échéance, origine (To Do perso, mail marqué d'un drapeau, Planner assignée par un tiers), qui l'a assignée</td></tr>
+<tr><td>Fichier</td><td>Modifié par qui (fonction), depuis quand, partagé avec lui, type de document lu dans le nom (contrat, devis, rapport, compte rendu), rattaché à une affaire active</td></tr>
+<tr><td>Affaire</td><td>Nombre et sources des éléments, dernière activité, échéance la plus proche, présence de la hiérarchie ou d'un client, éléments en attente du manager ; <b>historique retrouvé (§3.4)</b> : active depuis combien de jours, nombre de relances, intervention passée du manager, dernière réunion sur le sujet, client récurrent</td></tr>
+</table></div>
+
+<h3>3.3 Les modèles</h3>
+<table>
+<tr><th>Étage</th><th>Référence (déjà en place)</th><th>Candidat du plan</th><th>Production</th></tr>
+<tr><td>Comprendre</td><td>MiniLM gelé + régression logistique</td><td>Encodeur multilingue réajusté sur la carte graphique (mDeBERTa-v3-base, CamemBERT-base ou multilingual-e5-base, départagés par la mesure)</td><td>ONNX quantifié, ≤ 30 ms par élément sur processeur</td></tr>
+<tr><td>Prioriser</td><td>Bradley-Terry linéaire sur les mails</td><td>Bradley-Terry sur paires multi-sources (élément puis affaire) ; boosting d'arbres par paires comparé, retenu seulement s'il gagne nettement et reste explicable</td><td>Poids versionnés (quelques Ko)</td></tr>
+<tr><td>Regrouper</td><td>Règles L2.1 (fil, référence, réunion) ; recherche R2 dans l'historique</td><td>Classifieur « même affaire ? » appris sur les affaires du simulateur (participants communs, référence, similarité, écart de temps), appliqué aux candidats retrouvés par R2, avec les règles comme garde</td><td>Régression logistique ou petit boosting ; index NumPy en mémoire</td></tr>
+</table>
+
+<h3 id="rag">3.4 La place du RAG</h3>
+<p>Le RAG classique <b>retrouve</b> des documents pour les donner à un <b>LLM qui rédige</b>. Sans LLM génératif en production, cette seconde moitié n'a pas de destinataire. La première, la recherche dans l'historique, reste précieuse. Elle est déjà construite en L2.6 : index de vecteurs par utilisateur (R1), rattachement des affaires du jour à leur historique sur 30 jours (R2). Elle sert à trois étages :</p>
+<table>
+<tr><th>Étage</th><th>Rôle de la recherche</th><th>Exemple</th></tr>
+<tr><td>4 · Regrouper (rôle principal)</td><td>Fournir les <b>candidats</b> au classifieur « même affaire ? ». La similarité de sens est <b>un indice parmi d'autres</b>, jamais le juge.</td><td>Un mail du jour remonte les 3 éléments passés les plus proches ; le classifieur tranche avec la référence, les participants et l'écart de temps.</td></tr>
+<tr><td>3 · Décrire</td><td>Alimenter la fiche d'affaire avec son historique, au-delà du seul fil de mails.</td><td>« Active depuis 12 jours », « 3 relances », « le manager n'est jamais intervenu ».</td></tr>
+<tr><td>7 · Rédiger</td><td>Donner un contexte sourcé aux raisons, par gabarit, chaque élément cité étant vérifiable par la garde.</td><td>« 3e relance depuis le 02/10 », « suite de la réunion du 05/10 ».</td></tr>
+</table>
+<div class="box warn"><b>Leçon de l'exploration du 31/10</b>
+Sur la démo, les liens « même référence » étaient justes, mais <b>tous</b> les rattachements par seule similarité étaient faux : fichiers aux noms générés, réunions récurrentes, messages-types. Les scores les plus hauts étaient même les plus trompeurs. D'où la règle : la similarité propose, elle ne décide pas.</div>
+<p>Règles de R1 et R2 conservées : index par utilisateur filtré <b>avant</b> la recherche, jamais d'élément postérieur au jour du brief, veto quand les références diffèrent. Conformément au guide (RAG « conditionnel », L2.6), l'historique ne reste que si l'ablation montre qu'il aide (§6). Si un petit modèle génératif est ajouté en bonus, la recherche retrouve son rôle classique sans rien reconstruire.</p>
+
+<!-- ============================================================ -->
+<h2 id="donnees">4. Données</h2>
+
+<h3>4.1 Un monde simulé, deux écrivains</h3>
+<p>Le <b>simulateur</b> fixe les faits : qui est qui, quelles affaires vivent, quel acte chaque élément porte, avec quelle urgence et quelle échéance. Il produit les étiquettes par construction. Les <b>écrivains</b> ne font que rédiger le texte à partir de ces faits :</p>
+<ul>
+<li><b>Écrivain gabarits</b> : nos banques de formulations actuelles, rapides et contrôlées, mais répétitives.</li>
+<li><b>Écrivain LLM local</b> : par exemple Qwen 2.5 7B Instruct compressé (via Ollama) sur la RTX 4060, ou un 3B sur le portable. Il écrit des textes bien plus variés : registres, longueurs, fautes, signatures, citations, tournures indirectes. Des contrôles automatiques vérifient que les faits demandés sont présents et qu'aucun nom n'est inventé.</li>
+</ul>
+<p>Séparer faits et texte garde des étiquettes justes, même quand le texte est libre. Cela permet aussi un test précieux : entraîner sur un écrivain et mesurer sur l'autre.</p>
+
+<h3>4.2 Ce que le monde doit contenir</h3>
+<ul>
+<li><b>Au moins 12 métiers et rôles de manager</b> : direction des opérations, responsable d'agence, chef de projet, DAF, DRH, responsable commercial, chef de chantier, cadre de santé, responsable informatique, responsable logistique, directeur d'école, manager de collectivité… Pas d'expertise automobile : c'est le domaine de test.</li>
+<li><b>Des affaires qui traversent les sources</b> : un fil de mails, une réunion de suivi, une tâche assignée, un devis partagé. Elles ouvrent, se relancent, sont prises en charge, se clôturent.</li>
+<li><b>Les cas difficiles</b> : notifications (Teams, tickets, portail RH) dont l'auteur réel est un humain ; doublons ; « rien d'urgent » ; demandes indirectes ; réunions annulées ou en conflit ; tâches sans échéance ; fichiers modifiés par le manager lui-même.</li>
+<li><b>Les pièges du guide</b> : journée calme, journée surchargée, deux urgences en conflit, informations contradictoires, mails d'injection de prompt.</li>
+</ul>
+
+<h3>4.3 Qui sert à quoi</h3>
+<div class="scroll"><table>
+<tr><th>Jeu</th><th>Origine</th><th>Usage</th><th>Interdit</th></tr>
+<tr><td>Entraînement</td><td><code>collect/trainset/</code>, métiers d'entraînement, deux écrivains</td><td>Apprendre, régler, apprentissage actif</td><td>—</td></tr>
+<tr><td>T-gen (gelé)</td><td><code>collect/trainset/</code>, <b>métiers réservés</b> et formulations réservées</td><td>Mesure principale, jugée à l'aveugle par deux annotateurs</td><td>Entraînement, réglage</td></tr>
+<tr><td>T-démo (gelé)</td><td>Journées de démo du lot 1 (Alliance-Experts)</td><td>Test de transfert vers le vrai domaine</td><td>Entraînement (y compris les 120 mails de démo déjà étiquetés)</td></tr>
+<tr><td>Données Graph de David</td><td>Jeu externe, persona Hélène</td><td>Second test de transfert uniquement (décidé en M0, §6.1)</td><td>Mélange avec T-démo</td></tr>
+<tr><td>Test caché du lot 3</td><td>Lot 1 / lot 3 (<code>synth/</code>, graine réservée)</td><td>Évaluation finale, faite par le lot 3</td><td>Tout accès avant la v0.9.0</td></tr>
+</table></div>
+
+<div class="box todo"><b>Conséquence pour l'existant</b>
+Le modèle d'intentions actuel a été entraîné sur 601 mails, dont des mails de la démo du lot 1. Sous le principe P1, c'est une fuite : la démo devient un jeu de test. Il faudra réentraîner sans elle (tâche M6). Le chiffre de transfert « 0,89 » reste valable, car il a été mesuré avant cet ajout. Les chiffres suivants sur la démo ne le sont plus.</div>
+
+<!-- ============================================================ -->
+<h2 id="annotation">5. Annotation</h2>
+
+<h3>5.1 Trois sortes de jugements</h3>
+<table>
+<tr><th>Jugement</th><th>Question</th><th>Temps indicatif</th></tr>
+<tr><td>Élément</td><td>Action principale, urgence déclarée, alerte (clavier, une touche par valeur)</td><td>4 à 6 s</td></tr>
+<tr><td>Paire d'éléments</td><td>« Ce matin, lequel traiter en premier ? » (←, ↓ équivalent, →), toutes sources confondues</td><td>10 à 15 s</td></tr>
+<tr><td>Paire d'affaires</td><td>Même question au niveau de l'affaire : c'est ce que le brief classe vraiment</td><td>15 à 25 s</td></tr>
+</table>
+<p>Règles reprises de l'existant : une page locale au clavier, un fichier par annotateur, environ 10 % de répétitions cachées pour mesurer la cohérence, un quart de cas communs pour l'accord (kappa), l'arbitrage des désaccords, et jamais de pastille de modèle sur une carte de mesure.</p>
+
+<h3>5.2 Apprentissage actif : annoter ce qui apprend le plus</h3>
+<ol>
+<li>Entraîner sur les étiquettes de construction et les jugements déjà faits.</li>
+<li>Noter tout le réservoir non annoté, puis choisir environ 200 éléments et 200 paires par tour :
+  <ul><li><b>incertitude</b> : probabilité proche de 0,5, ou classes au coude à coude ;</li>
+  <li><b>désaccord de comité</b> : la référence et le candidat ne sont pas d'accord ;</li>
+  <li><b>désaccord avec le simulateur</b> : le modèle contredit l'étiquette de construction, ce qui signale soit une erreur du modèle, soit un texte LLM qui ne dit pas ce qu'il devait dire ;</li>
+  <li><b>diversité</b> : au plus 3 cas par groupe de textes proches.</li></ul></li>
+<li>Annoter, réentraîner, recommencer. On garde 20 % de cas tirés au hasard comme témoin, pour <b>prouver</b> que l'apprentissage actif fait mieux que le hasard à budget égal.</li>
+</ol>
+
+<h3>5.3 Budget</h3>
+<p>Ordre de grandeur pour l'équipe (Théo, Paul, Guillaume) :</p>
+<ul>
+<li><b>Calibrage de la grille</b> (M0) : 3 × 40 éléments, environ 15 min chacun.</li>
+<li><b>Jeux gelés</b> (M5) : environ 300 éléments et 300 paires, en double annotation, soit 2 à 3 h par personne.</li>
+<li><b>Apprentissage actif</b> (M7) : environ 6 tours de 200 éléments et 200 paires, soit environ 1 h par tour pour l'équipe.</li>
+</ul>
+<p>Total : 15 à 20 h d'annotation pour l'équipe sur trois semaines, compatible avec « plusieurs heures par semaine ».</p>
+
+<!-- ============================================================ -->
+<h2 id="evaluation">6. Évaluation</h2>
+<div class="scroll"><table>
+<tr><th>Niveau</th><th>Mesure</th><th>Référence à battre</th><th>Plafond</th></tr>
+<tr><td>Comprendre</td><td>F1 macro de l'action principale ; F1 de l'urgence et de l'alerte ; banc CheckList étendu aux 4 sources</td><td>MiniLM gelé + régression logistique</td><td>Accord entre annotateurs</td></tr>
+<tr><td>Prioriser</td><td>Accord avec les paires humaines (hors « équivalent »), avec intervalle de confiance par rééchantillonnage</td><td>Score par règles (<code>score.py</code>), puis le score appris actuel</td><td>Accord entre annotateurs (86 % au 26/10)</td></tr>
+<tr><td>Regrouper</td><td>Précision et rappel des liens (<code>eval/cases_metric.py</code>)</td><td>Règles L2.1</td><td>—</td></tr>
+<tr><td>Brief</td><td>NDCG@7 et rappel des « doit figurer » sur le jeu de développement du lot 3 ; <b>zéro</b> « ne doit pas figurer » dans le top 3 ; injections sans effet</td><td>Brief par règles</td><td>—</td></tr>
+<tr><td>Production</td><td>Latence d'un brief sur processeur, taille de l'image, repli</td><td>≤ 3 s, repli annoncé</td><td>—</td></tr>
+</table></div>
+
+<h3>Ablations prévues (pour le rapport et l'oral)</h3>
+<ul>
+<li>Règles seules → MiniLM gelé → encodeur réajusté.</li>
+<li>Gabarits seuls → gabarits + LLM local → LLM seul (et test croisé d'un écrivain à l'autre).</li>
+<li>Apprentissage actif contre tirage au hasard, à budget égal.</li>
+<li>Avec ou sans liaison apprise des affaires.</li>
+<li>Avec ou sans historique retrouvé (RAG) : pour la liaison des affaires et pour la priorité.</li>
+<li>Transfert : T-gen → T-démo → données de David.</li>
+</ul>
+
+<h3 id="regles">6.1 Règles de décision, écrites avant toute mesure (M0, P3)</h3>
+<p>Ces règles sont écrites avant le premier chiffre pour qu'aucun choix ne soit ajusté sur le résultat qu'on espère. Changer une règle après coup reste possible, à condition d'écrire pourquoi <b>avant</b> de remesurer, et de le signaler dans le rapport.</p>
+
+<div class="box rule"><b>Règles générales</b>
+<ul>
+<li><b>G1 · On choisit sur la validation, on mesure sur les jeux gelés.</b> Les réglages, les candidats et les seuils sont choisis sur une validation tirée de l'entraînement (20 %, coupée par persona et par affaire, jamais mail par mail, pour éviter les quasi-doublons). T-gen, T-démo et les données de David ne servent qu'à la mesure finale du candidat retenu. Chaque lecture d'un jeu gelé est journalisée (date, commit, chiffre).</li>
+<li><b>G2 · Un écart ne compte que s'il dépasse le bruit.</b> Différence mesurée par rééchantillonnage (1 000 tirages, graine fixe) : un gain n'est retenu que si l'intervalle à 95 % exclut zéro. Sinon, c'est une égalité.</li>
+<li><b>G3 · À égalité, le plus simple gagne</b> : règles, puis modèle gelé, puis modèle réajusté ; à défaut, le moins de paramètres, de dépendances et de latence.</li>
+<li><b>G4 · Trois graines par candidat entraîné.</b> On décide sur la moyenne et on publie l'écart entre graines.</li>
+<li><b>G5 · Les exigences de sûreté sont des vetos, pas des compromis.</b> Une alerte manquée (rappel des alertes &lt; 0,95 sur la validation), une injection qui change le brief, un élément d'un autre utilisateur ou postérieur au jour, un brief hors contrat B : le candidat est écarté, quel que soit son score.</li>
+<li><b>G6 · Échec assumé.</b> Si aucun candidat ne passe l'acceptation, on livre la référence (ou les règles) et on publie le résultat négatif. On n'abaisse pas un seuil après avoir vu les chiffres.</li>
+</ul></div>
+
+<div class="scroll"><table>
+<tr><th>Tâche</th><th>Choix</th><th>Règle</th></tr>
+<tr><td>M6</td><td>Quel encodeur ?</td><td>Candidats : MiniLM gelé + régression (référence), MiniLM réajusté, un second encodeur multilingue réajusté. Classement par F1 macro de l'action sur la validation, sous les contraintes ≤ 30 ms par élément et ≤ 300 Mo, et le veto G5. Le premier est mesuré une fois sur T-gen et T-démo : il remplace la référence s'il atteint l'acceptation de M6. S'il gagne sur T-gen mais perd sur T-démo, le transfert est raté : la référence reste en production et l'écart va au rapport.</td></tr>
+<tr><td>M7</td><td>Garder l'apprentissage actif ?</td><td>Après 3 tours, on compare à budget égal avec le témoin au hasard (F1 sur la validation, G2). Gain : on continue. Égalité ou perte : tirage au hasard avec la seule règle de diversité, plus simple (G3). Le résultat est publié dans les deux cas.</td></tr>
+<tr><td>M8</td><td>Bradley-Terry ou boosting par paires ?</td><td>Bradley-Terry par défaut, car ses raisons se lisent directement. Le boosting ne le remplace que s'il gagne au moins 0,03 d'accord sur les paires de validation, avec un intervalle qui exclut zéro.</td></tr>
+<tr><td>M8</td><td>Liaison apprise des affaires ?</td><td>Gardée si F1 des liens ≥ règles L2.1 sur la validation, sans aucune fusion entre utilisateurs ni élément postérieur au jour (veto). Sinon, on garde les règles L2.1.</td></tr>
+<tr><td>M8</td><td>Historique retrouvé (RAG) ?</td><td>Gardé seulement si l'ablation montre un gain (G2) sur la liaison ou sur l'accord des paires. Sinon, retiré : une brique de moins à défendre.</td></tr>
+<tr><td>M9</td><td>Nombre d'entrées, seuil adaptatif</td><td>Réglés sur des journées simulées de validation, jamais sur le jeu de développement du lot 3, qui ne sert qu'à la mesure finale. Veto : zéro « ne doit pas figurer » dans le top 3, injections sans effet.</td></tr>
+<tr><td>M9</td><td>Score appris ou règles par défaut ?</td><td>Le score appris est le mode par défaut du brief seulement s'il bat le brief par règles sur le jeu de développement du lot 3 (acceptation de M9). Sinon, <code>ALLIANCE_SCORE=regles</code> devient le défaut et le score appris reste disponible.</td></tr>
+<tr><td>M0</td><td>Données de David</td><td><b>Test seul</b> : second test de transfert (persona Hélène), jamais à l'entraînement ni au réglage. C'est notre seul jeu écrit hors de nos générateurs : l'utiliser pour apprendre supprimerait la seule preuve indépendante que le modèle généralise.</td></tr>
+</table></div>
+
+<!-- ============================================================ -->
+<h2 id="taches">7. Tâches M0 à M10</h2>
+<p><span class="tag socle">socle</span> à livrer au gel du 25/11 · <span class="tag ambition">ambition</span> visée, repli possible · <span class="tag bonus">bonus</span> si le temps le permet. Couleur des cartes : vert = données, violet = modèle, orange = intégration.</p>
+
+<div class="task">
+<header>M0 · Cadrage : grille d'actions, guide d'annotation, règles de décision <small>02/11 → 04/11 · socle · Théo (+ Paul, Guillaume pour le calibrage)</small></header>
+<dl>
+<dt>Objectif</dt><dd>Fixer ce que le modèle prédit et comment on jugera, avant toute donnée nouvelle.</dd>
+<dt>Sortie</dt><dd><ul><li>Grille d'actions et attributs (§3.1), avec définitions et exemples limites, sur 1 à 2 pages.</li><li>Règles de décision écrites d'avance pour chaque choix de M6, M8 et M9 (P3).</li><li>Décision sur l'usage des données de David (entraînement ou test seul).</li></ul></dd>
+<dt>Acceptation</dt><dd>40 éléments des 4 sources annotés par 3 personnes : kappa ≥ 0,6 sur l'action principale. Sinon, on précise la grille et on recommence.</dd>
+</dl>
+</div>
+
+<div class="task data">
+<header>M1-M2 · Monde simulé multi-sources, écrit à neuf dans le lot 1 <small>02/11 → 12/11 · socle · Théo</small> <span class="tag l1">Lot 1</span></header>
+<dl>
+<dt>Objectif</dt><dd>Des journées réalistes de managers variés, où les affaires traversent mails, agenda, tâches et fichiers, étiquetées par construction selon la grille de M0.</dd>
+<dt>Pourquoi à neuf</dt><dd>Décision du 01/11 (M1 et M2 fusionnés) : l'ancien générateur (<code>scoring/ml/synth/</code>) produit l'ancienne étiquette (action / réponse oui-non) et ne connaît presque que les mails. Le déplacer à l'octet près pour le réécrire ensuite serait du travail perdu. Il reste <b>figé</b> dans le lot 2, uniquement pour reproduire le score appris actuel, et sera supprimé quand M6 l'aura remplacé. On n'en reprend que ce qui a fait ses preuves : les secteurs et leurs annuaires, la vie d'une affaire (ouverture, relance, réponse, clôture), le déterminisme par graine.</dd>
+<dt>Sortie</dt><dd><ul><li><code>packages/collect/trainset/</code>, sans aucun import de <code>packages.collect.synth</code> ni de <code>packages.analyse</code>.</li><li><b>Simulateur</b> : personas (≥ 12 métiers), organigramme, clients et fournisseurs ; affaires vivantes (§4.2) avec liens entre sources (réunion ↔ fichier ↔ tâche) ; automates, bruit, pièges. Il décide des faits, de l'horloge et des étiquettes.</li><li><b>Écrivain par gabarits</b> : transforme les faits en texte. L'écrivain LLM (M3) prendra les mêmes faits.</li><li>Pour chaque élément : l'<code>Item</code> du contrat A et, à part, ses faits et étiquettes (<code>scenario.jsonl</code> : action, urgence, alerte, échéance, affaire).</li><li>Métiers réservés à T-gen. Données versionnées dans <code>trainset/data/</code>, lues par le lot 2 avec un chargeur.</li></ul></dd>
+<dt>Acceptation</dt><dd>100 % des <code>Item</code> valident le contrat A. Au moins 600 journées de manager. Rapport de distribution (actions par source, part de bruit, pièges présents). Déterministe à graine égale. Un test vérifie le cloisonnement (P1) en lisant nos seuls fichiers.</dd>
+</dl>
+</div>
+
+<div class="task data">
+<header>M3 · Écrivain LLM local <small>02/11 → 15/11, en parallèle de M1-M2 · ambition · Théo (PC fixe, RTX 4060)</small> <span class="tag l1">Lot 1</span></header>
+<dl>
+<dt>Objectif</dt><dd>Casser la répétition des gabarits : même faits, textes vraiment variés. Le LLM <b>écrit</b>, il ne <b>simule</b> pas : les faits et les étiquettes viennent toujours du simulateur.</dd>
+<dt>Sonde d'abord</dt><dd>Avancée au 02/11, avant de dépendre du LLM : installer Ollama sur le PC fixe, faire écrire 20 éléments par un 7B à partir de faits fournis à la main, les annoter à l'aveugle avec la grille et comparer avec l'étiquette voulue. Si moins de 16 sur 20 sont conformes, on revoit les consignes ou le modèle avant de produire un corpus.</dd>
+<dt>Sortie</dt><dd><ul><li>Rédaction par Ollama et un modèle 7B compressé (référence : Qwen 2.5 7B Instruct ; repli 3B sur le portable).</li><li>Consignes versionnées : registre, longueur, style, fautes.</li><li>Contrôles automatiques : faits présents, aucun nom ni adresse inventé, langue, longueur. Rejet puis nouvelle rédaction.</li><li>Corpus versionné, avec modèle, consigne et graine.</li></ul></dd>
+<dt>Acceptation</dt><dd>≥ 8 000 éléments rédigés. ≥ 95 % passent les contrôles automatiques. Sur un échantillon de 5 % relu à la main, ≥ 90 % sont conformes à leurs faits. Bien plus de « modèles de phrases » distincts qu'avec les gabarits (mesure de l'ADR-0003).</dd>
+<dt>Repli</dt><dd>Si le LLM déçoit, enrichir les banques de gabarits et étendre M2. Le reste du plan ne dépend pas de M3.</dd>
+</dl>
+</div>
+
+<div class="task">
+<header>M4 · Outil d'annotation unifié <small>04/11 → 09/11 · socle · Paul ou Guillaume, avec Théo</small></header>
+<dl>
+<dt>Objectif</dt><dd>Une seule page locale pour les trois jugements (§5.1), toutes sources.</dd>
+<dt>Sortie</dt><dd>Extension de <code>scoring/ml/annotate.py</code> : cartes de mail, réunion, tâche, fichier et affaire ; touches par action ; file d'attente fournie par l'apprentissage actif (M7) ; un fichier par annotateur ; arbitrage.</dd>
+<dt>Acceptation</dt><dd>Aucune pastille de modèle sur les cartes de mesure. Répétitions cachées actives. Une heure d'annotation ne perd rien en cas de fermeture de la page.</dd>
+</dl>
+</div>
+
+<div class="task">
+<header>M5 · Jeux de mesure gelés <small>09/11 → 14/11 · socle · Théo, Paul, Guillaume</small> <span class="tag l3">Éval</span></header>
+<dl>
+<dt>Objectif</dt><dd>Fixer la vérité avant tout réglage (P2, P3).</dd>
+<dt>Sortie</dt><dd>T-gen (≈ 150 éléments, 150 paires d'éléments, 50 paires d'affaires) et T-démo (paires de démo rejugées à l'aveugle, sans pastilles), en double annotation et arbitrés.</dd>
+<dt>Acceptation</dt><dd>Kappa ≥ 0,6 (exigence du guide). Fichiers gelés par empreinte. Un test vérifie qu'aucun de leurs éléments n'entre à l'entraînement.</dd>
+</dl>
+</div>
+
+<div class="task">
+<header>M6 · Comprendre chaque élément : encodeur réajusté <small>09/11 → 20/11 · socle · Théo</small></header>
+<dl>
+<dt>Objectif</dt><dd>Prédire l'action principale, l'urgence et l'alerte pour les 4 sources, en lisant l'acte demandé et pas le sujet.</dd>
+<dt>Sortie</dt><dd><ul><li>Référence : MiniLM gelé + régression logistique, réentraîné <b>sans la démo</b>.</li><li>Candidats réajustés sur la carte graphique, départagés par la règle de M0.</li><li>Export ONNX quantifié, utilisé par <code>scoring/learned.py</code>.</li></ul></dd>
+<dt>Acceptation</dt><dd>F1 macro de l'action ≥ référence + 0,10 sur T-gen et ≥ référence sur T-démo. CheckList ≥ 90 %. ≤ 30 ms par élément sur processeur, modèle ≤ 300 Mo.</dd>
+</dl>
+</div>
+
+<div class="task">
+<header>M7 · Boucle d'apprentissage actif <small>10/11 → 22/11, en continu · ambition · Théo (sélection), tous (annotation)</small></header>
+<dl>
+<dt>Objectif</dt><dd>Obtenir le plus de gain par heure d'annotation (§5.2).</dd>
+<dt>Sortie</dt><dd>Script de sélection (incertitude, comité, désaccord avec le simulateur, diversité), environ 6 tours, courbe d'apprentissage.</dd>
+<dt>Acceptation</dt><dd>Gain mesuré contre le témoin au hasard à budget égal, publié dans le rapport, qu'il soit positif ou non.</dd>
+</dl>
+</div>
+
+<div class="task">
+<header>M8 · Priorité multi-sources et liaison des affaires <small>12/11 → 23/11 · socle (priorité) · ambition (liaison apprise) · Théo</small></header>
+<dl>
+<dt>Objectif</dt><dd>Un seul score comparable entre un mail, une réunion, une tâche et un fichier, puis entre affaires.</dd>
+<dt>Sortie</dt><dd><ul><li>Fiches par source et par affaire (§3.2), avec les caractéristiques d'historique retrouvées par R2.</li><li>Bradley-Terry sur les paires multi-sources ; boosting par paires comparé.</li><li>Classifieur « même affaire ? » appris sur les affaires du simulateur, appliqué aux candidats de la recherche R2 (la similarité n'est qu'une caractéristique), avec les règles L2.1 comme garde.</li></ul></dd>
+<dt>Acceptation</dt><dd>Accord sur les paires de T-gen ≥ 0,80 et ≥ règles + 0,15. Liaison : F1 ≥ règles L2.1, sans fusion entre utilisateurs ni élément postérieur au jour (isolation testée). Ablation avec ou sans historique publiée : l'historique n'est gardé que s'il aide.</dd>
+</dl>
+</div>
+
+<div class="task ship">
+<header>M9 · Sélection du brief et action recommandée <small>18/11 → 25/11 · socle · Théo, avec Guillaume (lot 3)</small> <span class="tag l3">Lot 3</span></header>
+<dl>
+<dt>Objectif</dt><dd>Passer des scores au brief : quoi montrer, dans quelle section, avec quelle action.</dd>
+<dt>Sortie</dt><dd>3 à 7 entrées, seuil adaptatif (journée calme, brief court), section <code>files</code> remplie, <code>recommended_action</code> par gabarit à partir de l'action principale, raisons lisibles, garde L2.4.</dd>
+<dt>Acceptation</dt><dd>Sur le jeu de développement du lot 3 : NDCG@7 et rappel des « doit figurer » supérieurs au brief par règles ; zéro « ne doit pas figurer » dans le top 3 ; journées d'injection inchangées ; contrat B valide à 100 %.</dd>
+</dl>
+</div>
+
+<div class="task ship">
+<header>M10 · Intégration, performances, rapport <small>23/11 → 09/12 · socle · tous</small></header>
+<dl>
+<dt>Objectif</dt><dd>Livrer, mesurer, expliquer.</dd>
+<dt>Sortie</dt><dd><ul><li>Modèles ONNX dans l'image Docker, repli sur les règles.</li><li>ADR-0004 (modèle multi-sources), fiche du modèle (données, limites, biais).</li><li>Rapport d'ablations (§6), démonstration commentée.</li></ul></dd>
+<dt>Acceptation</dt><dd>≤ 3 s par brief sur processeur ; CI verte (lint, tests, Docker) ; chiffres du rapport reproductibles par commande. Après le gel du 25/11 : seulement des corrections, des mesures et de la documentation.</dd>
+</dl>
+</div>
+
+<div class="box"><b>Bonus, après le socle</b>
+<ul>
+<li>Source Teams : modification du contrat A (procédure du guide §2.5), générateur et caractéristiques dédiés.</li>
+<li>Petit modèle génératif local pour reformuler le texte du brief, sous la garde L2.4.</li>
+<li>Distillation de l'encodeur vers un modèle plus petit, pour la latence.</li>
+</ul></div>
+
+<!-- ============================================================ -->
+<h2 id="planning">8. Planning</h2>
+<div class="scroll"><table>
+<tr><th>Semaine</th><th>Données</th><th>Modèle</th><th>Annotation / éval</th><th>Jalon</th></tr>
+<tr><td>02/11 → 08/11</td><td>M1-M2 simulateur à neuf : personas et affaires · M3 sonde LLM (20 éléments)</td><td>Référence réentraînée sans la démo</td><td>M0 calibrage de la grille · M4 outil</td><td>Grille validée (kappa)</td></tr>
+<tr><td>09/11 → 15/11</td><td>M1-M2 terminé · M3 corpus</td><td>M6 premiers réajustements</td><td>M5 jeux gelés · M7 tour 1</td><td><b>11/11 · v0.3.0</b> (férié)</td></tr>
+<tr><td>16/11 → 22/11</td><td>Corrections selon les erreurs vues</td><td>M6 choix du modèle · M8 priorité et liaison</td><td>M7 tours 2 à 5</td><td>—</td></tr>
+<tr><td>23/11 → 29/11</td><td>—</td><td>M9 sélection · M10 intégration</td><td>Mesures finales sur T-gen et T-démo</td><td><b>25/11 · gel</b></td></tr>
+<tr><td>30/11 → 09/12</td><td>—</td><td>Corrections seulement</td><td>Ablations · test caché (lot 3) · rapport</td><td><b>09/12 · rendu</b></td></tr>
+</table></div>
+
+<!-- ============================================================ -->
+<h2 id="risques">9. Risques</h2>
+<div class="scroll"><table>
+<tr><th>Risque</th><th>Signe</th><th>Parade</th></tr>
+<tr><td>Le modèle apprend le simulateur, pas le métier</td><td>Excellent sur T-gen, médiocre sur T-démo</td><td>Deux écrivains, test croisé, métiers réservés, T-démo jamais appris (P1)</td></tr>
+<tr><td>Textes LLM homogènes ou faux</td><td>Peu de modèles de phrases distincts ; relecture &lt; 90 %</td><td>Consignes variées, contrôles automatiques, désaccord avec le simulateur repéré par M7</td></tr>
+<tr><td>Fatigue des annotateurs</td><td>Cohérence en baisse sur les répétitions cachées</td><td>Séances courtes (30 min), apprentissage actif, kappa suivi par tour</td></tr>
+<tr><td>Retard sur M3 ou M8</td><td>Pas de corpus LLM au 12/11</td><td>Replis écrits : gabarits enrichis, liaison par règles. Le socle ne dépend pas des ambitions</td></tr>
+<tr><td>PC fixe indisponible</td><td>Pas de carte graphique</td><td>Modèle 3B sur le portable pour M3 ; encodeur plus petit (MiniLM réajusté) pour M6</td></tr>
+<tr><td>Dépôt alourdi</td><td>Corpus de dizaines de Mo</td><td>JSONL compressés, et seulement les jeux utiles ; modèles hors dépôt, téléchargés ou construits dans l'image</td></tr>
+<tr><td>Conflit avec le lot 1 dans <code>packages/collect/</code></td><td>Modifications concurrentes</td><td>Dossier séparé <code>trainset/</code>, aucune modification de <code>synth/</code> ni des connecteurs</td></tr>
+</table></div>
+
+<!-- ============================================================ -->
+<h2 id="existant">10. Ce qu'on garde, déplace, refait</h2>
+<table>
+<tr><th>Élément</th><th>Sort</th></tr>
+<tr><td>Fiche lisible, paires, Bradley-Terry, raisons (<code>scoring/ml/</code>)</td><td><b>Gardé</b>, étendu aux 4 sources et aux affaires</td></tr>
+<tr><td>Branchement du score appris dans le brief (<code>scoring/learned.py</code>, PR du 01/11)</td><td><b>Gardé</b> : c'est le point d'entrée du nouveau modèle</td></tr>
+<tr><td>Règle de bruit, règle d'échéance, persona</td><td>Gardés ; le persona devient une donnée du simulateur</td></tr>
+<tr><td>Générateur de mails et journées (<code>scoring/ml/synth/</code>)</td><td><b>Figé</b> dans le lot 2 pour reproduire le score appris actuel, supprimé après M6. Remplacé par un simulateur écrit à neuf dans <code>packages/collect/trainset/</code> (M1-M2), qui en reprend les secteurs, la vie des affaires et le déterminisme</td></tr>
+<tr><td>Page d'annotation, banc CheckList</td><td>Gardés, étendus (M4, M6)</td></tr>
+<tr><td>Étiquettes actuelles (intentions action / réponse / incident, paires)</td><td>Réutilisées comme amorce. La nouvelle grille est plus riche : une partie sera <b>réannotée</b></td></tr>
+<tr><td>Modèle d'intentions entraîné avec la démo</td><td><b>Refait</b> sans la démo (P1)</td></tr>
+<tr><td>Score par règles (<code>score.py</code>)</td><td>Gardé comme référence (A/B) et comme repli</td></tr>
+<tr><td>RAG : index par utilisateur (R1) et recherche dans l'historique (R2), <code>rag/</code></td><td><b>Gardés et réorientés</b> : candidats pour la liaison des affaires, caractéristiques d'historique, contexte des raisons (§3.4). Seuil de similarité seul abandonné</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="decisions">11. Décisions du 01/11</h2>
+<ul>
+<li>Modèles ouverts pré-entraînés autorisés, réajustés par nous.</li>
+<li>Texte du brief par gabarits, sans LLM génératif en production.</li>
+<li>LLM local autorisé pour <b>générer</b> des données, hors produit.</li>
+<li>Cible : managers en général ; Alliance-Experts comme domaine de test.</li>
+<li>Sources : mail, agenda, tâches (To Do / Planner), fichiers (métadonnées) ; Teams reporté.</li>
+<li>Annotateurs : Théo, Paul, Guillaume, plusieurs heures par semaine ; apprentissage actif.</li>
+<li>Cloisonnement : générateur d'entraînement séparé du générateur d'évaluation, qui n'est jamais lu.</li>
+<li>Une PR par tâche, sans limite de lignes.</li>
+<li>RAG : la recherche dans l'historique est gardée pour regrouper, décrire et contextualiser ; pas de LLM à alimenter en production.</li>
+<li>M1 et M2 fusionnés : simulateur écrit à neuf pour la grille, ancien générateur figé puis supprimé après M6 ; sonde LLM (M3) avancée au 02/11, en parallèle.</li>
+<li>Guide d'annotation figé après le calibrage Théo / Paul ; règles de décision écrites (§6.1) ; données de David en test seul.</li>
+</ul>
+
+<footer>Plan du modèle de briefing · lot 2 (référent global : Théo Szappanyos) · à relire avec l'équipe et à présenter à David · chaque tâche ouvrira une issue GitHub (M0 à M10).</footer>
+</main>
+</div>
+</body>
+</html>

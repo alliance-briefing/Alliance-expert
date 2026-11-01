@@ -3,6 +3,8 @@
 `uv run python -m packages.analyse.scoring.ml.annotate` puis http://127.0.0.1:8765
 `… annotate --annotateur paul` : mails générés, étiquettes dans intent_labels_paul.jsonl
 `… annotate --annotateur paul --paires` : paires des journées générées (pair_labels_paul.jsonl)
+`… annotate --annotateur paul --grille` : grille d'actions, calibrage (grid_labels_paul.jsonl)
+`… annotate --accord-grille` : accord entre annotateurs sur la grille (kappa, désaccords)
 
 Chaque réponse est ajoutée en fin de `scoring/annotations/intent_labels.jsonl` (rien n'est
 jamais réécrit : fermer la page ne perd rien, la dernière réponse à une question compte).
@@ -45,6 +47,17 @@ PAIRS_PAGE = Path(__file__).with_name("annotate_pairs.html")
 VALUES = ("oui", "non", "?")
 PAIR_VALUES = ("A", "B", "=")  # A d'abord, B d'abord, équivalent
 REPEAT_SHARE = 0.10
+# Grille d'actions (M0, guide : scoring/annotations/guide-annotation.md) : une action
+# principale, l'urgence déclarée et l'alerte, pour les 4 sources.
+GRID_PAGE = Path(__file__).with_name("annotate_grid.html")
+GRID_CALIBRATION_PATH = ANNOTATIONS / "grid_calibration.jsonl"
+GRID_ANNOTATORS = ("theo", "paul", "guillaume")
+GRID_ACTIONS = ("repondre", "faire", "decider", "preparer", "relire", "informer", "rien")
+GRID_URGENCY = ("urgent", "normal", "sans_urgence")
+GRID_CONTEXT = (
+    "Vous êtes Claire Martin, directrice des opérations d'une entreprise de logistique "
+    "(N+1 : Bruno Lefort, directeur général). Brief du mardi 10/11/2026 à 8 h 30."
+)
 
 
 @dataclass(frozen=True)
@@ -289,8 +302,101 @@ class PairAnnotator:
         self.store.record(pair_id, self.FEATURE, value, bool(repeat))
 
 
+class GridAnnotator:
+    """Mode « grille » : action principale, urgence déclarée et alerte de chaque élément.
+
+    Ordre fixe propre à chaque annotateur (les sources sont mélangées, et deux annotateurs
+    ne voient pas les cas dans le même ordre). Pas de répétition cachée : le calibrage mesure
+    l'accord entre annotateurs. On peut revenir en arrière : la dernière réponse compte.
+    """
+
+    def __init__(self, cases: list[dict], path: Path, annotator: str) -> None:
+        self.cases = {case["item_id"]: case for case in cases}
+        self.order = sorted(self.cases)
+        random.Random(f"grille:{annotator}").shuffle(self.order)
+        self.path = path
+        self.answers = load_grid_labels(path)
+
+    def state(self) -> dict:
+        return {
+            "context": GRID_CONTEXT,
+            "cases": [self.cases[item_id] for item_id in self.order],
+            "answers": self.answers,
+        }
+
+    def answer(self, payload: dict) -> None:
+        item_id, action = payload.get("item_id"), payload.get("action")
+        urgency, alert = payload.get("urgence"), payload.get("alerte")
+        if (
+            item_id not in self.cases
+            or action not in GRID_ACTIONS
+            or urgency not in GRID_URGENCY
+            or not isinstance(alert, bool)
+        ):
+            raise ValueError("réponse invalide")
+        row = {"item_id": item_id, "action": action, "urgence": urgency, "alerte": alert}
+        with self.path.open("a", encoding="utf-8", newline="\n") as file:
+            stamped = row | {"at": datetime.now(UTC).isoformat(timespec="seconds")}
+            file.write(json.dumps(stamped, ensure_ascii=False) + "\n")
+        self.answers[item_id] = row
+
+
+def load_grid_labels(path: Path) -> dict[str, dict]:
+    """{item_id: réponse} ; la dernière réponse à un élément compte."""
+    answers: dict[str, dict] = {}
+    if path.exists():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line:
+                row = json.loads(line)
+                answers[row["item_id"]] = {k: row[k] for k in ("action", "urgence", "alerte")}
+    return answers
+
+
+def cohen_kappa(a: list, b: list) -> float:
+    """Accord entre deux annotateurs corrigé du hasard : 1 parfait, 0 hasard."""
+    if not a or len(a) != len(b):
+        raise ValueError("deux listes de même longueur, non vides")
+    observed = sum(x == y for x, y in zip(a, b, strict=True)) / len(a)
+    labels = set(a) | set(b)
+    expected = sum((a.count(v) / len(a)) * (b.count(v) / len(b)) for v in labels)
+    return 1.0 if expected == 1 else (observed - expected) / (1 - expected)
+
+
+def grid_agreement(folder: Path = ANNOTATIONS, cases_path: Path = GRID_CALIBRATION_PATH) -> str:
+    """Rapport d'accord du calibrage : kappa par paire d'annotateurs, puis les désaccords."""
+    cases = {case["item_id"]: case for case in load_sample(cases_path)}
+    labels = {who: load_grid_labels(folder / f"grid_labels_{who}.jsonl") for who in GRID_ANNOTATORS}
+    labels = {who: answers for who, answers in labels.items() if answers}
+    lines = []
+    names = sorted(labels)
+    for i, first in enumerate(names):
+        for second in names[i + 1 :]:
+            common = sorted(set(labels[first]) & set(labels[second]) & set(cases))
+            if not common:
+                continue
+            lines.append(f"{first} / {second} : {len(common)} éléments en commun")
+            for key in ("action", "urgence", "alerte"):
+                a = [labels[first][c][key] for c in common]
+                b = [labels[second][c][key] for c in common]
+                agree = sum(x == y for x, y in zip(a, b, strict=True)) / len(common)
+                lines.append(
+                    f"  {key:<8} accord {agree:.0%}  kappa {cohen_kappa(a, b):.2f}"
+                    + ("  (seuil 0,60)" if key == "action" else "")
+                )
+            for c in common:
+                x, y = labels[first][c], labels[second][c]
+                if x != y:
+                    diff = ", ".join(
+                        f"{k} {x[k]} / {y[k]}"
+                        for k in ("action", "urgence", "alerte")
+                        if x[k] != y[k]
+                    )
+                    lines.append(f"  ≠ {c} « {cases[c]['title']} » : {diff}")
+    return "\n".join(lines) or "Pas encore deux annotateurs sur les mêmes éléments."
+
+
 def make_handler(
-    annotator: Annotator, pairs: PairAnnotator | None = None
+    annotator: Annotator, pairs: PairAnnotator | None = None, grid: GridAnnotator | None = None
 ) -> type[BaseHTTPRequestHandler]:
     class Handler(BaseHTTPRequestHandler):
         def _send(self, status: int, body: bytes, kind: str = "application/json") -> None:
@@ -305,7 +411,11 @@ def make_handler(
 
         def do_GET(self) -> None:
             url = urlparse(self.path)
-            if url.path == "/":
+            if url.path == "/" and grid:
+                self._send(HTTPStatus.OK, GRID_PAGE.read_bytes(), "text/html")
+            elif url.path == "/api/grid" and grid:
+                self._json(grid.state())
+            elif url.path == "/":
                 self._send(HTTPStatus.OK, PAGE.read_bytes(), "text/html")
             elif url.path == "/paires" and pairs:
                 self._send(HTTPStatus.OK, PAIRS_PAGE.read_bytes(), "text/html")
@@ -326,7 +436,11 @@ def make_handler(
 
         def do_POST(self) -> None:
             path = urlparse(self.path).path
-            target = {"/api/answer": annotator, "/api/pairs/answer": pairs}.get(path)
+            target = {
+                "/api/answer": annotator,
+                "/api/pairs/answer": pairs,
+                "/api/grid/answer": grid,
+            }.get(path)
             if target is None:
                 self._json({"error": "introuvable"}, HTTPStatus.NOT_FOUND)
                 return
@@ -356,7 +470,17 @@ def serve(
     synth_path: Path = SYNTH_PATH,
     pairs_mode: bool = False,
     synth_pairs_path: Path = SYNTH_PAIRS_PATH,
+    grid_mode: bool = False,
+    grid_path: Path = GRID_CALIBRATION_PATH,
 ):
+    if grid_mode:  # grille d'actions (M0) : calibrage
+        if annotator not in GRID_ANNOTATORS:
+            raise ValueError(f"annotateur attendu : {', '.join(GRID_ANNOTATORS)}")
+        grid = GridAnnotator(
+            load_sample(grid_path), labels.with_name(f"grid_labels_{annotator}.jsonl"), annotator
+        )
+        empty = Annotator([], LabelStore(labels.with_name(f"intent_labels_{annotator}.jsonl")))
+        return ThreadingHTTPServer(("127.0.0.1", port), make_handler(empty, grid=grid))
     if annotator and pairs_mode:  # paires des journées générées, à l'aveugle, à deux
         rows = assigned(load_sample(synth_pairs_path), annotator)
         store = LabelStore(labels.with_name(f"pair_labels_{annotator}.jsonl"))
@@ -389,12 +513,22 @@ def main(argv: list[str]) -> int:
         i = args.index("--annotateur")
         who = args[i + 1].lower() if i + 1 < len(args) else ""
         del args[i : i + 2]
+    if "--accord-grille" in args:
+        print(grid_agreement())
+        return 0
     pairs_mode = "--paires" in args
     if pairs_mode:
         args.remove("--paires")
+    grid_mode = "--grille" in args
+    if grid_mode:
+        args.remove("--grille")
     port = int(args[0]) if args else 8765
-    server = serve(port, annotator=who, pairs_mode=pairs_mode)
-    if who and pairs_mode:
+    server = serve(port, annotator=who, pairs_mode=pairs_mode, grid_mode=grid_mode)
+    if grid_mode:
+        print(
+            f"Grille d'actions, calibrage ({who}) : http://127.0.0.1:{port}  (Ctrl+C pour arrêter)"
+        )
+    elif who and pairs_mode:
         print(f"Paires des journées générées ({who}) : http://127.0.0.1:{port}/paires")
     elif who:
         print(
