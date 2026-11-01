@@ -13,9 +13,9 @@ brief = generate_brief(load_items("2026-10-07"), "u_demo_001", "2026-10-07")
 
 | Section | Règle de sélection | Une entrée = | Ordre | `priority_score` |
 |---|---|---|---|---|
-| `actions` | affaires sans réunion du jour : mail non lu **ou** score > 50 ; 7 au plus | les mails non lus d'une affaire (ou l'item le plus ancien si pas de mail non lu) | score décroissant, ex aequo par `case_id` | score réel (`score_case`) |
+| `actions` | affaires sans réunion du jour : mail non lu **ou** score > 50 ; 7 au plus | les mails non lus d'une affaire (sinon le mail qui porte le score appris, sinon le premier élément ; le texte ne dit « non lu » que s'il l'est) | score décroissant, ex aequo par `case_id` | score appris, sinon `score_case` |
 | `meetings` | événements non annulés qui occupent au moins une partie du jour ; une affaire déjà dans `meetings` ne crée **aucune** entrée dans les autres sections | une réunion (une par heure, jamais fusionnée) | heure de début | 50 fixe (ordre par heure, pas par score) |
-| `overdue` | affaires sans réunion du jour et avec au moins une tâche en retard | les tâches en retard d'une affaire | score décroissant, ex aequo par `case_id` | score réel (`score_case`) |
+| `overdue` | affaires sans réunion du jour et avec au moins une tâche en retard | les tâches en retard d'une affaire | score décroissant, ex aequo par `case_id` | score appris, sinon `score_case` |
 
 **Raisons** (`priority_reasons`, max 4) : jusqu'à 3 raisons de `score_case` (sans « élément
 professionnel standard »), puis la raison de contexte de l'affaire si elle a d'autres éléments
@@ -38,8 +38,21 @@ Exception : deux réunions de la même affaire le même jour → deux entrées (
   une journée entière, dont les dates se lisent telles quelles. Elle est donnée par
   `attributes.calendar.is_all_day` (contrat A 1.1) ; sans ce bloc (items 1.0), on la déduit :
   minuit à minuit dans son propre décalage.
-- Score : `score_case` (L2.2, `scoring/score.py`) ; réunions : score fixe 50 (ordre par heure).
-- `generator.llm = "rules"` : aucun LLM, aucun coût.
+- Score (L2.2) : **score appris** (`scoring/learned.py`) pour les affaires qui ont un mail à
+  noter (reçu, hors envoi en masse, non lu ou reçu dans les 3 jours) : l'affaire prend le score
+  de son meilleur mail, plus les points des règles pour ce que le modèle ne voit pas (tâche en
+  retard +25 ou à échéance +20 / +10, réunion dans les 48 h +15). Une intention apprise n'est
+  une raison que si sa probabilité atteint 0,5. Les autres affaires gardent `score_case`
+  (`scoring/score.py`) ; réunions : score fixe 50 (ordre par heure).
+- Persona (qui est le N+1, qui est client) : configuré pour `u_demo_001` et `u_graph_helene` ;
+  sinon adresse du manager déduite (destinataire principal le plus fréquent), sans hiérarchie.
+- `ALLIANCE_SCORE=regles` : score par règles seul (comparaison A/B). Si le modèle manque ou
+  échoue, le brief garde les règles et l'annonce dans `warnings`. Les tests tournent par
+  défaut avec les règles (`conftest.py` à la racine) ; ceux du score appris passent un faux modèle.
+- Coût mesuré (démo du 07/10, CPU) : 3,3 s pour le premier brief (chargement du modèle), puis
+  1,7 s. L'image Docker embarque le modèle (`FASTEMBED_CACHE_PATH=/app/.models`).
+- `generator.llm` : `"MiniLM (score de priorité appris)"` (modèle dans `llm_version`) quand le
+  score appris a noté au moins une affaire, sinon `"rules"`. Aucun LLM, aucun coût d'API.
 
 ## Agrégation en affaires (L2.1, niveaux 1 et 2)
 
@@ -89,9 +102,9 @@ vectors = embed_items(items, FastEmbedder())  # {item_id: vecteur normalisé}
   384 dimensions, 0,22 Go, local, sans PyTorch) ou `HashEmbedder` (faux modèle des tests).
 - Texte vectorisé (`item_text`) : titre sans « RE: », « TR : »…, puis extrait.
 - Cache par (modèle, propriétaire, item_id, updated_at) : un item n'est jamais recalculé.
-- Dépendance optionnelle, absente de la CI et de l'image Docker :
-  `uv sync --all-packages --group embeddings`. Le modèle est téléchargé au premier appel ;
-  sans fastembed, le test du vrai modèle est ignoré.
+- fastembed est une dépendance principale depuis le branchement du score appris (le groupe
+  `embeddings` reste pour les anciennes commandes). Le modèle est téléchargé au premier appel,
+  ou à la construction de l'image Docker.
 - Mesure locale (CPU) : chargement 2,6 s, puis 500 textes en 1,4 s ; similarité d'une paraphrase
   française 0,71 contre 0,16 pour un texte sans rapport.
 
@@ -296,6 +309,7 @@ rag/explore.py       outil d'exploration des embeddings sur une journée
 rag/index.py         index RAG par utilisateur (L2.6, R1)
 rag/retrieve.py      historique des affaires du jour (L2.6, R2)
 scoring/score.py     score de priorité par règles (L2.2)
+scoring/learned.py   score appris des affaires dans le brief (meilleur mail + tâches, réunions)
 scoring/ml/          score appris : données Graph, bruit, intentions, échéances (pipeline A)
 scoring/ml/synth/    générateur de mails du lot 2 (SPEC.md)
 scoring/annotations/ échantillon et étiquettes de Théo (versionnés, données synthétiques)

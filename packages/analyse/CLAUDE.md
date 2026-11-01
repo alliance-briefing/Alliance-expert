@@ -43,7 +43,9 @@ Objectifs et critères d'acceptation de chaque tâche : `Alliance-Experts_guide-
   `uv.lock` et l'image Docker de la CI casse.
 - Aucun secret dans le code (gitleaks bloque la CI), aucune donnée réelle.
 - Git : une branche par issue (`l2/<type>/<slug>`, en minuscules), commits au format
-  Conventional Commits (`type(analyse): description`), petits commits, PR ≤ 400 lignes.
+  Conventional Commits (`type(analyse): description`), petits commits. Une PR par tâche
+  (cadre cohérent), sans limite de lignes : mieux vaut moins de fichiers, plus longs, qu'un
+  découpage artificiel.
 - Avant d'écrire du code, proposer un plan et attendre l'accord.
 - Expliquer chaque choix en quelques lignes : chaque ligne doit pouvoir être défendue à l'oral.
 

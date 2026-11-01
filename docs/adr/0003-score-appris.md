@@ -125,7 +125,7 @@ qui ne départage pas 56 paires sur 74 ; 0,77 sur les réservées de David ; 0,7
 Plafond réaliste : l'accord entre les deux annotateurs, 86 % hors « équivalent ».
 
 ## Conséquences
-- **Lot 2** : le score appris n'est pas encore branché dans le brief. Il reste à fixer le passage du score des mails au score de l'affaire (maximum des mails, bonus de taille du fil…) et à prévenir Marie-Yoram, qui branche le score.
+- **Lot 2** (mise à jour du 01/11) : le score appris est branché dans le brief (`scoring/learned.py`). Une affaire prend le score de son meilleur mail, plus les points des règles pour les tâches et les réunions, que le modèle ne voit pas. Le maximum a été préféré à la somme douce (log-somme-exp) pour commencer : plus simple à expliquer, et il ne gonfle pas un fil de relances. Les deux restent à départager sur des paires d'affaires. `ALLIANCE_SCORE=regles` rétablit le score par règles (comparaison A/B).
 - **Pipeline A** : l'étage « ajustement LLM ±15 » reste possible par-dessus, mais rien n'en dépend.
 - **Production** : MiniLM (0,22 Go, fastembed ONNX, sans torch, déjà utilisé par le RAG) ; poids du score et des intentions versionnés (quelques Ko) ; vecteurs en cache hors du dépôt. Le groupe `nli` (torch) n'a servi qu'à l'essai du NLI.
 - **Réentraîner** : toutes les étiquettes sont versionnées (`scoring/annotations/`, données synthétiques) ; `intents` puis `learned_score` les relisent et donnent les mêmes poids.
