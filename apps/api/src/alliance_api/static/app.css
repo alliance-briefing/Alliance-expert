@@ -1,6 +1,7 @@
 /* Alliance Briefing : thème nuit indigo, d'après la maquette fournie par Alliance Experts.
    Pour changer l'apparence, commencer par les variables ci-dessous.
-   Contrastes WCAG AA : texte --ink et --mist sur --surface (> 4,5:1). */
+   Contrastes WCAG AA (≥ 4,5:1) vérifiés par tests/test_ui_a11y.py : modifier une couleur
+   de texte ou de fond, c'est relancer ce test. */
 :root {
   --night: #0b0d1e;      /* fond de page */
   --panel: #10132a;      /* cadre de l'application */
@@ -52,8 +53,8 @@ html:not(.js) .filters { display: none; }
   text-decoration: none; transition: background .2s, border-color .2s, transform .2s var(--ease);
 }
 .btn:active { transform: scale(.97); }
-.btn--primary { background: linear-gradient(180deg, #9d90ff, #7464f2); color: #fff; box-shadow: 0 8px 24px -8px #7464f2aa, inset 0 1px 0 #ffffff40; }
-.btn--primary:hover { background: linear-gradient(180deg, #ab9fff, #8070ff); }
+.btn--primary { background: linear-gradient(180deg, #6a5ae6, #5545d0); color: #fff; box-shadow: 0 8px 24px -8px #7464f2aa, inset 0 1px 0 #ffffff40; }
+.btn--primary:hover { background: linear-gradient(180deg, #6252e2, #4f3fc8); }
 .btn--ghost { background: #ffffff0a; border-color: var(--line); color: var(--ink); }
 .btn--ghost:hover { background: #ffffff14; border-color: #3b4280; }
 .btn--sm { min-height: 2.5rem; padding: 0 .9rem; font-size: .9rem; }
@@ -422,8 +423,7 @@ html:not(.js) .filters { display: none; }
   .card, .side { grid-column: auto; }
   .side { grid-template-columns: 1fr; }
   .card--feeds .feeds { grid-template-columns: 1fr; }
-  .entry { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "lead body" "lead open"; }
-  .entry-links { display: none; }
+  .entry { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "lead body links" "lead open open"; }
   .entry-open { justify-self: start; }
   .hero { grid-template-columns: 1fr; gap: 0; }
   .hero-orb { position: absolute; right: 4px; top: -6px; width: 72px; margin: 0; }
@@ -435,9 +435,6 @@ html:not(.js) .filters { display: none; }
   .login-hero { max-width: 240px; }
   .drawer-inner { padding: 1.2rem 1rem 2rem; }
 }
-@media (max-width: 420px) {
-}
-
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
   html { scroll-behavior: auto; }

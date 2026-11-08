@@ -11,7 +11,6 @@
 (() => {
   "use strict";
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  document.documentElement.classList.add("js");
 
   /* ---------- Orb (React Bits) ---------- */
   const VERT = `
@@ -219,9 +218,14 @@
       });
     });
 
-    // Changer de jour dès qu'une date est choisie.
+    // Changer de jour dès qu'une date est choisie dans le calendrier. Au clavier, « change »
+    // part à chaque morceau tapé (jour, mois, année) : on attend alors Entrée, qui envoie
+    // le formulaire sans JavaScript.
     document.querySelectorAll("[data-autosubmit]").forEach((input) => {
-      input.addEventListener("change", () => input.value && input.form.requestSubmit());
+      let typing = false;
+      input.addEventListener("keydown", (ev) => { typing = ev.key !== "Enter"; });
+      input.addEventListener("pointerdown", () => { typing = false; });
+      input.addEventListener("change", () => { if (!typing && input.value) input.form.requestSubmit(); });
     });
 
     // Génération : bouton occupé, sphère qui s'accélère.

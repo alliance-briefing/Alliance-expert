@@ -5,13 +5,13 @@
 {% macro row(view, position) %}
 {% set s = view.main %}
 <li class="entry">
-  <span class="entry-rank entry-rank--{{ view.level }}" aria-label="Priorité {{ position }}">{{ position }}</span>
+  <span class="entry-rank entry-rank--{{ view.level }}"><span class="sr-only">Priorité </span>{{ position }}</span>
   <div class="entry-body" data-section="{{ view.kind }}">
     <p class="entry-meta entry-meta--{{ s.kind }}">{{ icon(KIND_ICONS.get(s.kind, "file"), 14) }}<span>{{ view.meta }}</span>{% if s.unread %}<span class="dot" title="Non lu"></span><span class="sr-only">non lu</span>{% endif %}</p>
     <p class="entry-title">{{ view.headline }}</p>
     <p class="entry-reason">{{ view.entry.priority_reasons[0] }}{% if view.sources | length > 1 %}<span class="chip">+{{ view.sources | length - 1 }} lié{{ "s" if view.sources | length > 2 }}</span>{% endif %}</p>
   </div>
-  <button type="button" class="entry-open" data-open="d-{{ view.uid }}" aria-haspopup="dialog">Détails</button>
+  <button type="button" class="entry-open" data-open="d-{{ view.uid }}" aria-haspopup="dialog">Détails<span class="sr-only"> : {{ view.headline }}</span></button>
   <ul class="entry-links">
     <li><a href="{{ s.url }}" target="_blank" rel="noopener noreferrer" title="Ouvrir la source">{{ icon("external", 16) }}<span class="sr-only">Voir la source : {{ s.title or "(sans objet)" }}</span></a></li>
   </ul>
