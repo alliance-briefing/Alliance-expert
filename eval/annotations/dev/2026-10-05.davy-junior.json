@@ -1,0 +1,77 @@
+{
+  "schema": "annotation/1.1",
+  "user_id": "u_demo_001",
+  "date": "2026-10-05",
+  "annotator": "davy-junior",
+  "annotated_at": "2026-11-08",
+  "must_include": [
+    {
+      "rank": 1,
+      "section": "actions",
+      "item_ids": ["mail:dm1-msg-000003"],
+      "why": "L’assureur relance au sujet du dossier 2026-9372 : l’assuré s’impatiente et attend une date d’expertise depuis le 25 septembre."
+    },
+    {
+      "rank": 2,
+      "section": "meetings",
+      "item_ids": [
+        "calendar:dm1-evt-000004",
+        "calendar:dm1-evt-000062"
+      ],
+      "why": "L’expertise sur place du dossier 2026-6598 et la visite au garage partenaire se chevauchent de 10 h 45 à 11 h 15 ; il faut arbitrer."
+    },
+    {
+      "rank": 3,
+      "section": "actions",
+      "item_ids": ["mail:dm1-msg-000035", "task:dm1-tsk-000028"],
+      "why": "L’assureur attend une confirmation et une date pour le dossier 2026-3025 ; l’expert doit être affecté avant midi aujourd’hui."
+    },
+    {
+      "rank": 4,
+      "section": "actions",
+      "item_ids": ["mail:dm1-msg-000007"],
+      "why": "Le client attendait pour sa revue du 2 octobre la synthèse des sinistres du trimestre et des recommandations de prévention."
+    },
+    {
+      "rank": 5,
+      "section": "actions",
+      "item_ids": ["mail:dm1-msg-000029"],
+      "why": "L’assureur attend une date d’expertise pour le dossier 2026-4900, où le choc arrière a déformé le plancher."
+    },
+    {
+      "rank": 6,
+      "section": "actions",
+      "item_ids": ["mail:dm1-msg-000025"],
+      "why": "L’assureur attend une confirmation et une date d’expertise pour le dossier 2026-5455 depuis le 1er octobre."
+    },
+    {
+      "rank": 7,
+      "section": "overdue",
+      "item_ids": ["task:dm1-tsk-000017"],
+      "why": "L’affectation d’un expert au dossier 2026-3156 est en retard depuis le 1er octobre à midi."
+    }
+  ],
+  "must_exclude": [
+    "mail:dm1-msg-001218", "mail:dm1-msg-001201", "mail:dm1-msg-001178", "mail:dm1-msg-001190",
+    "mail:dm1-msg-001225", "mail:dm1-msg-001172", "mail:dm1-msg-001220", "mail:dm1-msg-001187",
+    "mail:dm1-msg-001216", "mail:dm1-msg-001174", "mail:dm1-msg-001185", "mail:dm1-msg-001213",
+    "mail:dm1-msg-001193", "mail:dm1-msg-001209", "mail:dm1-msg-001223", "mail:dm1-msg-001204",
+    "mail:dm1-msg-001206", "mail:dm1-msg-001219", "mail:dm1-msg-001183", "mail:dm1-msg-001210",
+    "mail:dm1-msg-001175", "mail:dm1-msg-001177", "mail:dm1-msg-001173", "mail:dm1-msg-001226",
+    "mail:dm1-msg-001179", "mail:dm1-msg-001196", "mail:dm1-msg-001229", "mail:dm1-msg-001215",
+    "mail:dm1-msg-001192", "mail:dm1-msg-001171", "mail:dm1-msg-001167", "mail:dm1-msg-001169",
+    "mail:dm1-msg-001170", "mail:dm1-msg-001168", "mail:dm1-msg-001188", "mail:dm1-msg-001207",
+    "mail:dm1-msg-001227", "mail:dm1-msg-001208", "mail:dm1-msg-001224", "mail:dm1-msg-001222",
+    "mail:dm1-msg-001182", "mail:dm1-msg-001198", "mail:dm1-msg-001231", "mail:dm1-msg-001186",
+    "mail:dm1-msg-001211", "mail:dm1-msg-001230", "mail:dm1-msg-001212", "mail:dm1-msg-001189",
+    "mail:dm1-msg-001197", "mail:dm1-msg-001221", "mail:dm1-msg-001191", "mail:dm1-msg-001214",
+    "mail:dm1-msg-001181", "mail:dm1-msg-001203", "mail:dm1-msg-001148", "mail:dm1-msg-001071",
+    "mail:dm1-msg-001137", "mail:dm1-msg-001001", "mail:dm1-msg-000996", "mail:dm1-msg-001005",
+    "mail:dm1-msg-001023", "mail:dm1-msg-000848", "mail:dm1-msg-000816", "mail:dm1-msg-000886",
+    "mail:dm1-msg-000899", "mail:dm1-msg-000885", "mail:dm1-msg-000834", "mail:dm1-msg-000679",
+    "mail:dm1-msg-000741", "mail:dm1-msg-000776", "mail:dm1-msg-000716", "mail:dm1-msg-000726",
+    "mail:dm1-msg-000649", "mail:dm1-msg-000873"
+  ],
+  "cases": null,
+  "notes": ""
+}
