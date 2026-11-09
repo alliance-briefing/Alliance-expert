@@ -46,6 +46,14 @@ Exception : deux réunions de la même affaire le même jour → deux entrées (
   Démo : 424 claims sur 30 journées, aucun rejeté. 20 cas adverses (date ou heure fausse, heure
   UTC non convertie, montant inversé, numéro voisin, homonyme, item d'un autre utilisateur…),
   tous rejetés : `tests/test_guard_adversarial.py`.
+- Trace d'une entrée : chaque claim, son verdict par la garde, ses items sources (lien, dates en
+  heure de Paris, celles citées marquées « (citée) », extrait) et les items de contexte. Le brief
+  est régénéré (déterministe) à partir des items de la journée, démo ou `--dossier <DATA_DIR>`.
+
+```bash
+uv run python -m packages.analyse.guard.trace b_2026-10-07_u_demo_001 1                      # rang 1 de chaque section
+uv run python -m packages.analyse.guard.trace b_2026-10-07_u_demo_001 2 --section meetings
+```
 - Heure de Paris (`clock.py`) : toutes les dates sont lues en Europe/Paris quel que soit le décalage
   reçu (un item en UTC venant de Graph est donc bien placé), `generated_at` compris. Exception :
   une journée entière, dont les dates se lisent telles quelles. Elle est donnée par
@@ -318,6 +326,7 @@ aggregate/cases.py   regroupement des items en affaires (L2.1)
 brief.py             generate_brief : assemble le Brief
 clock.py             heure de Paris et détection des journées entières
 guard/check.py       garde déterministe des claims (L2.4)
+guard/trace.py       commande trace <brief_id> <rank> (L2.4)
 rag/embeddings.py    vecteurs de sens des items (L2.6)
 rag/explore.py       outil d'exploration des embeddings sur une journée
 rag/index.py         index RAG par utilisateur (L2.6, R1)

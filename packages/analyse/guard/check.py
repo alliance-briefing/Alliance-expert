@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping, Sequence
+from datetime import datetime
 
 from contracts.models import Brief, Claim, Entry, Item
 from packages.analyse.clock import is_all_day, to_paris
@@ -139,17 +140,21 @@ def _has_moment(item: Item, day: str, hour: str | None) -> bool:
     """Le jour (et l'heure) est celui d'une date de l'item, ou figure dans son texte."""
     if hour is None and day in _haystack(item):
         return True
+    return any(
+        f"{value:%d/%m}" == day and (hour is None or f"{value:%H:%M}" == hour)
+        for value in moments(item).values()
+    )
+
+
+def moments(item: Item) -> dict[str, datetime]:
+    """Les dates de l'item en heure de Paris ; une journée entière garde ses dates telles quelles."""
     all_day = item.source == "calendar" and is_all_day(item)
-    for value in (item.created_at, item.updated_at, item.start_at, item.end_at, item.due_at):
-        if value is None:
-            continue
-        if not (
-            all_day and value in (item.start_at, item.end_at)
-        ):  # journée entière : telle quelle
-            value = to_paris(value)
-        if f"{value:%d/%m}" == day and (hour is None or f"{value:%H:%M}" == hour):
-            return True
-    return False
+    fields = ("created_at", "updated_at", "start_at", "end_at", "due_at")
+    return {
+        name: value if all_day and name in ("start_at", "end_at") else to_paris(value)
+        for name in fields
+        if (value := getattr(item, name)) is not None
+    }
 
 
 def _haystack(item: Item) -> str:
