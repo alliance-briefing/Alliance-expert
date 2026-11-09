@@ -43,7 +43,9 @@ Exception : deux réunions de la même affaire le même jour → deux entrées (
   et état (non lu, annulée, en retard) se retrouvent dans ces items ; « Et N autres… » doit citer
   N items. Sinon l'entrée est dégradée (« À consulter : « titre » », lien, sans claim) ; sans
   source valide, elle est retirée et les rangs sont renumérotés. Chaque cas ajoute un warning.
-  Démo : 424 claims sur 30 journées, aucun rejeté.
+  Démo : 424 claims sur 30 journées, aucun rejeté. 20 cas adverses (date ou heure fausse, heure
+  UTC non convertie, montant inversé, numéro voisin, homonyme, item d'un autre utilisateur…),
+  tous rejetés : `tests/test_guard_adversarial.py`.
 - Heure de Paris (`clock.py`) : toutes les dates sont lues en Europe/Paris quel que soit le décalage
   reçu (un item en UTC venant de Graph est donc bien placé), `generated_at` compris. Exception :
   une journée entière, dont les dates se lisent telles quelles. Elle est donnée par
