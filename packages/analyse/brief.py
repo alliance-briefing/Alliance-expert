@@ -23,6 +23,7 @@ from contracts.models.brief import SectionKind
 from packages.analyse.aggregate.cases import Case, group_into_cases
 from packages.analyse.aggregate.rules import meetings_of_day, overdue_tasks, unread_mails
 from packages.analyse.clock import PARIS, is_all_day, to_paris
+from packages.analyse.guard.check import NO_TITLE, guard_brief
 from packages.analyse.scoring.learned import (
     GENERATOR,
     CaseScore,
@@ -40,7 +41,6 @@ ACTIONS_LIMIT = 7
 MEETINGS_SCORE = 50
 # Claims détaillés par entrée ; au-delà, les éléments restants forment un seul claim.
 CLAIMS_LIMIT = 3
-NO_TITLE = "(sans objet)"
 NOTHING_TO_REPORT = "Aucun élément à signaler pour cette journée."
 # Noms des éléments liés, au singulier et au pluriel, dans l'ordre d'affichage.
 NOUNS = {
@@ -184,7 +184,7 @@ def generate_brief(
         warnings.append(NOTHING_TO_REPORT)
 
     cited = {item_id for s in sections for e in s.entries for item_id in e.source_item_ids}
-    return Brief(
+    brief = Brief(
         brief_id=f"b_{day.isoformat()}_{user}",
         owner_user_id=user,
         date=day,
@@ -206,6 +206,8 @@ def generate_brief(
         ),
         warnings=warnings,
     )
+    # Porte dure (L2.4) : aucun claim livré sans source vérifiée dans les items de l'utilisateur.
+    return guard_brief(brief, mine)
 
 
 def _section(

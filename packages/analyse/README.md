@@ -36,7 +36,14 @@ Exception : deux réunions de la même affaire le même jour → deux entrées (
 - Claims (L2.4) : le texte de chaque entrée est découpé en faits, un par élément montré
   (« Mail non lu « Devis », reçu le 07/10 à 08:15 »), cité par ce seul élément ; au-delà de 3,
   un claim compte le reste (« Et 3 autres mails non lus ») et le cite. Le contexte de l'affaire
-  reste dans les raisons. Base de la garde déterministe (`guard/`, à venir).
+  reste dans les raisons.
+- Garde (L2.4, `guard/check.py`), porte dure appliquée à la fin de `generate_brief`, sans LLM :
+  un claim n'est livré que si ses items cités existent et appartiennent à l'utilisateur, et si
+  son titre entre « », ses dates (avec l'heure, en heure de Paris), nombres, noms propres, type
+  et état (non lu, annulée, en retard) se retrouvent dans ces items ; « Et N autres… » doit citer
+  N items. Sinon l'entrée est dégradée (« À consulter : « titre » », lien, sans claim) ; sans
+  source valide, elle est retirée et les rangs sont renumérotés. Chaque cas ajoute un warning.
+  Démo : 424 claims sur 30 journées, aucun rejeté.
 - Heure de Paris (`clock.py`) : toutes les dates sont lues en Europe/Paris quel que soit le décalage
   reçu (un item en UTC venant de Graph est donc bien placé), `generated_at` compris. Exception :
   une journée entière, dont les dates se lisent telles quelles. Elle est donnée par
@@ -308,6 +315,7 @@ aggregate/rules.py   règles de sélection (fonctions pures)
 aggregate/cases.py   regroupement des items en affaires (L2.1)
 brief.py             generate_brief : assemble le Brief
 clock.py             heure de Paris et détection des journées entières
+guard/check.py       garde déterministe des claims (L2.4)
 rag/embeddings.py    vecteurs de sens des items (L2.6)
 rag/explore.py       outil d'exploration des embeddings sur une journée
 rag/index.py         index RAG par utilisateur (L2.6, R1)
