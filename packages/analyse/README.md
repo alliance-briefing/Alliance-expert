@@ -33,6 +33,10 @@ Exception : deux réunions de la même affaire le même jour → deux entrées (
 - Isolation : seuls les items dont `owner_user_id` est l'utilisateur demandé sont lus ; les autres sont comptés dans `warnings`.
 - Déterminisme : même entrée, même brief, quel que soit l'ordre des items (hors `generated_at` et `stats.latency_ms`). « Maintenant » = `collected_at` le plus récent, jamais `datetime.now()`.
 - Les textes ne reprennent que les titres et les dates, jamais le contenu des mails.
+- Claims (L2.4) : le texte de chaque entrée est découpé en faits, un par élément montré
+  (« Mail non lu « Devis », reçu le 07/10 à 08:15 »), cité par ce seul élément ; au-delà de 3,
+  un claim compte le reste (« Et 3 autres mails non lus ») et le cite. Le contexte de l'affaire
+  reste dans les raisons. Base de la garde déterministe (`guard/`, à venir).
 - Heure de Paris (`clock.py`) : toutes les dates sont lues en Europe/Paris quel que soit le décalage
   reçu (un item en UTC venant de Graph est donc bien placé), `generated_at` compris. Exception :
   une journée entière, dont les dates se lisent telles quelles. Elle est donnée par

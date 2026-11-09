@@ -5,7 +5,8 @@ lus les plus récents, les réunions du jour et les tâches en retard. Les élé
 même affaire sont réunis dans une entrée (sauf les réunions, une par heure), et chaque
 entrée cite aussi les autres éléments de son affaire. Les textes ne reprennent que les
 titres et les dates, jamais le contenu (snippet) : un mail piégé ne peut donc rien
-injecter dans le brief.
+injecter dans le brief. Le texte de chaque entrée est découpé en claims (L2.4) : un fait
+par élément montré, cité par ce seul élément, pour que la garde puisse le vérifier.
 """
 
 from __future__ import annotations
@@ -17,7 +18,7 @@ from datetime import date as Date
 from datetime import datetime
 from typing import Literal
 
-from contracts.models import Brief, Entry, Generator, Item, Section, Stats
+from contracts.models import Brief, Claim, Entry, Generator, Item, Section, Stats
 from contracts.models.brief import SectionKind
 from packages.analyse.aggregate.cases import Case, group_into_cases
 from packages.analyse.aggregate.rules import meetings_of_day, overdue_tasks, unread_mails
@@ -37,6 +38,8 @@ ACTIONS_THRESHOLD = 50
 ACTIONS_LIMIT = 7
 # Score fixe pour les réunions : triées par heure, leur score ne porte pas l'ordre.
 MEETINGS_SCORE = 50
+# Claims détaillés par entrée ; au-delà, les éléments restants forment un seul claim.
+CLAIMS_LIMIT = 3
 NO_TITLE = "(sans objet)"
 NOTHING_TO_REPORT = "Aucun élément à signaler pour cette journée."
 # Noms des éléments liés, au singulier et au pluriel, dans l'ordre d'affichage.
@@ -252,10 +255,66 @@ def _section(
                 priority_score=displayed_score,
                 priority_reasons=reasons,
                 text=text,
+                claims=_claims(group, now),
                 source_item_ids=all_items,
             )
         )
     return Section(kind=kind, entries=entries)
+
+
+def _claims(group: list[Item], now: datetime | None) -> list[Claim]:
+    """Le texte de l'entrée découpé en faits : un claim par élément montré, cité par lui seul.
+
+    Les éléments de contexte (autres éléments de l'affaire) n'y sont pas : ils sont résumés
+    dans les raisons. Au-delà de CLAIMS_LIMIT, un seul claim compte les éléments restants
+    et les cite tous : l'affirmation reste vérifiable sans allonger l'entrée.
+    """
+    claims = [
+        Claim(text=_fact(item, now), source_item_ids=[item.item_id])
+        for item in group[:CLAIMS_LIMIT]
+    ]
+    rest = group[CLAIMS_LIMIT:]
+    if rest:
+        n, first = len(rest), rest[0]
+        plural = "s" if n > 1 else ""
+        state = _state(first, now)
+        text = f"Et {n} autre{plural} {NOUNS[first.source][n > 1]}"
+        if state:
+            text += f" {state}{plural}"
+        claims.append(Claim(text=text, source_item_ids=[item.item_id for item in rest]))
+    return claims
+
+
+def _state(item: Item, now: datetime | None) -> str:
+    """État qui justifie la présence d'un élément dans le brief, au singulier."""
+    if item.source == "mail" and item.is_read is False:
+        return "non lu"
+    if now is not None and item.is_overdue(now):
+        return "en retard"
+    return ""
+
+
+def _fact(item: Item, now: datetime | None) -> str:
+    """Un fait vérifiable sur un élément : type, titre entre « » et date en heure de Paris."""
+    title = f"« {_title(item)} »"
+    if item.source == "mail":
+        unread = " non lu" if item.is_read is False else ""
+        return f"Mail{unread} {title}, reçu le {_when(item.created_at)}"
+    if item.source == "calendar":
+        start = _required(item.start_at, item)
+        when = f"le {start:%d/%m}, journée entière" if is_all_day(item) else f"le {_when(start)}"
+        cancelled = ", annulée" if _is_cancelled(item) else ""
+        return f"Réunion {title} {when}{cancelled}"
+    if item.source == "task":
+        if item.due_at is None:
+            return f"Tâche {title}, sans échéance"
+        late = "dépassée " if _state(item, now) == "en retard" else ""
+        return f"Tâche {title}, échéance {late}le {to_paris(item.due_at):%d/%m}"
+    return f"Fichier {title}, modifié le {to_paris(item.updated_at):%d/%m}"
+
+
+def _when(value: datetime) -> str:
+    return to_paris(value).strftime("%d/%m à %H:%M")
 
 
 def _best_item(case: Case, learned: dict[str, CaseScore]) -> Item:
@@ -349,7 +408,7 @@ def _mails_wording(mails: list[Item]) -> tuple[str, str]:
     Une affaire sans mail non lu montre son mail le mieux noté, ou son premier élément :
     le texte ne dit « non lu » que s'il l'est."""
     first = mails[0]
-    received = to_paris(first.created_at).strftime("%d/%m à %H:%M")
+    received = _when(first.created_at)
     if first.source != "mail":
         noun = NOUNS[first.source][0]
         updated = to_paris(first.updated_at).strftime("%d/%m")
