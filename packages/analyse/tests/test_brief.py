@@ -10,9 +10,9 @@ import pytest
 
 from contracts.demo_data import available_days, load_items
 from contracts.export_schemas import SCHEMAS_DIR
-from contracts.models import Brief
+from contracts.models import Brief, Claim
 from packages.analyse import generate_brief
-from packages.analyse.brief import ACTIONS_LIMIT, NO_TITLE, NOTHING_TO_REPORT
+from packages.analyse.brief import ACTIONS_LIMIT, CLAIMS_LIMIT, NO_TITLE, NOTHING_TO_REPORT, _fact
 from packages.analyse.scoring.score import STANDARD
 from packages.analyse.tests.factories import (
     COLLECTED_AT,
@@ -47,6 +47,8 @@ def test_demo_day_gives_a_valid_brief_citing_only_input_items(day: str) -> None:
     jsonschema.validate(as_json, BRIEF_SCHEMA)
     assert Brief.model_validate(as_json) == brief
     assert brief.cited_item_ids() <= {item.item_id for item in items}
+    entries = [entry for section in brief.sections for entry in section.entries]
+    assert all(entry.claims for entry in entries)
 
 
 # --- structure ---------------------------------------------------------------------------------
@@ -158,6 +160,7 @@ def test_mail_content_is_never_copied_into_the_brief() -> None:
     brief = generate_brief([mail], USER, DAY, now=NOW)
 
     assert injection not in brief.model_dump_json()
+    assert brief.sections[0].entries[0].claims[0].text.startswith("Mail non lu « Titre piege »")
 
 
 # --- affaires (L2.1) ------------------------------------------------------------------------
@@ -431,3 +434,80 @@ def test_source_item_ids_has_no_entry_limit() -> None:
     entry = generate_brief(mails, USER, DAY, now=NOW).sections[0].entries[0]
 
     assert len(entry.source_item_ids) == 8
+
+
+# --- claims (L2.4) : le texte découpé en faits vérifiables ------------------------------------
+
+
+def claims(entry) -> list[tuple[str, list[str]]]:
+    return [(claim.text, claim.source_item_ids) for claim in entry.claims]
+
+
+def test_each_shown_item_gives_one_claim_cited_by_itself_alone() -> None:
+    items = [
+        make_mail("m1", "2026-10-07T06:15:00Z", title="Devis", thread_id="c1"),  # UTC → Paris
+        make_mail("m0", "2026-10-06T17:00:00+02:00", title="Devis", thread_id="c1", is_read=True),
+        make_task("t1", "2026-10-05T12:00:00+02:00", title="Relancer, dossier 2026-1111"),
+        make_event("e1", "2026-10-07T14:00:00+02:00", "2026-10-07T15:00:00+02:00", title="Point"),
+        make_event("e2", "2026-10-07T00:00:00+02:00", "2026-10-08T00:00:00+02:00", title="Salon"),
+    ]
+
+    actions, meetings, overdue = generate_brief(items, USER, DAY, now=NOW).sections
+
+    # Le mail lu du fil est du contexte : cité par l'entrée, jamais par un claim.
+    assert claims(actions.entries[0]) == [
+        ("Mail non lu « Devis », reçu le 07/10 à 08:15", ["mail:m1"])
+    ]
+    assert "mail:m0" in actions.entries[0].source_item_ids
+    assert [claims(entry) for entry in meetings.entries] == [
+        [("Réunion « Salon » le 07/10, journée entière", ["calendar:e2"])],
+        [("Réunion « Point » le 07/10 à 14:00", ["calendar:e1"])],
+    ]
+    assert claims(overdue.entries[0]) == [
+        ("Tâche « Relancer, dossier 2026-1111 », échéance dépassée le 05/10", ["task:t1"])
+    ]
+
+
+def test_items_beyond_the_limit_are_counted_in_one_claim_citing_them_all() -> None:
+    mails = [make_mail(f"m{n}", f"2026-10-07T0{n}:00:00+02:00", thread_id="c1") for n in range(6)]
+
+    entry = generate_brief(mails, USER, DAY, now=NOW).sections[0].entries[0]
+
+    assert len(entry.claims) == CLAIMS_LIMIT + 1
+    assert all(len(claim.source_item_ids) == 1 for claim in entry.claims[:CLAIMS_LIMIT])
+    assert entry.claims[-1] == Claim(
+        text="Et 3 autres mails non lus", source_item_ids=["mail:m2", "mail:m1", "mail:m0"]
+    )
+    cited = [item_id for claim in entry.claims for item_id in claim.source_item_ids]
+    assert cited == entry.source_item_ids
+
+
+def test_a_single_remaining_task_is_counted_in_the_singular() -> None:
+    tasks = [
+        make_task(f"t{n}", f"2026-10-0{n}T12:00:00+02:00", title=f"Tâche {n}, dossier 2026-1111")
+        for n in range(1, 5)
+    ]
+
+    entry = generate_brief(tasks, USER, DAY, now=NOW).sections[2].entries[0]
+
+    assert entry.claims[-1] == Claim(text="Et 1 autre tâche en retard", source_item_ids=["task:t4"])
+
+
+def test_facts_of_items_never_shown_by_the_current_sections() -> None:
+    """Fichier, réunion annulée, tâche sans échéance : montrés par « actions » en repli."""
+    file = make_item(
+        "file", "f1", title="Rapport_2026-7001.docx", updated_at="2026-10-06T10:00:00+02:00"
+    )
+    cancelled = make_event(
+        "x1",
+        "2026-10-09T09:00:00+02:00",
+        "2026-10-09T10:00:00+02:00",
+        title="Dossier 2026-7002",
+        attributes={"calendar": {"is_cancelled": True}},
+    )
+    assert _fact(file, NOW) == "Fichier « Rapport_2026-7001.docx », modifié le 06/10"
+    assert _fact(cancelled, NOW) == "Réunion « Dossier 2026-7002 » le 09/10 à 09:00, annulée"
+    assert _fact(make_task("t1", None, title="Classer"), NOW) == "Tâche « Classer », sans échéance"
+    assert _fact(make_task("t2", "2026-10-09T12:00:00+02:00", title="Appeler"), NOW) == (
+        "Tâche « Appeler », échéance le 09/10"
+    )
