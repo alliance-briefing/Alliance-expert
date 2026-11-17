@@ -9,10 +9,12 @@ from __future__ import annotations
 import base64
 import hashlib
 import logging
+import os
 import threading
 import urllib.parse
 import urllib.request
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 from cryptography.fernet import Fernet
@@ -69,6 +71,13 @@ def store(tmp_path) -> TokenStore:
     return TokenStore(tmp_path / "tokens", Fernet.generate_key().decode())
 
 
+def _assert_owner_only(path: Path) -> None:
+    """Droits 0o600 sous POSIX. Windows ignore ces bits (chmod n'y règle que la lecture
+    seule) : là, le fichier est protégé par les ACL du profil utilisateur."""
+    if os.name != "nt":
+        assert path.stat().st_mode & 0o777 == 0o600
+
+
 def _saved(store: TokenStore, expires_at: datetime) -> None:
     store.save(USER, Tokens(ACCESS, REFRESH, expires_at.isoformat()))
 
@@ -110,7 +119,7 @@ def test_tokens_are_encrypted_and_private_on_disk(store: TokenStore) -> None:
     _saved(store, NOW)
     raw = store.path(USER).read_bytes()
     assert ACCESS.encode() not in raw and REFRESH.encode() not in raw
-    assert store.path(USER).stat().st_mode & 0o777 == 0o600
+    _assert_owner_only(store.path(USER))
     assert store.load(USER).access_token == ACCESS
     assert ACCESS not in repr(store.load(USER))
     other_key = TokenStore(store.folder, Fernet.generate_key().decode())
@@ -238,7 +247,7 @@ def test_keygen_save_writes_a_private_key_file_once(tmp_path, monkeypatch, capsy
     monkeypatch.delenv("TOKEN_KEY", raising=False)
     key_file = tmp_path / "config" / "token_key"
     assert auth_cli.main(["keygen", "--save"], key_file=key_file) == 0
-    assert key_file.stat().st_mode & 0o777 == 0o600
+    _assert_owner_only(key_file)
     assert auth_cli.main(["keygen", "--save"], key_file=key_file) == 1  # jamais écrasée
     store = TokenStore(tmp_path / "tokens", key_file=key_file)  # clé lue dans le fichier
     store.save(USER, Tokens(ACCESS, REFRESH, NOW.isoformat()))
