@@ -58,6 +58,25 @@ def _get_page(
     raise AssertionError("inatteignable")
 
 
+def _url(path: str, params: dict[str, str] | None) -> str:
+    return GRAPH + path + ("?" + urllib.parse.urlencode(params) if params else "")
+
+
+def _headers(token: str, extra: dict[str, str] | None) -> dict[str, str]:
+    return {"Authorization": f"Bearer {token}", "Accept": "application/json", **(extra or {})}
+
+
+def get_one(
+    path: str,
+    token: str,
+    params: dict[str, str] | None = None,
+    send: Send = urllib_send,
+    sleep: Callable[[float], None] = time.sleep,
+) -> dict:
+    """Un objet Graph unique (ex. `/me`), avec les mêmes réessais que `get_all`."""
+    return _get_page(_url(path, params), _headers(token, None), send, sleep)
+
+
 def get_all(
     path: str,
     token: str,
@@ -67,15 +86,10 @@ def get_all(
     sleep: Callable[[float], None] = time.sleep,
 ) -> list[dict]:
     """Tous les éléments `value` d'une requête Graph, toutes pages confondues."""
-    url: str | None = GRAPH + path + ("?" + urllib.parse.urlencode(params) if params else "")
-    all_headers = {
-        "Authorization": f"Bearer {token}",
-        "Accept": "application/json",
-        **(headers or {}),
-    }
+    url: str | None = _url(path, params)
     items: list[dict] = []
     while url:
-        page = _get_page(url, all_headers, send, sleep)
+        page = _get_page(url, _headers(token, headers), send, sleep)
         items.extend(page.get("value", []))
         url = page.get("@odata.nextLink")
     return items

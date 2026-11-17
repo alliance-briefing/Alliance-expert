@@ -1,0 +1,46 @@
+{
+ "value": [
+  {
+   "id": "AAMkADmail-0007",
+   "subject": "Relance dossier 2026-1180",
+   "bodyPreview": "",
+   "body": {
+    "contentType": "html",
+    "content": "<p>Avez-vous des nouvelles du dossier 2026-1180 ?</p>"
+   },
+   "from": {
+    "emailAddress": {
+     "name": "Delphine Masson",
+     "address": "delphine.masson@altair-groupe.example"
+    }
+   },
+   "sender": {
+    "emailAddress": {
+     "name": "Delphine Masson",
+     "address": "delphine.masson@altair-groupe.example"
+    }
+   },
+   "toRecipients": [
+    {
+     "emailAddress": {
+      "name": "Hélène MARCHAND",
+      "address": "helene.marchand@verdier-expertises.example"
+     }
+    }
+   ],
+   "ccRecipients": [],
+   "bccRecipients": [],
+   "receivedDateTime": "2026-10-13T09:00:00Z",
+   "sentDateTime": "2026-10-13T09:00:00Z",
+   "lastModifiedDateTime": "2026-10-13T09:00:00Z",
+   "conversationId": "AAQkADconv-0007",
+   "importance": "normal",
+   "isRead": true,
+   "isDraft": false,
+   "hasAttachments": false,
+   "inferenceClassification": "focused",
+   "parentFolderId": "AQMkADinbox",
+   "webLink": "https://outlook.office365.com/owa/?ItemID=AAMkADmail-0007&exvsurl=1&viewmodel=ReadMessageItem"
+  }
+ ]
+}

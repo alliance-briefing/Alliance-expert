@@ -1,0 +1,137 @@
+{
+ "value": [
+  {
+   "id": "AAMkADmail-0003",
+   "subject": null,
+   "bodyPreview": "Pour info : le planning S43 est en ligne.\n\n-- \nSandrine MOREAU\nAssistante",
+   "body": {
+    "contentType": "text",
+    "content": "Pour info : le planning S43 est en ligne.\n\n-- \nSandrine MOREAU\nAssistante"
+   },
+   "from": {
+    "emailAddress": {
+     "name": "Sandrine MOREAU",
+     "address": "sandrine.moreau@verdier-expertises.example"
+    }
+   },
+   "sender": {
+    "emailAddress": {
+     "name": "Sandrine MOREAU",
+     "address": "sandrine.moreau@verdier-expertises.example"
+    }
+   },
+   "toRecipients": [
+    {
+     "emailAddress": {
+      "name": "Marc DUVAL",
+      "address": "marc.duval@verdier-expertises.example"
+     }
+    }
+   ],
+   "ccRecipients": [
+    {
+     "emailAddress": {
+      "name": "Hélène MARCHAND",
+      "address": "helene.marchand@verdier-expertises.example"
+     }
+    }
+   ],
+   "bccRecipients": [],
+   "receivedDateTime": "2026-10-21T05:40:00Z",
+   "sentDateTime": "2026-10-21T05:40:00Z",
+   "lastModifiedDateTime": "2026-10-21T05:40:00Z",
+   "conversationId": "AAQkADconv-0003",
+   "importance": "normal",
+   "isRead": false,
+   "isDraft": false,
+   "hasAttachments": false,
+   "inferenceClassification": "focused",
+   "parentFolderId": "AQMkADinbox",
+   "webLink": "https://outlook.office365.com/owa/?ItemID=AAMkADmail-0003&exvsurl=1&viewmodel=ReadMessageItem"
+  },
+  {
+   "id": "AAMkADmail-0008",
+   "subject": "Message arrivé après la collecte",
+   "bodyPreview": "",
+   "body": {
+    "contentType": "html",
+    "content": "<p>Arrivé à 9 h.</p>"
+   },
+   "from": {
+    "emailAddress": {
+     "name": "Marc DUVAL",
+     "address": "marc.duval@verdier-expertises.example"
+    }
+   },
+   "sender": {
+    "emailAddress": {
+     "name": "Marc DUVAL",
+     "address": "marc.duval@verdier-expertises.example"
+    }
+   },
+   "toRecipients": [
+    {
+     "emailAddress": {
+      "name": "Hélène MARCHAND",
+      "address": "helene.marchand@verdier-expertises.example"
+     }
+    }
+   ],
+   "ccRecipients": [],
+   "bccRecipients": [],
+   "receivedDateTime": "2026-10-21T07:00:00Z",
+   "sentDateTime": "2026-10-21T07:00:00Z",
+   "lastModifiedDateTime": "2026-10-21T07:00:00Z",
+   "conversationId": "AAQkADconv-0008",
+   "importance": "normal",
+   "isRead": false,
+   "isDraft": false,
+   "hasAttachments": false,
+   "inferenceClassification": "focused",
+   "parentFolderId": "AQMkADinbox",
+   "webLink": "https://outlook.office365.com/owa/?ItemID=AAMkADmail-0008&exvsurl=1&viewmodel=ReadMessageItem"
+  },
+  {
+   "id": "AAMkADmail-0109",
+   "subject": "RE: Planning des experts",
+   "bodyPreview": "",
+   "body": {
+    "contentType": "html",
+    "content": "<p>Confirmé.</p>"
+   },
+   "from": {
+    "emailAddress": {
+     "name": "Hélène MARCHAND",
+     "address": "helene.marchand@verdier-expertises.example"
+    }
+   },
+   "sender": {
+    "emailAddress": {
+     "name": "Hélène MARCHAND",
+     "address": "helene.marchand@verdier-expertises.example"
+    }
+   },
+   "toRecipients": [
+    {
+     "emailAddress": {
+      "name": "Sandrine MOREAU",
+      "address": "sandrine.moreau@verdier-expertises.example"
+     }
+    }
+   ],
+   "ccRecipients": [],
+   "bccRecipients": [],
+   "receivedDateTime": "2026-10-21T09:00:00Z",
+   "sentDateTime": "2026-10-21T09:00:00Z",
+   "lastModifiedDateTime": "2026-10-21T09:00:00Z",
+   "conversationId": "AAQkADconv-planning",
+   "importance": "normal",
+   "isRead": true,
+   "isDraft": false,
+   "hasAttachments": false,
+   "inferenceClassification": "focused",
+   "parentFolderId": "AQMkADsentitems",
+   "webLink": "https://outlook.office365.com/owa/?ItemID=AAMkADmail-0109&exvsurl=1&viewmodel=ReadMessageItem"
+  }
+ ]
+}

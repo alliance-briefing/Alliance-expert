@@ -1,0 +1,46 @@
+{
+ "value": [
+  {
+   "id": "AAMkADmail-0009",
+   "subject": "Planning des experts",
+   "bodyPreview": "",
+   "body": {
+    "contentType": "html",
+    "content": "<p>Peux-tu me confirmer le planning ?</p>"
+   },
+   "from": {
+    "emailAddress": {
+     "name": "Sandrine MOREAU",
+     "address": "sandrine.moreau@verdier-expertises.example"
+    }
+   },
+   "sender": {
+    "emailAddress": {
+     "name": "Sandrine MOREAU",
+     "address": "sandrine.moreau@verdier-expertises.example"
+    }
+   },
+   "toRecipients": [
+    {
+     "emailAddress": {
+      "name": "Hélène MARCHAND",
+      "address": "helene.marchand@verdier-expertises.example"
+     }
+    }
+   ],
+   "ccRecipients": [],
+   "bccRecipients": [],
+   "receivedDateTime": "2026-10-18T09:00:00Z",
+   "sentDateTime": "2026-10-18T09:00:00Z",
+   "lastModifiedDateTime": "2026-10-18T09:00:00Z",
+   "conversationId": "AAQkADconv-planning",
+   "importance": "normal",
+   "isRead": true,
+   "isDraft": false,
+   "hasAttachments": false,
+   "inferenceClassification": "focused",
+   "parentFolderId": "AQMkADinbox",
+   "webLink": "https://outlook.office365.com/owa/?ItemID=AAMkADmail-0009&exvsurl=1&viewmodel=ReadMessageItem"
+  }
+ ]
+}
