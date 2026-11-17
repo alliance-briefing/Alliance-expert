@@ -1,0 +1,97 @@
+{
+ "value": [
+  {
+   "id": "AAMkADmail-0001",
+   "subject": "RE: Devis 2026-3025",
+   "bodyPreview": "",
+   "body": {
+    "contentType": "html",
+    "content": "<html><head><style>p{color:red}</style><!--[if mso]><xml>x</xml><![endif]--></head><body><p>Bonjour Hélène,</p><p>Pouvez-vous valider le <b>devis 2026-3025</b> avant vendredi ? Le détail est dans le <a href='https://altair-groupe.example/d'>tableau</a>.</p><table><tr><td>Lot</td><td>Montant</td></tr><tr><td>A</td><td>12 400 €</td></tr></table><p>Cordialement,<br>Delphine Masson<br>Altair Groupe</p><div>De : Hélène MARCHAND<br>Envoyé : lundi 19 octobre 2026<br>Objet : devis</div><blockquote>&gt; Je reviens vers vous demain.</blockquote></body></html>"
+   },
+   "from": {
+    "emailAddress": {
+     "name": "Delphine Masson",
+     "address": "delphine.masson@altair-groupe.example"
+    }
+   },
+   "sender": {
+    "emailAddress": {
+     "name": "Delphine Masson",
+     "address": "delphine.masson@altair-groupe.example"
+    }
+   },
+   "toRecipients": [
+    {
+     "emailAddress": {
+      "name": "Hélène MARCHAND",
+      "address": "helene.marchand@verdier-expertises.example"
+     }
+    }
+   ],
+   "ccRecipients": [],
+   "bccRecipients": [],
+   "receivedDateTime": "2026-10-20T15:12:00Z",
+   "sentDateTime": "2026-10-20T15:12:00Z",
+   "lastModifiedDateTime": "2026-10-20T15:12:00Z",
+   "conversationId": "AAQkADconv-devis",
+   "importance": "high",
+   "isRead": false,
+   "isDraft": false,
+   "hasAttachments": false,
+   "inferenceClassification": "focused",
+   "parentFolderId": "AQMkADinbox",
+   "webLink": "https://outlook.office365.com/owa/?ItemID=AAMkADmail-0001&exvsurl=1&viewmodel=ReadMessageItem"
+  },
+  {
+   "id": "AAMkADmail-0002",
+   "subject": "Visio Cabinet Noviel",
+   "bodyPreview": "",
+   "body": {
+    "contentType": "html",
+    "content": "<p>Invitation à la réunion.</p>"
+   },
+   "from": {
+    "emailAddress": {
+     "name": "Delphine Masson",
+     "address": "delphine.masson@altair-groupe.example"
+    }
+   },
+   "sender": {
+    "emailAddress": {
+     "name": "Delphine Masson",
+     "address": "delphine.masson@altair-groupe.example"
+    }
+   },
+   "toRecipients": [
+    {
+     "emailAddress": {
+      "name": "Hélène MARCHAND",
+      "address": "helene.marchand@verdier-expertises.example"
+     }
+    }
+   ],
+   "ccRecipients": [],
+   "bccRecipients": [],
+   "receivedDateTime": "2026-10-20T09:00:00Z",
+   "sentDateTime": "2026-10-20T09:00:00Z",
+   "lastModifiedDateTime": "2026-10-20T09:00:00Z",
+   "conversationId": "AAQkADconv-0002",
+   "importance": "normal",
+   "isRead": false,
+   "isDraft": false,
+   "hasAttachments": false,
+   "inferenceClassification": "focused",
+   "parentFolderId": "AQMkADinbox",
+   "webLink": "https://outlook.office365.com/owa/?ItemID=AAMkADmail-0002&exvsurl=1&viewmodel=ReadMessageItem",
+   "meetingMessageType": "meetingRequest",
+   "startDateTime": {
+    "dateTime": "2026-10-22T10:15:00.0000000",
+    "timeZone": "UTC"
+   },
+   "endDateTime": {
+    "dateTime": "2026-10-22T11:00:00.0000000",
+    "timeZone": "UTC"
+   }
+  }
+ ]
+}

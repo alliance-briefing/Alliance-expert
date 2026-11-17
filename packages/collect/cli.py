@@ -15,6 +15,7 @@ import os
 import sys
 from datetime import date
 
+from packages.collect.core.audit import AuditLog
 from packages.collect.core.connector import collection_window
 from packages.collect.core.registry import discover
 from packages.collect.core.retention import load_policy, without_content
@@ -37,7 +38,8 @@ def main(argv: list[str] | None = None) -> int:
 
     day = date.fromisoformat(args.day)
     connectors = [discover()[args.source]()] if args.source else None
-    result = run(args.user, collection_window(day), connectors)
+    audit = AuditLog(data_dir).write if args.write else None
+    result = run(args.user, collection_window(day), connectors, audit=audit)
     if args.write:
         print(
             f"écrit : {write_day(without_content(result.items, load_policy()), data_dir, args.user, day)}",
