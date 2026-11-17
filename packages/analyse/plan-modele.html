@@ -352,7 +352,7 @@ Le modèle d'intentions actuel a été entraîné sur 601 mails, dont des mails 
 <header>M4 · Outil d'annotation unifié <small>04/11 → 09/11 · socle · Paul ou Guillaume, avec Théo</small></header>
 <dl>
 <dt>Objectif</dt><dd>Une seule page locale pour les trois jugements (§5.1), toutes sources.</dd>
-<dt>Sortie</dt><dd>Extension de <code>scoring/ml/annotate.py</code> : cartes de mail, réunion, tâche, fichier et affaire ; touches par action ; file d'attente fournie par l'apprentissage actif (M7) ; un fichier par annotateur ; arbitrage.</dd>
+<dt>Sortie</dt><dd>Nouveau module <code>scoring/ml/annoter.py</code> (décision du 17/11 : l'ancien <code>annotate.py</code> reste figé avec l'ancien générateur, pour reproduire le score actuel) : cartes de mail, réunion, tâche, fichier et affaire ; touches par action ; file d'attente fournie par l'apprentissage actif (M7) ; un fichier par annotateur ; arbitrage.</dd>
 <dt>Acceptation</dt><dd>Aucune pastille de modèle sur les cartes de mesure. Répétitions cachées actives. Une heure d'annotation ne perd rien en cas de fermeture de la page.</dd>
 </dl>
 </div>

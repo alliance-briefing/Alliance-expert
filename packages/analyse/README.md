@@ -311,6 +311,24 @@ uv run --group embeddings python -m packages.analyse.scoring.ml.synth.days     #
 uv run python -m packages.analyse.scoring.ml.annotate --annotateur theo --paires
 ```
 
+## Outil d'annotation unifié (M4)
+
+`scoring/ml/annoter.py` : une page locale pour les trois jugements du plan (élément : action,
+urgence, alerte ; paire d'éléments ; paire d'affaires), toutes sources. Il lit une **série**
+(`scoring/annotations/series/<série>.jsonl`) préparée par le tirage des jeux gelés (M5) ou par
+l'apprentissage actif (M7) ; il n'échantillonne rien lui-même. Les cartes ne montrent que ce
+qu'un connecteur expose (contrat A) : une série qui contient une étiquette ou un score est
+refusée. Un fichier de réponses par annotateur, en ajout seul ; 10 % de répétitions cachées
+(paires côtés inversés) ; kappa, puis arbitrage des désaccords. Les affaires sont les affaires
+vraies du simulateur.
+
+```bash
+uv run python -m packages.analyse.scoring.ml.annoter --creer-essai                 # série d'essai
+uv run python -m packages.analyse.scoring.ml.annoter --serie essai --annotateur theo
+uv run python -m packages.analyse.scoring.ml.annoter --accord essai               # kappa, cohérence
+uv run python -m packages.analyse.scoring.ml.annoter --serie essai --arbitrage
+```
+
 ## Commandes
 
 ```bash
@@ -335,6 +353,7 @@ scoring/score.py     score de priorité par règles (L2.2)
 scoring/learned.py   score appris des affaires dans le brief (meilleur mail + tâches, réunions)
 scoring/ml/          score appris : données Graph, bruit, intentions, échéances (pipeline A)
 scoring/ml/synth/    générateur de mails du lot 2 (SPEC.md)
+scoring/ml/annoter.py outil d'annotation unifié (M4)
 scoring/annotations/ échantillon et étiquettes de Théo (versionnés, données synthétiques)
 tests/               fabrique d'Item synthétiques + tests
 ```
