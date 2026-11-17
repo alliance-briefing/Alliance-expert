@@ -3,3 +3,9 @@
 # ajouter une source ne demande donc que son dossier. Pour en couper une, ajoutez son nom ici.
 [connectors]
 disabled = []
+
+# Rétention (guide L1.7) : appliquée par `python -m packages.collect.admin purge`.
+[retention]
+keep_content_text = false  # corps complet des messages : jamais stocké
+snippet_days = 30          # journées d'Items (titres, extraits)
+audit_days = 90            # journal d'audit
