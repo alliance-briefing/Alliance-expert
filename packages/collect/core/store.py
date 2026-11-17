@@ -21,10 +21,15 @@ FILE_NAME = "items.jsonl"
 _SAFE_USER = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*")
 
 
-def day_path(root: Path | str, user: str, day: date) -> Path:
+def user_folder(root: Path | str, user: str) -> Path:
+    """Le dossier de toutes les données d'un utilisateur (Items par jour, journal d'audit)."""
     if not _SAFE_USER.fullmatch(user):
         raise ValueError("identifiant utilisateur invalide pour un nom de dossier")
-    return Path(root) / user / day.isoformat() / FILE_NAME
+    return Path(root) / user
+
+
+def day_path(root: Path | str, user: str, day: date) -> Path:
+    return user_folder(root, user) / day.isoformat() / FILE_NAME
 
 
 def write_day(items: Iterable[Item], root: Path | str, user: str, day: date) -> Path:

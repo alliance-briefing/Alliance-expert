@@ -4,6 +4,7 @@ Usage : uv run python -m packages.collect.cli --user u_demo_001 --day 2026-10-05
 
 Avec --write, les Items sont écrits dans <DATA_DIR>/<user>/<jour>/items.jsonl (lu par l'API)
 au lieu d'être affichés ; le dossier vient de --data-dir ou de la variable DATA_DIR.
+Chaque collecte écrite laisse aussi sa trace dans <DATA_DIR>/<user>/audit.jsonl (L1.8).
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ import os
 import sys
 from datetime import date
 
+from packages.collect.core.audit import AuditLog
 from packages.collect.core.connector import collection_window
 from packages.collect.core.registry import discover
 from packages.collect.core.runner import run
@@ -35,7 +37,8 @@ def main(argv: list[str] | None = None) -> int:
 
     day = date.fromisoformat(args.day)
     connectors = [discover()[args.source]()] if args.source else None
-    result = run(args.user, collection_window(day), connectors)
+    audit = AuditLog(data_dir).write if args.write else None
+    result = run(args.user, collection_window(day), connectors, audit=audit)
     if args.write:
         print(f"écrit : {write_day(result.items, data_dir, args.user, day)}", file=sys.stderr)
     else:
