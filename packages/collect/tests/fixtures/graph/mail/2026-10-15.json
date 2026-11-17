@@ -1,0 +1,88 @@
+{
+ "value": [
+  {
+   "id": "AAMkADmail-0005",
+   "subject": "Question sur la facture 8841",
+   "bodyPreview": "",
+   "body": {
+    "contentType": "html",
+    "content": "<p>Bonjour, la facture 8841 est-elle bien partie ?</p>"
+   },
+   "from": {
+    "emailAddress": {
+     "name": "Delphine Masson",
+     "address": "delphine.masson@altair-groupe.example"
+    }
+   },
+   "sender": {
+    "emailAddress": {
+     "name": "Delphine Masson",
+     "address": "delphine.masson@altair-groupe.example"
+    }
+   },
+   "toRecipients": [
+    {
+     "emailAddress": {
+      "name": "Hélène MARCHAND",
+      "address": "helene.marchand@verdier-expertises.example"
+     }
+    }
+   ],
+   "ccRecipients": [],
+   "bccRecipients": [],
+   "receivedDateTime": "2026-10-15T10:00:00Z",
+   "sentDateTime": "2026-10-15T10:00:00Z",
+   "lastModifiedDateTime": "2026-10-15T10:00:00Z",
+   "conversationId": "AAQkADconv-facture",
+   "importance": "normal",
+   "isRead": true,
+   "isDraft": false,
+   "hasAttachments": false,
+   "inferenceClassification": "focused",
+   "parentFolderId": "AQMkADinbox",
+   "webLink": "https://outlook.office365.com/owa/?ItemID=AAMkADmail-0005&exvsurl=1&viewmodel=ReadMessageItem"
+  },
+  {
+   "id": "AAMkADmail-0105",
+   "subject": "RE: Question sur la facture 8841",
+   "bodyPreview": "",
+   "body": {
+    "contentType": "html",
+    "content": "<p>Oui, envoyée ce matin.</p>"
+   },
+   "from": {
+    "emailAddress": {
+     "name": "Hélène MARCHAND",
+     "address": "helene.marchand@verdier-expertises.example"
+    }
+   },
+   "sender": {
+    "emailAddress": {
+     "name": "Hélène MARCHAND",
+     "address": "helene.marchand@verdier-expertises.example"
+    }
+   },
+   "toRecipients": [
+    {
+     "emailAddress": {
+      "name": "Delphine Masson",
+      "address": "delphine.masson@altair-groupe.example"
+     }
+    }
+   ],
+   "ccRecipients": [],
+   "bccRecipients": [],
+   "receivedDateTime": "2026-10-15T14:00:00Z",
+   "sentDateTime": "2026-10-15T14:00:00Z",
+   "lastModifiedDateTime": "2026-10-15T14:00:00Z",
+   "conversationId": "AAQkADconv-facture",
+   "importance": "normal",
+   "isRead": true,
+   "isDraft": false,
+   "hasAttachments": false,
+   "inferenceClassification": "focused",
+   "parentFolderId": "AQMkADsentitems",
+   "webLink": "https://outlook.office365.com/owa/?ItemID=AAMkADmail-0105&exvsurl=1&viewmodel=ReadMessageItem"
+  }
+ ]
+}
