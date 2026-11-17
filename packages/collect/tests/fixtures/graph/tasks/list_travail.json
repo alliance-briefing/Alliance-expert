@@ -1,0 +1,106 @@
+{
+  "value": [
+    {
+      "id": "task_relance_delmas",
+      "title": "Relancer le client Delmas pour le devis",
+      "status": "notStarted",
+      "importance": "high",
+      "isReminderOn": false,
+      "createdDateTime": "2026-10-12T08:14:22.1234567Z",
+      "lastModifiedDateTime": "2026-10-12T08:14:22.1234567Z",
+      "body": {
+        "content": "Appeler avant 17 h, Mme Delmas est absente le lundi.",
+        "contentType": "text"
+      },
+      "dueDateTime": {
+        "dateTime": "2026-10-24T00:00:00.0000000",
+        "timeZone": "UTC"
+      }
+    },
+    {
+      "id": "task_valider_lefranc",
+      "title": "Valider le devis Lefranc",
+      "status": "inProgress",
+      "importance": "normal",
+      "isReminderOn": false,
+      "createdDateTime": "2026-10-14T09:02:10.0000000Z",
+      "lastModifiedDateTime": "2026-10-22T15:40:00.0000000Z",
+      "body": {
+        "content": "<html><body><p>Vérifier la ligne <b>transport</b>.</p><p>Cordialement,</p></body></html>",
+        "contentType": "html"
+      },
+      "dueDateTime": {
+        "dateTime": "2026-10-25T00:00:00.0000000",
+        "timeZone": "UTC"
+      }
+    },
+    {
+      "id": "task_comite_27",
+      "title": "Préparer le comité du 27/10",
+      "status": "notStarted",
+      "importance": "high",
+      "isReminderOn": false,
+      "createdDateTime": "2026-10-19T07:30:00.0000000Z",
+      "lastModifiedDateTime": "2026-10-19T07:30:00.0000000Z",
+      "body": {
+        "content": "",
+        "contentType": "text"
+      },
+      "dueDateTime": {
+        "dateTime": "2026-10-26T00:00:00.0000000",
+        "timeZone": "UTC"
+      }
+    },
+    {
+      "id": "task_compte_rendu",
+      "title": "Envoyer le compte rendu de l'atelier",
+      "status": "notStarted",
+      "importance": "normal",
+      "isReminderOn": false,
+      "createdDateTime": "2026-10-20T10:00:00.0000000Z",
+      "lastModifiedDateTime": "2026-10-20T10:00:00.0000000Z",
+      "body": {
+        "content": "",
+        "contentType": "text"
+      },
+      "dueDateTime": {
+        "dateTime": "2026-10-27T00:00:00.0000000",
+        "timeZone": "UTC"
+      }
+    },
+    {
+      "id": "task_tableau_suivi",
+      "title": "Mettre à jour le tableau de suivi",
+      "status": "notStarted",
+      "importance": "normal",
+      "isReminderOn": false,
+      "createdDateTime": "2026-10-05T13:20:00.0000000Z",
+      "lastModifiedDateTime": "2026-10-05T13:20:00.0000000Z",
+      "body": {
+        "content": "",
+        "contentType": "text"
+      }
+    },
+    {
+      "id": "task_fournitures",
+      "title": "Commander les fournitures du bureau",
+      "status": "completed",
+      "importance": "low",
+      "isReminderOn": false,
+      "createdDateTime": "2026-10-08T11:00:00.0000000Z",
+      "lastModifiedDateTime": "2026-10-21T16:05:00.0000000Z",
+      "body": {
+        "content": "",
+        "contentType": "text"
+      },
+      "dueDateTime": {
+        "dateTime": "2026-10-22T00:00:00.0000000",
+        "timeZone": "UTC"
+      },
+      "completedDateTime": {
+        "dateTime": "2026-10-21T16:05:00.0000000Z",
+        "timeZone": "UTC"
+      }
+    }
+  ]
+}

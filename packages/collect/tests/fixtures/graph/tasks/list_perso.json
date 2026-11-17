@@ -1,0 +1,34 @@
+{
+  "value": [
+    {
+      "id": "task_assurance",
+      "title": "Renouveler l'assurance du local",
+      "status": "notStarted",
+      "importance": "normal",
+      "isReminderOn": false,
+      "createdDateTime": "2026-10-02T18:45:00.0000000Z",
+      "lastModifiedDateTime": "2026-10-02T18:45:00.0000000Z",
+      "body": {
+        "content": "Contrat à reconduire avant la fin du mois.",
+        "contentType": "text"
+      },
+      "dueDateTime": {
+        "dateTime": "2026-10-20T00:00:00.0000000",
+        "timeZone": "UTC"
+      }
+    },
+    {
+      "id": "task_plombier",
+      "title": "Appeler le plombier",
+      "status": "notStarted",
+      "importance": "normal",
+      "isReminderOn": false,
+      "createdDateTime": "2026-10-15T19:10:00.0000000Z",
+      "lastModifiedDateTime": "2026-10-15T19:10:00.0000000Z",
+      "body": {
+        "content": "",
+        "contentType": "text"
+      }
+    }
+  ]
+}

@@ -60,7 +60,7 @@ def test_cli_writes_the_day_for_the_graph_demo_user(tmp_path, monkeypatch, capsy
     assert main(["--user", DEMO_USER, "--day", "2026-10-21", "--write"]) == 0
     assert capsys.readouterr().out == ""  # écrit dans le fichier, pas à l'écran
     written = load_items("2026-10-21", DEMO_USER, tmp_path)
-    assert written and {i.source for i in written} == {"calendar", "mail"}
+    assert written and {i.source for i in written} == {"calendar", "mail", "task"}
     assert all(i.owner_user_id == DEMO_USER and i.schema_version == "1.1" for i in written)
 
 
