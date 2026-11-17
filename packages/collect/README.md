@@ -132,14 +132,17 @@ existant** : on crée un dossier, c'est tout.
 
 
    class MaSourceConnector(Connector):
-       name = "ma_source"      # nom unique : --source, collect.toml, audit, warnings
+       # nom unique : --source, collect.toml, audit, warnings
+       name = "ma_source"
        version = "0.1.0"
 
        def required_scopes(self) -> list[str]:
-           return []           # autorisations en lecture seule ; vide pour une source locale
+           # autorisations en lecture seule ; vide pour une source locale
+           return []
 
        def collect(self, user: str, window: Window) -> Iterator[Item]:
-           ...                 # un Item par élément de `user` ; window.end = heure de collecte
+           # un Item par élément de `user` ; window.end = heure de collecte
+           ...
 
        def health(self) -> Health:
            return Health(True, "source joignable")
