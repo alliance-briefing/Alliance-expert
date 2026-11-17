@@ -1,4 +1,5 @@
-"""POST /briefs et GET /briefs/{date} : génère puis sert le brief du jour (contrat B).
+"""POST /briefs, GET /briefs/{date} et GET /briefs?days= : génère, sert le brief du jour
+(contrat B) et liste l'historique.
 
 L'API ne connaît du générateur que sa signature et son contrat de sortie : elle ne regarde
 ni `generator.llm`, ni le nombre de sections. Le passage au LLM (v0.2.0) ne change rien ici.
@@ -9,10 +10,11 @@ from __future__ import annotations
 import logging
 from collections.abc import Sequence
 from datetime import date as Date
-from datetime import datetime
-from typing import Literal, Protocol
+from datetime import datetime, timedelta
+from typing import Annotated, Literal, Protocol
+from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Query, Request, Response
 from pydantic import BaseModel
 from starlette.datastructures import State
 
@@ -23,6 +25,8 @@ from contracts.models import Brief, Item
 
 logger = logging.getLogger("alliance_api")
 router = APIRouter()
+PARIS = ZoneInfo("Europe/Paris")
+HISTORY_MAX_DAYS = 90
 
 
 class BriefGenerator(Protocol):
@@ -63,6 +67,16 @@ class BriefStatus(BaseModel):
     date: Date
 
 
+class HistoryDay(BaseModel):
+    """Un jour de l'historique : brief généré (résumé) ou collecte sans brief."""
+
+    date: Date
+    status: Literal["done", "not_generated"]
+    brief_id: str | None = None
+    generated_at: datetime | None = None
+    entries: int | None = None
+
+
 @router.post("/briefs", status_code=201, response_model=BriefStatus)
 def create_brief(
     body: BriefRequest, user: CurrentUser, request: Request, response: Response
@@ -75,6 +89,16 @@ def create_brief(
 @router.get("/briefs/{day}", response_model=Brief)
 def read_brief(day: Date, user: CurrentUser, request: Request) -> Brief:
     return view(request.app.state, user, day)
+
+
+@router.get("/briefs", response_model=list[HistoryDay], response_model_exclude_none=True)
+def list_briefs(
+    user: CurrentUser,
+    request: Request,
+    days: Annotated[int, Query(ge=1, le=HISTORY_MAX_DAYS)] = 30,
+    end: Annotated[Date | None, Query()] = None,
+) -> list[HistoryDay]:
+    return history(request.app.state, user, end or datetime.now(PARIS).date(), days)
 
 
 def generate(state: State, user: str, day: Date) -> Brief:
@@ -106,6 +130,32 @@ def view(state: State, user: str, day: Date) -> Brief:
     cited = sorted(brief.cited_item_ids())
     state.audit.write(api_event(user, "view", cited, len(cited)))
     return brief
+
+
+def history(state: State, user: str, end: Date, days: int) -> list[HistoryDay]:
+    """Jours de `user` dans [end - days + 1, end], du plus récent au plus ancien (API et
+    interface). Seuls les jours avec une collecte apparaissent ; le brief complet s'ouvre
+    par `view`. Journalisé comme une consultation des briefs listés."""
+    start = end - timedelta(days=days - 1)
+    found: list[HistoryDay] = []
+    cited: set[str] = set()
+    for day in sorted((d for d in state.items.days(user) if start <= d <= end), reverse=True):
+        brief = state.briefs.get(user, day)
+        if brief is None:
+            found.append(HistoryDay(date=day, status="not_generated"))
+            continue
+        cited |= brief.cited_item_ids()
+        found.append(
+            HistoryDay(
+                date=day,
+                status="done",
+                brief_id=brief.brief_id,
+                generated_at=brief.generated_at,
+                entries=sum(len(section.entries) for section in brief.sections),
+            )
+        )
+    state.audit.write(api_event(user, "view", sorted(cited), len(cited)))
+    return found
 
 
 def _check(brief: Brief, user: str, day: Date, items: Sequence[Item]) -> None:

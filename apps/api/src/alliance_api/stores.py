@@ -26,6 +26,10 @@ class ItemStore(Protocol):
         """L'item, quel que soit son propriétaire (l'appelant vérifie les droits)."""
         ...
 
+    def days(self, user: str) -> list[Date]:
+        """Jours où une collecte de `user` existe, triés (historique des briefs)."""
+        ...
+
 
 class DemoItemStore:
     def __init__(self, root: Path = DEMO_DIR) -> None:
@@ -39,6 +43,15 @@ class DemoItemStore:
 
     def find(self, item_id: str) -> Item | None:
         return self._index.get(item_id)
+
+    def days(self, user: str) -> list[Date]:
+        found = []
+        for name in available_days(user, self.root):
+            try:
+                found.append(Date.fromisoformat(name))
+            except ValueError:
+                continue  # dossier qui n'est pas un jour : ignoré
+        return found
 
     @cached_property
     def _index(self) -> dict[str, Item]:
