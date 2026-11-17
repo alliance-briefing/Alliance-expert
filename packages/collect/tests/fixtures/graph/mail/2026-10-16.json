@@ -1,0 +1,46 @@
+{
+ "value": [
+  {
+   "id": "AAMkADmail-0004",
+   "subject": "Rapport d'expertise 2026-2367 à relire",
+   "bodyPreview": "",
+   "body": {
+    "contentType": "html",
+    "content": "<p>Hélène, peux-tu relire le rapport 2026-2367 ? Merci.</p>"
+   },
+   "from": {
+    "emailAddress": {
+     "name": "Marc DUVAL",
+     "address": "marc.duval@verdier-expertises.example"
+    }
+   },
+   "sender": {
+    "emailAddress": {
+     "name": "Marc DUVAL",
+     "address": "marc.duval@verdier-expertises.example"
+    }
+   },
+   "toRecipients": [
+    {
+     "emailAddress": {
+      "name": "Hélène MARCHAND",
+      "address": "helene.marchand@verdier-expertises.example"
+     }
+    }
+   ],
+   "ccRecipients": [],
+   "bccRecipients": [],
+   "receivedDateTime": "2026-10-16T08:00:00Z",
+   "sentDateTime": "2026-10-16T08:00:00Z",
+   "lastModifiedDateTime": "2026-10-16T08:00:00Z",
+   "conversationId": "AAQkADconv-0004",
+   "importance": "normal",
+   "isRead": true,
+   "isDraft": false,
+   "hasAttachments": false,
+   "inferenceClassification": "focused",
+   "parentFolderId": "AQMkADinbox",
+   "webLink": "https://outlook.office365.com/owa/?ItemID=AAMkADmail-0004&exvsurl=1&viewmodel=ReadMessageItem"
+  }
+ ]
+}

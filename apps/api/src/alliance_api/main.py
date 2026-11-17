@@ -8,10 +8,11 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from alliance_api import briefs, errors, items, ui
+from alliance_api import briefs, errors, feedback, items, ui
 from alliance_api.audit import AuditSink, LogAuditSink
 from alliance_api.auth import CurrentUser
 from alliance_api.briefs import BriefGenerator, BriefStore, MemoryBriefStore
+from alliance_api.feedback import FeedbackStore, JsonlFeedbackStore, MemoryFeedbackStore
 from alliance_api.stores import DemoItemStore, ItemStore
 from packages.analyse import generate_brief
 
@@ -22,6 +23,7 @@ def create_app(
     brief_store: BriefStore | None = None,
     generator: BriefGenerator | None = None,
     audit: AuditSink | None = None,
+    feedback_store: FeedbackStore | None = None,
     auth_mode: str | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Alliance Briefing API")
@@ -29,10 +31,12 @@ def create_app(
     app.state.briefs = brief_store or MemoryBriefStore()
     app.state.generator = generator or _default_generator()
     app.state.audit = audit or LogAuditSink()
+    app.state.feedback = feedback_store or _default_feedback_store()
     app.state.auth_mode = auth_mode if auth_mode is not None else os.getenv("AUTH_MODE", "")
     errors.install(app)
     app.include_router(briefs.router)
     app.include_router(items.router)
+    app.include_router(feedback.router)
     app.include_router(ui.router)
     app.mount("/static", StaticFiles(directory=ui.STATIC_DIR), name="static")
 
@@ -63,6 +67,13 @@ def _default_item_store() -> ItemStore:
     lot 1) ; sans DATA_DIR, les journées de démonstration de contracts/fixtures/demo."""
     data_dir = os.getenv("DATA_DIR")
     return DemoItemStore(Path(data_dir)) if data_dir else DemoItemStore()
+
+
+def _default_feedback_store() -> FeedbackStore:
+    """Retours écrits dans FEEDBACK_DIR (<user>.jsonl, relus par l'évaluation) ; sans
+    FEEDBACK_DIR, en mémoire (perdus au redémarrage)."""
+    feedback_dir = os.getenv("FEEDBACK_DIR")
+    return JsonlFeedbackStore(Path(feedback_dir)) if feedback_dir else MemoryFeedbackStore()
 
 
 app = create_app()

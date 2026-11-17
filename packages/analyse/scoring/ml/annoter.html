@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Annotation</title>
+<style>
+  :root {
+    --bg: #f6f5f1; --card: #ffffff; --fg: #1c1c1a; --muted: #6d6c66; --line: #e3e1da;
+    --accent: #2f5bd3; --accent-bg: #e7edfb; --warn: #b8432f; --chip: #eceae3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #151514; --card: #1e1e1c; --fg: #ecebe5; --muted: #9b9a93; --line: #34332f;
+      --accent: #7d9cf0; --accent-bg: #1f2a45; --warn: #ec7a63; --chip: #2a2a27; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1180px; margin: 0 auto; padding: 18px 16px 40px; }
+  .top { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    color: var(--muted); font-size: 13px; }
+  .context { color: var(--fg); font-size: 14px; margin: 6px 0 10px; }
+  .progress { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted);
+    font-variant-numeric: tabular-nums; margin-bottom: 12px; }
+  .bar { flex: 1; height: 5px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .bar span { display: block; height: 100%; background: var(--accent); width: 0; }
+  .question { font-weight: 650; font-size: 17px; margin: 4px 0 10px; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 760px) { .pair { grid-template-columns: 1fr; } }
+  article { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 18px; min-width: 0; }
+  .side { font: 600 12px ui-monospace, monospace; color: var(--muted); margin-bottom: 4px; }
+  .source { display: inline-block; background: var(--chip); border-radius: 999px; padding: 1px 10px;
+    font-size: 12px; font-weight: 600; margin-right: 6px; }
+  .when { color: var(--muted); font-size: 13px; }
+  .title { font-weight: 650; font-size: 17px; margin: 6px 0 8px; overflow-wrap: anywhere; }
+  table { border-collapse: collapse; font-size: 14px; margin-bottom: 8px; }
+  td { padding: 2px 12px 2px 0; vertical-align: top; overflow-wrap: anywhere; }
+  td:first-child { color: var(--muted); white-space: nowrap; }
+  .text { white-space: pre-wrap; overflow-wrap: anywhere; border-left: 3px solid var(--line);
+    padding-left: 12px; font-size: 14px; }
+  .case-item { border-top: 1px solid var(--line); padding: 8px 0; font-size: 14px; }
+  .case-item:first-of-type { border-top: 0; }
+  .case-item .who { color: var(--muted); font-size: 13px; }
+  .case-item .extract { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted);
+    margin: 16px 0 6px; }
+  .choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+  .choices button { border: 1px solid var(--line); background: var(--card); color: var(--fg);
+    border-radius: 10px; padding: 8px 6px; font: inherit; cursor: pointer; text-align: center; }
+  .choices button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-bg);
+    font-weight: 650; }
+  .choices kbd { display: block; font: 12px ui-monospace, monospace; color: var(--muted); }
+  .alert[aria-pressed="true"] { border-color: var(--warn) !important; color: var(--warn); }
+  .row { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+  .row button { border: 1px solid var(--line); background: var(--card); color: var(--fg);
+    border-radius: 10px; padding: 10px 16px; font: inherit; cursor: pointer; }
+  .row .go { border-color: var(--accent); color: var(--accent); font-weight: 650; }
+  .avis { background: var(--accent-bg); border-radius: 10px; padding: 8px 12px; font-size: 14px;
+    margin-bottom: 10px; }
+  .hint { color: var(--muted); font-size: 13px; margin-top: 10px; }
+  .error { color: var(--warn); min-height: 1.5em; }
+  .done { text-align: center; padding: 50px 0; color: var(--muted); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <div class="top"><span id="title"></span><span>Guide : <code>scoring/annotations/guide-annotation.md</code></span></div>
+  <p class="context" id="context"></p>
+  <div class="progress"><span id="count">…</span><div class="bar"><span id="bar"></span></div></div>
+  <div class="avis" id="avis" hidden></div>
+  <div class="question" id="question"></div>
+  <div id="stage" aria-live="polite">Chargement…</div>
+
+  <section id="element-form" hidden>
+    <h2>Action principale (la plus engageante : Décider &gt; Faire &gt; Répondre &gt; Préparer &gt; Relire &gt; S'informer &gt; Rien)</h2>
+    <div class="choices" id="actions"></div>
+    <h2>Urgence déclarée (le ton écrit, pas l'échéance)</h2>
+    <div class="choices" id="urgency"></div>
+    <h2>Alerte (sécurité, banque, incident bloquant, injection)</h2>
+    <div class="choices"><button class="alert" id="alert" aria-pressed="false">Alerte<kbd>A</kbd></button></div>
+  </section>
+
+  <section id="pair-form" hidden>
+    <div class="choices" id="pair-choices"></div>
+  </section>
+
+  <div class="row">
+    <button id="back">← Précédent</button>
+    <button class="go" id="go">Valider (Entrée)</button>
+  </div>
+  <p class="error" id="error"></p>
+  <p class="hint" id="hint"></p>
+</main>
+<script>
+const ACTIONS = [
+  ["repondre", "Répondre"], ["faire", "Faire"], ["decider", "Décider / valider"],
+  ["preparer", "Préparer"], ["relire", "Relire"], ["informer", "S'informer"], ["rien", "Rien"],
+];
+const URGENCY = [["urgent", "Urgent", "u"], ["normal", "Normal", "n"], ["sans_urgence", "Sans urgence", "s"]];
+const PAIR = [["A", "A d'abord", "←"], ["=", "Équivalent", "↓"], ["B", "B d'abord", "→"]];
+const SOURCES = { mail: "Mail", calendar: "Réunion", task: "Tâche", file: "Fichier" };
+const QUESTIONS = {
+  element: "Qu'attend-on de vous pour cet élément ?",
+  paire: "Ce matin, lequel traitez-vous en premier ?",
+  affaires: "Ce matin, quelle affaire traitez-vous en premier ?",
+};
+const HINTS = {
+  element: "Touches : 1 à 7 action · U N S urgence · A alerte · Entrée valider · Retour arrière précédent.",
+  paire: "Touches : ← A d'abord · ↓ équivalent · → B d'abord (réponse immédiate) · Retour arrière précédent.",
+};
+HINTS.affaires = HINTS.paire;
+let tasks = [], answers = {}, index = 0, current = null;
+
+const $ = (id) => document.getElementById(id);
+
+function el(tag, attrs = {}, text = "") {
+  const node = document.createElement(tag);
+  Object.entries(attrs).forEach(([k, v]) => node.setAttribute(k, v));
+  if (text) node.textContent = text;
+  return node;
+}
+
+function buildChoices() {
+  ACTIONS.forEach(([key, label], i) => {
+    const b = el("button", { "data-key": key, "aria-pressed": "false" }, label);
+    b.append(el("kbd", {}, String(i + 1)));
+    b.onclick = () => pick("action", key);
+    $("actions").append(b);
+  });
+  URGENCY.forEach(([key, label, kbd]) => {
+    const b = el("button", { "data-key": key, "aria-pressed": "false" }, label);
+    b.append(el("kbd", {}, kbd.toUpperCase()));
+    b.onclick = () => pick("urgence", key);
+    $("urgency").append(b);
+  });
+  PAIR.forEach(([key, label, kbd]) => {
+    const b = el("button", { "data-key": key, "aria-pressed": "false" }, label);
+    b.append(el("kbd", {}, kbd));
+    b.onclick = () => { pick("choix", key); submit(); };
+    $("pair-choices").append(b);
+  });
+  $("alert").onclick = () => pick("alerte", !current.alerte);
+  $("go").onclick = submit;
+  $("back").onclick = back;
+}
+
+function pick(field, value) {
+  current[field] = value;
+  renderChoices();
+}
+
+function renderChoices() {
+  const mark = (box, value) => box.querySelectorAll("button").forEach((b) =>
+    b.setAttribute("aria-pressed", String(b.dataset.key === value)));
+  mark($("actions"), current.action);
+  mark($("urgency"), current.urgence);
+  mark($("pair-choices"), current.choix);
+  $("alert").setAttribute("aria-pressed", String(Boolean(current.alerte)));
+}
+
+function itemCard(c, side) {
+  const card = el("article");
+  if (side) card.append(el("div", { class: "side" }, side));
+  const head = el("div");
+  head.append(el("span", { class: "source" }, SOURCES[c.source] || c.source));
+  head.append(el("span", { class: "when" }, c.when));
+  card.append(head, el("div", { class: "title" }, c.title));
+  if (c.fields.length) {
+    const table = el("table");
+    c.fields.forEach(([k, v]) => {
+      const tr = el("tr");
+      tr.append(el("td", {}, k), el("td", {}, v));
+      table.append(tr);
+    });
+    card.append(table);
+  }
+  if (c.text) card.append(el("div", { class: "text" }, c.text));
+  return card;
+}
+
+function caseCard(c, side) {
+  const card = el("article");
+  card.append(el("div", { class: "side" }, side));
+  card.append(el("div", { class: "title" }, c.title));
+  c.items.forEach((i) => {
+    const row = el("div", { class: "case-item" });
+    const head = el("div");
+    head.append(el("span", { class: "source" }, SOURCES[i.source] || i.source));
+    head.append(el("span", { class: "when" }, i.when));
+    row.append(head, el("div", {}, i.title));
+    if (i.who) row.append(el("div", { class: "who" }, i.who));
+    if (i.extract) row.append(el("div", { class: "extract" }, i.extract));
+    card.append(row);
+  });
+  return card;
+}
+
+function describe(kind, answer) {
+  if (kind === "element") {
+    const action = (ACTIONS.find(([k]) => k === answer.action) || [, answer.action])[1];
+    const urgency = (URGENCY.find(([k]) => k === answer.urgence) || [, answer.urgence])[1];
+    return `${action}, ${urgency.toLowerCase()}${answer.alerte ? ", alerte" : ""}`;
+  }
+  return (PAIR.find(([k]) => k === answer.choix) || [, answer.choix])[1];
+}
+
+function render() {
+  const done = tasks.filter((t) => answers[t.key]).length;
+  $("count").textContent = `${done} / ${tasks.length}`;
+  $("bar").style.width = tasks.length ? `${(100 * done) / tasks.length}%` : "100%";
+  const stage = $("stage");
+  stage.replaceChildren();
+  $("error").textContent = "";
+  if (index >= tasks.length) {
+    stage.append(el("div", { class: "done" },
+      tasks.length ? "Terminé, merci ! Vous pouvez fermer la page." : "Rien à annoter ici."));
+    ["element-form", "pair-form", "avis"].forEach((id) => { $(id).hidden = true; });
+    $("question").textContent = "";
+    current = null;
+    return;
+  }
+  const t = tasks[index];
+  $("context").textContent = t.context || "";
+  $("question").textContent = QUESTIONS[t.kind];
+  $("hint").textContent = HINTS[t.kind];
+  $("element-form").hidden = t.kind !== "element";
+  $("pair-form").hidden = t.kind === "element";
+  $("go").hidden = t.kind !== "element";
+  if (t.kind === "element") {
+    stage.append(itemCard(t.card));
+  } else {
+    const make = t.kind === "affaires" ? caseCard : itemCard;
+    const pair = el("div", { class: "pair" });
+    pair.append(make(t.a, "A"), make(t.b, "B"));
+    stage.append(pair);
+  }
+  const avis = $("avis");
+  avis.hidden = !t.avis;
+  if (t.avis) {
+    avis.textContent = "Avis : " + t.avis.map((a) => `${a.qui} → ${describe(t.kind, a.reponse)}`).join(" · ");
+  }
+  const previous = answers[t.key];
+  current = previous ? { ...previous }
+    : t.kind === "element" ? { action: null, urgence: "normal", alerte: false } : { choix: null };
+  renderChoices();
+}
+
+async function submit() {
+  if (!current) return;
+  const t = tasks[index];
+  if (t.kind === "element" && !current.action) {
+    $("error").textContent = "Choisissez une action (touches 1 à 7).";
+    return;
+  }
+  if (t.kind !== "element" && !current.choix) return;
+  const r = await fetch("/api/answer", {
+    method: "POST", body: JSON.stringify({ key: t.key, answer: current }),
+  });
+  if (!r.ok) {
+    $("error").textContent = (await r.json()).error || "Erreur d'enregistrement.";
+    return;
+  }
+  answers[t.key] = { ...current };
+  index += 1;
+  render();
+}
+
+function back() {
+  if (index > 0) { index -= 1; render(); }
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (k === "backspace") { e.preventDefault(); back(); return; }
+  if (!current) return;
+  const kind = tasks[index].kind;
+  if (kind === "element") {
+    if (k === "enter") { e.preventDefault(); submit(); return; }
+    if (k >= "1" && k <= "7") pick("action", ACTIONS[Number(k) - 1][0]);
+    const u = URGENCY.find(([, , key]) => key === k);
+    if (u) pick("urgence", u[0]);
+    if (k === "a") pick("alerte", !current.alerte);
+    return;
+  }
+  const choice = { arrowleft: "A", arrowdown: "=", arrowright: "B" }[k];
+  if (choice) { e.preventDefault(); pick("choix", choice); submit(); }
+});
+
+(async () => {
+  const data = await (await fetch("/api/state")).json();
+  $("title").textContent = data.title;
+  document.title = data.title;
+  tasks = data.tasks;
+  answers = data.answers;
+  index = tasks.findIndex((t) => !answers[t.key]);
+  if (index < 0) index = tasks.length;
+  buildChoices();
+  render();
+})();
+</script>
+</body>
+</html>
