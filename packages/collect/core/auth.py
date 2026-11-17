@@ -1,15 +1,19 @@
-"""Jeton Microsoft Graph — version provisoire en attendant L1.2 (rôle A, Rayan).
+"""Jeton Microsoft Graph pour les connecteurs (guide L1.2).
 
-Rayan remplacera le corps de get_access_token par l'OAuth complet ; son nom et sa
-signature ne changent pas, les connecteurs n'auront rien à modifier.
+`get_access_token(user)` renvoie un jeton valide : celui rangé par `auth login` (chiffré),
+renouvelé automatiquement s'il a expiré. Sans connexion utilisable (jamais connecté, accès
+retiré, jeton de renouvellement expiré), elle lève `AuthError("reauth_required")` : le
+runner en fait un warning, les autres sources continuent.
 
-Essai réel sans OAuth : copier le jeton de Graph Explorer dans la variable d'environnement
-GRAPH_ACCESS_TOKEN (il expire au bout d'environ 1 h). Ne jamais l'écrire dans un fichier.
+Dépannage seulement : un jeton copié depuis Graph Explorer dans GRAPH_ACCESS_TOKEN est
+utilisé tel quel (il expire au bout d'environ 1 h). Ne jamais l'écrire dans un fichier.
 """
 
 from __future__ import annotations
 
 import os
+
+from packages.collect.core.oauth import ReauthRequired, TokenStore, access_token, load_config
 
 
 class AuthError(Exception):
@@ -20,7 +24,10 @@ class AuthError(Exception):
 
 
 def get_access_token(user: str) -> str:
-    token = os.environ.get("GRAPH_ACCESS_TOKEN", "").strip()
-    if not token:
-        raise AuthError
-    return token
+    manual = os.environ.get("GRAPH_ACCESS_TOKEN", "").strip()
+    if manual:
+        return manual
+    try:
+        return access_token(user, TokenStore(), load_config())
+    except ReauthRequired as error:
+        raise AuthError from error
