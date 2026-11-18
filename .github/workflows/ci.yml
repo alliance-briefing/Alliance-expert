@@ -20,7 +20,8 @@ jobs:
       #    (§ CI du guide) et 80 % sur packages/collect (L1.9)
       - run: uv run pytest --cov=packages --cov=apps --cov-report=term-missing
       - run: uv run coverage report --include="packages/*" --fail-under=80 --format=total
-      - run: uv run coverage report --include="packages/collect/*" --fail-under=80 --format=total
+      #    lot 1 mesuré sur son seul code : hors tests et hors synth/ et trainset/ (lot 2)
+      - run: uv run coverage report --include="packages/collect/*" --omit="*/tests/*,*/test_*.py,packages/collect/synth/*,packages/collect/trainset/*" --fail-under=80 --format=total
       # 3. fixtures de démo validées contre le JSON Schema du contrat A (les fixtures B sont testées par pytest)
       - run: uv run python -m contracts.validate_fixtures
 
