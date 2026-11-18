@@ -10,9 +10,10 @@ from fastapi.staticfiles import StaticFiles
 
 from alliance_api import briefs, errors, feedback, items, ui
 from alliance_api.audit import AuditSink, LogAuditSink
-from alliance_api.auth import CurrentUser
+from alliance_api.auth import CurrentUser, install_csrf
 from alliance_api.briefs import BriefGenerator, BriefStore, MemoryBriefStore
 from alliance_api.feedback import FeedbackStore, JsonlFeedbackStore, MemoryFeedbackStore
+from alliance_api.permissions import DEFAULT_ROLES_FILE, Policy, load_policy
 from alliance_api.stores import DemoItemStore, ItemStore
 from packages.analyse import generate_brief
 
@@ -24,6 +25,7 @@ def create_app(
     generator: BriefGenerator | None = None,
     audit: AuditSink | None = None,
     feedback_store: FeedbackStore | None = None,
+    policy: Policy | None = None,
     auth_mode: str | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Alliance Briefing API")
@@ -32,7 +34,11 @@ def create_app(
     app.state.generator = generator or _default_generator()
     app.state.audit = audit or LogAuditSink()
     app.state.feedback = feedback_store or _default_feedback_store()
+    app.state.policy = policy or load_policy(Path(os.getenv("ROLES_FILE") or DEFAULT_ROLES_FILE))
+    # Origines acceptées en plus de celle de l'application (proxy, nom de domaine) ; virgules.
+    app.state.allowed_origins = {o for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o}
     app.state.auth_mode = auth_mode if auth_mode is not None else os.getenv("AUTH_MODE", "")
+    install_csrf(app)  # avant errors.install : la corrélation l'enveloppe
     errors.install(app)
     app.include_router(briefs.router)
     app.include_router(items.router)

@@ -9,7 +9,7 @@ from fastapi import APIRouter, Path, Request
 from pydantic import BaseModel
 
 from alliance_api.audit import api_event
-from alliance_api.auth import CurrentUser
+from alliance_api.auth import CurrentUser, requires
 from alliance_api.errors import ApiError
 from contracts.models import Item
 from contracts.models.item import Source
@@ -60,7 +60,7 @@ class ItemView(BaseModel):
         )
 
 
-@router.get("/items/{item_id}", response_model=ItemView)
+@router.get("/items/{item_id}", response_model=ItemView, dependencies=[requires("item:read_own")])
 def get_item(item_id: ItemId, user: CurrentUser, request: Request) -> ItemView:
     state = request.app.state
     item = state.items.find(item_id)

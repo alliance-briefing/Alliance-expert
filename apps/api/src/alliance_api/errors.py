@@ -38,7 +38,7 @@ def correlation_id(request: Request) -> str:
     return getattr(request.state, "correlation_id", "")
 
 
-def _body(request: Request, status: int, code: str, message: str) -> JSONResponse:
+def error_response(request: Request, status: int, code: str, message: str) -> JSONResponse:
     cid = correlation_id(request)
     return JSONResponse(
         status_code=status,
@@ -63,19 +63,21 @@ def install(app: FastAPI) -> None:
 
     @app.exception_handler(ApiError)
     async def _api_error(request: Request, exc: ApiError) -> JSONResponse:
-        return _body(request, exc.status, exc.code, exc.message)
+        return error_response(request, exc.status, exc.code, exc.message)
 
     @app.exception_handler(StarletteHTTPException)
     async def _http_error(request: Request, exc: StarletteHTTPException) -> JSONResponse:
         code = _HTTP_CODES.get(exc.status_code, "http_error")
-        return _body(request, exc.status_code, code, "ressource ou méthode inconnue")
+        return error_response(request, exc.status_code, code, "ressource ou méthode inconnue")
 
     @app.exception_handler(RequestValidationError)
     async def _invalid(request: Request, exc: RequestValidationError) -> JSONResponse:
         fields = sorted({".".join(str(p) for p in err["loc"]) for err in exc.errors()})
-        return _body(request, 422, "invalid_request", f"paramètres invalides : {', '.join(fields)}")
+        return error_response(
+            request, 422, "invalid_request", f"paramètres invalides : {', '.join(fields)}"
+        )
 
     @app.exception_handler(Exception)
     async def _unexpected(request: Request, exc: Exception) -> JSONResponse:
         logger.exception("erreur inattendue (correlation_id=%s)", correlation_id(request))
-        return _body(request, 500, "internal_error", "erreur interne")
+        return error_response(request, 500, "internal_error", "erreur interne")
