@@ -1,8 +1,10 @@
 """Traduction d'une tâche Microsoft To Do (Graph `todoTask`) en Item du contrat A 1.1.
 
-To Do ne stocke qu'une **date** d'échéance (heure 00:00 sans signification) : on garde la date
-telle quelle et on la place à 23h59, heure de Paris, avec le bon décalage (+01:00 / +02:00).
-Une tâche due le 25/10 reste donc « à faire » jusqu'à la fin de cette journée.
+To Do ne stocke qu'une **date** d'échéance, qu'il renvoie comme le minuit local de l'utilisateur
+exprimé en UTC : une tâche due le 18/11 à Paris arrive en « 2026-11-17T23:00:00, UTC ». On
+convertit donc en heure de Paris **avant** de prendre la date, puis on la place à 23h59, heure
+de Paris, avec le bon décalage (+01:00 / +02:00). Une tâche due le 25/10 reste donc « à faire »
+jusqu'à la fin de cette journée.
 Pas de bloc `attributes` : le contrat 1.1 n'en définit pas pour les tâches.
 """
 
@@ -31,7 +33,12 @@ def due_at(task: dict) -> datetime | None:
     due = task.get("dueDateTime")
     if not due:
         return None
-    return paris_time(parse_graph(due["dateTime"]).date(), 23, 59)
+    moment = parse_graph(due["dateTime"])
+    if due.get("timeZone", "UTC") == "UTC":  # minuit de Paris écrit en UTC : la veille à 22h/23h
+        day = to_paris(moment).date()
+    else:  # autre fuseau : la date écrite est déjà la date locale
+        day = moment.date()
+    return paris_time(day, 23, 59)
 
 
 def _snippet(task: dict) -> str:

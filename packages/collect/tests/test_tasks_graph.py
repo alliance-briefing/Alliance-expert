@@ -98,6 +98,32 @@ def test_due_date_is_end_of_day_in_paris_around_the_time_change() -> None:
     assert items["task:task_comite_27"].collected_at.isoformat() == "2026-10-26T07:30:00+01:00"
 
 
+@pytest.mark.parametrize(
+    ("raw", "time_zone", "expected"),
+    [
+        # format réel d'un compte à Paris : minuit local écrit en UTC, donc la veille
+        ("2026-11-17T23:00:00.0000000", "UTC", "2026-11-18T23:59:00+01:00"),
+        ("2026-10-23T22:00:00.0000000", "UTC", "2026-10-24T23:59:00+02:00"),  # heure d'été
+        ("2026-10-24T22:00:00.0000000", "UTC", "2026-10-25T23:59:00+01:00"),  # jour du changement
+        ("2026-11-18T00:00:00.0000000", "Europe/Paris", "2026-11-18T23:59:00+01:00"),
+    ],
+)
+def test_due_date_from_real_graph_is_not_shifted_by_one_day(raw, time_zone, expected) -> None:
+    """Relevé sur le compte de démo : une tâche due le 18/11 arrivait due le 17/11."""
+    task = _task("t", None, dueDateTime={"dateTime": raw, "timeZone": time_zone})
+    item = task_to_item(task, DEMO_USER, datetime.fromisoformat(NOW))
+    assert item.due_at.isoformat() == expected
+
+
+def test_task_due_today_is_due_soon_not_overdue() -> None:
+    task = _task(
+        "t", None, dueDateTime={"dateTime": "2026-11-17T23:00:00.0000000", "timeZone": "UTC"}
+    )
+    connector = GraphTasksConnector(source=lambda user: [task])
+    (item,) = _collect("2026-11-18T07:30:00+00:00", connector=connector)
+    assert not item.is_overdue(datetime.fromisoformat("2026-11-18T07:30:00+00:00"))
+
+
 def test_24h_window_includes_both_ends_and_excludes_beyond() -> None:
     now = datetime.fromisoformat("2026-10-26T22:59:00+00:00")  # 23h59 à Paris, le jour J
     tasks = [
