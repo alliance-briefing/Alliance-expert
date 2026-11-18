@@ -4,6 +4,17 @@ Il ne montre que ce qu'un vrai connecteur porterait : pour une tâche, ni qui l'
 ni son lien avec une affaire ; pour un fichier, ni sa réunion ni sa tâche (seulement son
 nom, son auteur, son dossier). Le reste reste dans le scénario : le modèle doit le déduire.
 
+Forme alignée sur les connecteurs Microsoft du lot 1 (v0.2.0, 18/11) :
+- mail (`mail_graph`) : extrait nettoyé de 500 caractères au plus, jamais de `content_text` ;
+- réunion (`calendar_graph`) : extrait seul, sans `content_text` ;
+- tâche (`tasks_graph`, To Do seul) : sans participant ni extrait, échéance à 23h59 heure de
+  Paris ; une tâche sans échéance ou terminée n'est **pas émise** (le connecteur ne la
+  collecte jamais), elle reste dans le scénario ; Planner est écrit comme To Do ;
+- fichier (`files_graph`, OneDrive du manager) : extrait = « chemin · TYPE · taille ·
+  modifié par X », suivi d'un court contenu pour les docx (seul type lu parmi les nôtres) ;
+- `native_importance` (mail, réunion, tâche) : « high » sur 40 % des éléments urgents et 3 %
+  des autres. Un indice bruité : l'urgence reste portée par le ton.
+
 Chaque fait a son propre tirage (graine dérivée de son identifiant) : un écrivain LLM (M3)
 peut remplacer celui-ci fait par fait, sans changer le monde.
 """
@@ -15,12 +26,22 @@ import re
 from datetime import timedelta
 
 from contracts.models import Item
+from packages.collect.connectors.files_graph.mapping import human_size
+from packages.collect.core.paris_time import paris_time, to_paris
 from packages.collect.core.text import normalize_whitespace, strip_quotes_and_signature, truncate
 from packages.collect.trainset import phrases as P
 from packages.collect.trainset.facts import Fact
 from packages.collect.trainset.world import Person, Persona, fr_day, slug
 
-CONNECTOR = {"name": "trainset", "version": "0.1.0"}
+CONNECTOR = {"name": "trainset", "version": "0.2.0"}
+HIGH_IF_URGENT, HIGH_OTHERWISE = 0.4, 0.03
+FILE_SIZES = {  # octets, bornes plausibles par type
+    "docx": (15_000, 120_000),
+    "xlsx": (20_000, 400_000),
+    "pptx": (800_000, 6_000_000),
+    "pdf": (80_000, 3_000_000),
+}
+READ_TYPES = {"docx"}  # files_graph lit txt, md, csv et docx < 2 Mo : seul docx existe ici
 SUBJECT = {
     "decider": ("{S} – validation", "Validation : {s}", "{S} à valider", "{S}"),
     "faire": ("{S}", "Demande : {s}", "{S} – à faire", "Action requise : {s}"),
@@ -44,6 +65,14 @@ def _cap(text: str) -> str:
     return text[:1].upper() + text[1:]
 
 
+def collected(fact: Fact) -> bool:
+    """Un vrai connecteur collecterait-il cet élément ? Non pour une tâche To Do terminée
+    ou sans échéance (`tasks_graph` : en retard ou due dans les 24 h)."""
+    if fact.source != "task":
+        return True
+    return fact.meta.get("due") is not None and not fact.meta.get("completed")
+
+
 def _short(fact: Fact) -> str:
     """Le sujet d'un objet sans article : « devis Stockeo »."""
     if fact.obj is None:
@@ -57,8 +86,10 @@ class Writer:
         self.seed = seed
         self.reserved_ok = persona.split == "tgen"
 
-    def write(self, fact: Fact) -> tuple[Item, list[str]]:
-        """L'Item et les identifiants des gabarits utilisés (pour le scénario)."""
+    def write(self, fact: Fact) -> tuple[Item | None, list[str]]:
+        """L'Item (None s'il ne serait pas collecté) et les gabarits utilisés (scénario)."""
+        if not collected(fact):
+            return None, []
         rng = random.Random(f"trainset:writer:{self.seed}:{fact.item_id}")
         used: list[str] = []
         build = {
@@ -68,6 +99,8 @@ class Writer:
             "file": self._file,
         }[fact.source]
         fields = build(fact, rng, used)
+        if fact.source != "file":
+            fields["native_importance"] = self._importance(fact)
         moment = fact.at
         item = Item(
             item_id=fact.item_id,
@@ -83,6 +116,12 @@ class Writer:
             **fields,
         )
         return item, used
+
+    def _importance(self, fact: Fact) -> str:
+        """Tirage à part : ne change aucun autre tirage du fait."""
+        rng = random.Random(f"trainset:importance:{self.seed}:{fact.item_id}")
+        high = HIGH_IF_URGENT if fact.tone == "urgent" else HIGH_OTHERWISE
+        return "high" if rng.random() < high else "normal"
 
     # --- mails -------------------------------------------------------------------------------
 
@@ -127,7 +166,7 @@ class Writer:
         return {
             "title": title,
             "snippet": truncate(re.sub(r"\s+", " ", clean).strip()),
-            "content_text": clean,
+            "content_text": None,  # mail_graph ne garde pas le corps (rétention L1.7)
             "participants": people,
             "thread_id": fact.thread_id,
             "is_read": True if fact.sent else rng.random() < 0.25,
@@ -248,7 +287,6 @@ class Writer:
             "schema_version": "1.1",
             "title": title,
             "snippet": desc,
-            "content_text": desc or None,
             "start_at": m["start"],
             "end_at": m["end"],
             "participants": people,
@@ -283,21 +321,13 @@ class Writer:
         if fact.tone == "urgent":
             title = f"URGENT – {title}"
         n = fact.item_id.split(":")[1]
-        planner = m.get("origin") == "planner"
-        url = (
-            f"https://planner.{self.p.domain}/plan/{slug(self.p.metier.folder)}/task/{n}"
-            if planner
-            else f"https://todo.{self.p.domain}/tasks/id/{n}"
-        )
-        return {
+        due = to_paris(m["due"]).date()  # collected() garantit une échéance
+        return {  # Planner compris : tasks_graph ne lit que To Do, on écrit comme To Do
             "title": title,
             "snippet": "",
-            "due_at": m.get("due"),
-            "completed": bool(m.get("completed")),
-            "participants": [
-                {"name": self.p.manager.name, "email": self.p.manager.email, "role": "assignee"}
-            ],
-            "url": url,
+            "due_at": paris_time(due, 23, 59),  # To Do ne garde que la date : fin de journée
+            "completed": False,
+            "url": f"https://todo.{self.p.domain}/tasks/id/{n}/details",
         }
 
     # --- fichiers ----------------------------------------------------------------------------
@@ -315,21 +345,44 @@ class Writer:
             name = f"{fact.obj.stem}_{day.day:02d}-{day.month:02d}.{fact.obj.ext}"
         else:
             name = f"{fact.obj.stem}_v{m.get('version', 1)}.{fact.obj.ext}"
-        if m.get("by_me"):
-            url = (
-                f"https://onedrive.{self.p.domain}/personal/{slug(self.p.manager.name)}/"
-                f"Documents/{name}"
-            )
-        else:
-            url = (
-                f"https://sharepoint.{self.p.domain}/sites/{self.p.metier.folder}/Documents/{name}"
-            )
+        folder = self.p.metier.folder  # files_graph ne lit que le OneDrive du manager
+        path = f"{folder}/{name}"
+        ext = name.rsplit(".", 1)[1]
+        sizes = random.Random(f"trainset:size:{self.seed}:{fact.item_id}")
+        size = sizes.randint(*FILE_SIZES[ext])
+        header = f"{path} · {ext.upper()} · {human_size(size)} · modifié par {fact.author.name}"
+        text = self._file_text(fact, rng, used) if ext in READ_TYPES else ""
+        url = (
+            f"https://onedrive.{self.p.domain}/personal/{slug(self.p.manager.name)}/"
+            f"Documents/{path}"
+        )
         return {
             "title": name,
-            "snippet": "",
+            "snippet": truncate(f"{header} — {text}" if text else header),
             "created_at": fact.at - timedelta(days=rng.randint(0, 20), hours=rng.randint(0, 5)),
             "participants": [
                 {"name": fact.author.name, "email": fact.author.email, "role": "modifier"}
             ],
             "url": url,
         }
+
+    def _file_text(self, fact: Fact, rng: random.Random, used: list[str]) -> str:
+        """Début du contenu d'un docx, selon ce qu'est le document (gabarits P.FILE_TEXT)."""
+        m = fact.meta
+        if m.get("cr"):
+            kind = "cr"
+        elif m.get("to_sign"):
+            kind = "signer"
+        elif m.get("review"):
+            kind = "relire"
+        elif m.get("linked_meeting"):
+            kind = "reunion"
+        else:
+            kind = "autre"
+        day = m.get("meeting_day") or fact.at.date()
+        slots = self._slots(fact, rng) | {
+            "topic": m.get("topic", ""),
+            "jour": fr_day(day),
+            "v": m.get("version", 1),
+        }
+        return self._sentence(P.FILE_TEXT[kind], rng, used, f"file.{kind}", True, slots)

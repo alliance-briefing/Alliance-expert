@@ -45,6 +45,8 @@ def labels_at(key: str, moment: datetime, data: Path = DATA) -> dict[str, dict]:
     """Étiquettes des éléments visibles au moment du brief, par item_id."""
     out = {}
     for row in load_scenario(key, data):
+        if not row.get("collecte", True):  # aucun Item : le modèle ne le voit jamais
+            continue
         labels = label_on(row, moment)
         if labels is not None:
             out[row["item_id"]] = labels

@@ -27,7 +27,10 @@ du manager. L'écrivain n'expose que ce qu'un vrai connecteur porterait. Un écr
    restent dans le scénario ; le modèle doit les déduire.
 4. **Fictif.** Organisations et personnes inventées, domaines en `.test`. Pas d'expertise
    automobile : c'est le domaine de test (T-démo).
-5. **L'échéance n'est pas l'urgence.** L'urgence n'est portée que par le ton écrit.
+5. **L'échéance n'est pas l'urgence.** L'urgence est portée par le ton écrit ;
+   `native_importance` n'en est qu'un indice bruité (voir « Forme des éléments »).
+6. **Forme des connecteurs réels.** Un Item a la forme que lui donnerait le connecteur
+   Microsoft du lot 1 : le modèle s'entraîne sur ce qu'il verra en production.
 
 ## Contenu
 
@@ -39,7 +42,7 @@ du manager. L'écrivain n'expose que ce qu'un vrai connecteur porterait. Un écr
   traiter une demande dans la journée).
 - **10 types d'affaires** : validation, demande client, réunion à préparer, invitation,
   incident, relecture, demande d'information, délégation (manager en copie), tâche
-  personnelle, signature. Une affaire traverse les sources (mail, tâche Planner, fichier,
+  personnelle, signature. Une affaire traverse les sources (mail, tâche, fichier,
   relance, réponse du manager).
 - **Fond** : réunion hebdomadaire, lettres internes, notifications Teams (auteur humain dans
   le texte), tickets, portail RH, fichiers modifiés par le manager, comptes rendus,
@@ -47,6 +50,24 @@ du manager. L'écrivain n'expose que ce qu'un vrai connecteur porterait. Un écr
 - **Pièges** : injections de prompt (rien + alerte), hameçonnage (faire + urgent + alerte),
   doublons, informations contradictoires, journées calmes (×0,3) et surchargées (×2).
 - **Gabarits réservés** : un gabarit sur cinq dans chaque banque n'apparaît qu'en T-gen.
+
+## Forme des éléments (écrivain v0.2.0, alignée le 18/11 sur les connecteurs du lot 1)
+
+| Source | Connecteur imité | Forme |
+|---|---|---|
+| Mail | `mail_graph` | extrait nettoyé (sans citation ni signature), 500 caractères au plus ; `content_text` toujours vide |
+| Réunion | `calendar_graph` | description en extrait ; `content_text` vide |
+| Tâche | `tasks_graph` (To Do) | ni participant ni extrait ; échéance à 23h59, heure de Paris ; lien To Do, y compris pour une tâche d'origine Planner |
+| Fichier | `files_graph` (OneDrive) | extrait « Dossier/Nom.ext · TYPE · taille · modifié par X », puis « — » et un court contenu pour les docx (gabarits `FILE_TEXT`) |
+
+- **Tâches non collectées.** `tasks_graph` ne lit que les tâches en retard ou dues dans les
+  24 h : une tâche sans échéance ou terminée n'est **pas émise**. Son fait reste dans le
+  scénario avec `collecte: false` (les liens d'affaire restent lisibles) ; `labels_at` et la
+  distribution du manifeste l'ignorent.
+- **`native_importance`** (mail, réunion, tâche) : « high » sur 40 % des éléments urgents
+  et 3 % des autres, « normal » sinon (tirage propre au fait, qui ne change aucun texte).
+- **Hors écrivain** : les fenêtres de collecte (mails des 24 h, réunions des 48 h, fichiers
+  des 48 h) relèvent de la vue d'une journée, pas de l'élément ; elles ne sont pas simulées ici.
 
 ## Étiquettes
 
@@ -77,7 +98,7 @@ uv run python -m packages.collect.trainset --verifier   # compare au manifeste v
 Le lot 2 lit le corpus par `load.py` (`personas`, `load_items`, `load_scenario`,
 `labels_at`) et ne génère rien lui-même.
 
-## Limites connues (v0.1)
+## Limites connues (v0.2)
 
 - Pas de mail d'invitation lié à l'événement (`correlation_id` partagé) : seulement l'événement.
 - Les gabarits restent répétitifs : c'est le rôle de l'écrivain LLM (M3) d'y remédier.

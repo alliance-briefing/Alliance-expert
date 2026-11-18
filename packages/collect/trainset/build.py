@@ -2,7 +2,8 @@
 
 `uv run python -m packages.collect.trainset` écrit, pour chaque persona :
 - `data/items/<persona>.jsonl` : les `Item` du contrat A (ce que verrait le lot 2) ;
-- `data/scenario/<persona>.jsonl` : les faits et étiquettes (jamais montrés au modèle) ;
+- `data/scenario/<persona>.jsonl` : les faits et étiquettes (jamais montrés au modèle),
+  y compris les faits qu'aucun connecteur ne collecterait (`collecte: false`, sans Item) ;
 puis `data/manifest.json` (empreintes et distribution) et un petit échantillon versionné.
 
 Le corpus n'est pas versionné : il se régénère à l'identique. `--verifier` régénère en
@@ -15,6 +16,7 @@ import hashlib
 import json
 import sys
 from collections import Counter
+from datetime import datetime
 from pathlib import Path
 
 from contracts.models import Item
@@ -29,7 +31,9 @@ SAMPLE_PERSONAS = ("logistique-1", "hotel-1")
 SAMPLE_DAYS = 2
 
 
-def scenario_row(fact: Fact, persona: Persona, templates: list[str]) -> dict:
+def scenario_row(
+    fact: Fact, persona: Persona, templates: list[str], collected: bool = True
+) -> dict:
     labels = label(fact)
     ends = fact.meta.get("end") or fact.meta.get("ends_at")
     return {
@@ -38,6 +42,7 @@ def scenario_row(fact: Fact, persona: Persona, templates: list[str]) -> dict:
         "metier": persona.metier.key,
         "split": persona.split,
         "source": fact.source,
+        "collecte": collected,
         "case_id": fact.case_id,
         "case_type": fact.case_type,
         "action": labels["action"],
@@ -58,12 +63,14 @@ def scenario_row(fact: Fact, persona: Persona, templates: list[str]) -> dict:
 
 
 def build_persona(persona: Persona, seed: int = 0) -> tuple[list[Item], list[dict]]:
+    """Les Item collectés et **toutes** les lignes du scénario (collectées ou non)."""
     writer = Writer(persona, seed)
     items, rows = [], []
     for fact in Sim(persona, seed).run():
         item, templates = writer.write(fact)
-        items.append(item)
-        rows.append(scenario_row(fact, persona, templates))
+        if item is not None:
+            items.append(item)
+        rows.append(scenario_row(fact, persona, templates, collected=item is not None))
     return items, rows
 
 
@@ -81,6 +88,9 @@ def _sha(text: str) -> str:
 
 
 def distribution(rows: list[dict]) -> dict:
+    """Distribution de ce que le modèle voit : les éléments collectés seulement."""
+    dropped = Counter(r["source"] for r in rows if not r["collecte"])
+    rows = [r for r in rows if r["collecte"]]
     by_source: dict[str, Counter] = {}
     for r in rows:
         by_source.setdefault(r["source"], Counter())[r["action"]] += 1
@@ -91,6 +101,7 @@ def distribution(rows: list[dict]) -> dict:
         "alertes": sum(r["alerte"] for r in rows),
         "pieges": dict(sorted(Counter(r["trap"] for r in rows if r["trap"]).items())),
         "affaires": dict(sorted(Counter(r["case_type"] for r in rows).items())),
+        "non_collectes": dict(sorted(dropped.items())),
     }
 
 
@@ -132,12 +143,20 @@ def _sample(out: Path, seed: int) -> None:
             continue
         items, rows = build_persona(persona, seed)
         days = sorted({i.updated_at.date() for i in items})[:SAMPLE_DAYS]
-        keep = [k for k, i in enumerate(items) if i.updated_at.date() in days]
+        keep = [i for i in items if i.updated_at.date() in days]
+        ids = {i.item_id for i in keep}
+        lost = [  # faits non collectés des mêmes jours, pour garder les liens lisibles
+            r
+            for r in rows
+            if not r["collecte"] and datetime.fromisoformat(r["visible_from"]).date() in days
+        ]
         (out / "sample" / f"{persona.key}.items.jsonl").write_text(
-            _jsonl([items[k].model_dump(mode="json") for k in keep]), encoding="utf-8", newline="\n"
+            _jsonl([i.model_dump(mode="json") for i in keep]), encoding="utf-8", newline="\n"
         )
         (out / "sample" / f"{persona.key}.scenario.jsonl").write_text(
-            _jsonl([rows[k] for k in keep]), encoding="utf-8", newline="\n"
+            _jsonl([r for r in rows if r["item_id"] in ids or r in lost]),
+            encoding="utf-8",
+            newline="\n",
         )
 
 
