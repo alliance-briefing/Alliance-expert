@@ -16,8 +16,11 @@ jobs:
       # 1. ruff
       - run: uv run ruff check .
       - run: uv run ruff format --check .
-      # 2. pytest + couverture (à partir de la v0.2.0 : ajouter --cov-fail-under=80 sur packages/)
+      # 2. pytest + couverture, puis seuils (à partir de la v0.2.0) : 80 % sur packages/
+      #    (§ CI du guide) et 80 % sur packages/collect (L1.9)
       - run: uv run pytest --cov=packages --cov=apps --cov-report=term-missing
+      - run: uv run coverage report --include="packages/*" --fail-under=80 --format=total
+      - run: uv run coverage report --include="packages/collect/*" --fail-under=80 --format=total
       # 3. fixtures de démo validées contre le JSON Schema du contrat A (les fixtures B sont testées par pytest)
       - run: uv run python -m contracts.validate_fixtures
 
