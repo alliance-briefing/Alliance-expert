@@ -20,3 +20,11 @@ reçu après la collecte (0008), réponse postérieure à la collecte (0009 + 01
 Fichiers **fabriqués à la main** (le jeu de David n'a pas de tâches), au format de l'appel
 Graph `GET /me/todo/lists` (`lists.json`) puis `/me/todo/lists/{id}/tasks` (un fichier par liste).
 Même persona fictive ; collecte de référence : 26/10/2026 07h30 (Paris). Servis à `u_demo_graph` seul.
+
+# Fichiers OneDrive (`files/`)
+
+Fichiers **fabriqués à la main**, au format de `GET /me/drive/root/delta` (`delta.json`) ; le
+contenu de chaque fichier est dans `content/<id>`. Même persona fictive, domaines `.example`.
+Collecte de référence : 21/10/2026 8h30 (Paris). Cas : modifié dans les 48 h (compte rendu,
+budget), gros pdf de 50 Mo (métadonnées seules), accès retiré (`f_contrat`, sans contenu),
+trop ancien (`f_ancien`), supprimé (`f_supprime`), dossier. Servis à `u_demo_graph` seul.
