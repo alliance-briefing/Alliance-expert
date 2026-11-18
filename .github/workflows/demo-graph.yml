@@ -1,0 +1,57 @@
+name: Collecte réelle (compte de démo)
+
+# Guide L1.9 : job planifié, séparé de la CI et non bloquant, contre le vrai Microsoft Graph.
+# Compte de démonstration fictif (u_claire), lecture seule. Sans les deux secrets ci-dessous,
+# le job s'arrête proprement sans rien faire.
+#   DEMO_TOKEN_KEY : clé Fernet (~/.config/alliance-briefing/token_key)
+#   DEMO_TOKENS_U_CLAIRE : base64 de ~/.local/share/alliance-briefing/tokens/u_claire.json.enc
+# Le jeton de renouvellement vaut environ 90 jours : réexporter le fichier après un `auth login`.
+
+on:
+  schedule:
+    - cron: "30 6 * * 1-5"  # 7h30 / 8h30 à Paris, du lundi au vendredi
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    env:
+      TOKEN_KEY: ${{ secrets.DEMO_TOKEN_KEY }}
+      TOKENS_B64: ${{ secrets.DEMO_TOKENS_U_CLAIRE }}
+      MAIL_SOURCE: graph
+      CALENDAR_SOURCE: graph
+      TASKS_SOURCE: graph
+      FILES_SOURCE: graph
+    steps:
+      - name: secrets présents ?
+        id: check
+        run: |
+          if [ -z "$TOKEN_KEY" ] || [ -z "$TOKENS_B64" ]; then
+            echo "Secrets DEMO_TOKEN_KEY / DEMO_TOKENS_U_CLAIRE absents : rien à faire."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.check.outputs.ready == 'true'
+        uses: actions/checkout@v4
+      - if: steps.check.outputs.ready == 'true'
+        uses: astral-sh/setup-uv@v3
+      - if: steps.check.outputs.ready == 'true'
+        run: uv python install 3.12 && uv sync --all-packages --frozen
+      - if: steps.check.outputs.ready == 'true'
+        name: collecte du jour (seul le résumé est affiché, jamais les Items ni le jeton)
+        run: |
+          export TOKENS_DIR="$RUNNER_TEMP/tokens"
+          mkdir -m 700 -p "$TOKENS_DIR"
+          echo "$TOKENS_B64" | base64 -d > "$TOKENS_DIR/u_claire.json.enc"
+          chmod 600 "$TOKENS_DIR/u_claire.json.enc"
+          uv run python -m packages.collect.cli --user u_claire --day "$(TZ=Europe/Paris date +%F)" \
+            > /dev/null 2> collect.log
+          grep -E "connecteur|Items" collect.log
+          grep -q " 0 warning(s)" collect.log
+      - if: always() && steps.check.outputs.ready == 'true'
+        run: rm -rf "$RUNNER_TEMP/tokens"

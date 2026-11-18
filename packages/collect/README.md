@@ -170,16 +170,52 @@ Modèle d'un connecteur Graph : `connectors/tasks_graph/`.
 
 ## Tests
 
-```powershell
+```sh
 uv run pytest packages/collect --cov=packages/collect --cov-report=term-missing
 ```
 
-La CI exige au moins **80 %** de couverture sur `packages/collect` (L1.9). Les tests ne font
-aucun appel réseau : les réponses Graph viennent des fixtures ou d'un faux serveur
-(`tests/test_graph_http.py::FakeGraph`).
+La CI exige au moins **80 %** de couverture sur le code du lot 1, mesurée hors tests et hors
+`synth/` et `trainset/` (code du lot 2) : **97 %** au 18/11. Les tests ne font aucun appel
+réseau : les réponses Graph viennent des fixtures ou d'un faux serveur.
+
+### Pannes couvertes (`tests/test_robustesse.py`)
+
+Pour chacun des 4 connecteurs Graph (mail, calendrier, tâches, fichiers) :
+
+| Panne | Comportement | Réessais |
+|---|---|---|
+| Réseau coupé | warning du runner, aucun Item de cette source | 5 essais (1, 2, 4, 8 s) |
+| 401 jeton refusé | warning, aucun Item | aucun |
+| Connexion retirée ou expirée | warning `AuthError` (`reauth_required`) : relancer `auth login` | aucun |
+| 403 accès interdit, 404 introuvable | warning, aucun Item | aucun |
+| 429 trop de requêtes | réessai en respectant `Retry-After` ; warning si 5 échecs | 5 essais |
+| 500, 503 panne Microsoft | réessai ; warning si 5 échecs | 5 essais |
+| JSON tronqué | warning, aucun Item | aucun |
+| Page suivante manquante (404) | warning, **aucun Item partiel** de cette source | aucun |
+| Un objet hors contrat A | cet objet seul est rejeté, les autres sont gardés | — |
+| Fichier inaccessible ou supprimé | pas d'Item pour ce fichier, les autres sont gardés | — |
+
+Dans tous les cas, **les autres sources de l'utilisateur continuent** et le jeton n'apparaît
+jamais dans les journaux ni dans les warnings.
+
+### Collecte réelle planifiée
+
+`.github/workflows/demo-graph.yml` collecte chaque matin de semaine le compte de démo fictif
+(`u_claire`) contre le vrai Microsoft Graph, hors CI et sans bloquer les PR. Il ne fait rien tant
+que les secrets `DEMO_TOKEN_KEY` et `DEMO_TOKENS_U_CLAIRE` ne sont pas définis (voir le fichier).
 
 ## Performance
 
-Objectif L1.9 : collecte complète d'un compte de démonstration (500 mails, 20 événements,
-30 tâches, 100 fichiers) en **moins de 30 s** (p95 sur 10 exécutions).
-Mesure : **à faire** sur le compte de démonstration, puis à noter ici.
+Objectif L1.9 : 500 mails, 20 événements, 30 tâches, 100 fichiers en **moins de 30 s** (p95
+sur 10 exécutions). Mesure : `uv run python -m packages.collect.bench` (Microsoft simulé,
+tout le reste réel : pagination, JSON, sélection, HTML, contrat A, runner).
+
+| Mesure (18/11/2026, Mac M-series) | p50 | p95 |
+|---|---|---|
+| Volume du guide, sans délai réseau (10 exécutions) | 0,08 s | 0,09 s |
+| Volume du guide, 1 s par requête Graph (`--latency 1.0`, 3 exécutions) | 25,3 s | 25,3 s |
+| Compte de démo réel (40 Items, vrai Microsoft) | ~3 s par source, 13 à 19 s au total avec le démarrage | |
+
+Le temps est dominé par Microsoft (0,4 à 2 s par requête mesurés). Les contenus de fichiers
+sont lus 16 à la fois ; les sources passent l'une après l'autre. Avec 1 s par requête, le
+budget est tenu avec peu de marge : si besoin, lancer les sources en parallèle dans le runner.

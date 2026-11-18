@@ -10,7 +10,8 @@ Règles :
   récents) ; dossiers et éléments supprimés ignorés ;
 - extrait du contenu pour .txt, .md, .csv (seuls les 8 premiers Ko sont lus) et .docx
   (lu seulement s'il fait moins de 2 Mo) ; les autres types (pdf…) : métadonnées seules ;
-- un fichier devenu inaccessible (accès retiré, supprimé entre-temps) ne produit pas d'Item.
+- un fichier devenu inaccessible (accès retiré, supprimé entre-temps) ne produit pas d'Item ;
+- les contenus sont lus 16 à la fois (une lecture prend 1 à 2 s chez Microsoft).
 
 Côté Graph : `/me/drive/root/delta` liste tout le OneDrive en quelques pages ; le contenu est
 lu par le lien de téléchargement pré-signé du fichier, avec un en-tête Range, sans jeton.
@@ -22,6 +23,7 @@ import json
 import logging
 import os
 from collections.abc import Callable, Iterator
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
@@ -45,6 +47,7 @@ logger = logging.getLogger("collect.files_graph")
 
 RECENT = timedelta(hours=48)
 MAX_FILES = 100
+READERS = 16  # lectures de contenu en parallèle
 TEXT_BYTES = 8 * 1024  # assez pour un extrait de 500 caractères
 DOCX_MAX_SIZE = 2 * 1024 * 1024  # un docx se lit en entier : au-delà, métadonnées seules
 DEMO_USER = "u_demo_graph"
@@ -148,13 +151,19 @@ class GraphFilesConnector(Connector):
         self.source.read(user, item, 1)  # métadonnées seules, mais l'accès est vérifié
         return ""
 
+    def _read(self, user: str, item: dict) -> dict | None:
+        try:
+            return {"item": item, "text": self._text(user, item)}
+        except Gone:
+            logger.info("%s : fichier devenu inaccessible, ignoré", self.name)
+            return None
+
     def collect(self, user: str, window: Window) -> Iterator[Item]:
-        readable: list[dict] = []
-        for item in self._recent(user, window):
-            try:
-                readable.append({"item": item, "text": self._text(user, item)})
-            except Gone:
-                logger.info("%s : fichier devenu inaccessible, ignoré", self.name)
+        # Microsoft met ~1 à 2 s par lecture : lues l'une après l'autre, 100 lectures dépassent
+        # le budget de 30 s (L1.9). On en lance READERS à la fois ; l'ordre est conservé.
+        with ThreadPoolExecutor(max_workers=READERS) as pool:
+            reads = list(pool.map(lambda item: self._read(user, item), self._recent(user, window)))
+        readable = [read for read in reads if read is not None]
         result = normalize_all(
             readable,
             lambda raw: file_to_item(raw["item"], user, window.end, raw["text"]),
