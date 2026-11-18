@@ -25,7 +25,7 @@ from fastapi import APIRouter, Query, Request
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 from starlette.datastructures import State
 
-from alliance_api.auth import CurrentUser, valid_user_id
+from alliance_api.auth import CurrentUser, requires, valid_user_id
 from alliance_api.errors import ApiError
 from contracts.models.brief import SECTION_ORDER, SectionKind
 
@@ -178,12 +178,17 @@ def given(state: State, user: str, brief_id: str) -> list[Feedback]:
     return state.feedback.for_brief(user, brief_id)
 
 
-@router.post("/feedback", status_code=201, response_model=FeedbackView)
+@router.post(
+    "/feedback",
+    status_code=201,
+    response_model=FeedbackView,
+    dependencies=[requires("feedback:own")],
+)
 def create_feedback(body: FeedbackRequest, user: CurrentUser, request: Request) -> FeedbackView:
     return record(request.app.state, user, body).view()
 
 
-@router.get("/feedback", response_model=list[FeedbackView])
+@router.get("/feedback", response_model=list[FeedbackView], dependencies=[requires("feedback:own")])
 def list_feedback(
     user: CurrentUser,
     request: Request,

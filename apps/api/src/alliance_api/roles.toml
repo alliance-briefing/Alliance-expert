@@ -1,0 +1,16 @@
+# Rôles et permissions de l'application (L3.4, #112).
+# Modifiable sans toucher au code ; ROLES_FILE=<chemin> pour utiliser un autre fichier.
+# Permissions connues (voir permissions.py) :
+#   brief:read_own, brief:generate_own, feedback:own, item:read_own, audit:read,
+#   brief:read_any  (lire les briefs des autres : attribuée à aucun rôle pour l'instant).
+
+default_role = "manager"
+
+[roles]
+manager = ["brief:read_own", "brief:generate_own", "feedback:own", "item:read_own"]
+admin = ["brief:read_own", "brief:generate_own", "feedback:own", "item:read_own", "audit:read"]
+
+# Rôle par utilisateur quand il diffère de default_role (comptes de démonstration
+# synthétiques ; les vrais comptes seront rattachés par la connexion OpenID Connect).
+[users]
+u_admin_001 = "admin"
