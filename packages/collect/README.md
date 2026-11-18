@@ -105,7 +105,8 @@ uv run python -m packages.collect.admin purge                                # r
 ```
 
 Tout ce qui concerne un utilisateur est rangé sous `DATA_DIR/<user>/` (isolation L1.7) :
-le supprimer efface ses journées et son journal d'audit. Menaces et mesures :
+le supprimer efface ses journées et son journal d'audit, et `delete-user` efface aussi
+ses jetons OAuth (`TOKENS_DIR`). Menaces et mesures :
 `docs/threat-model.md`.
 
 ## Ajouter une source
