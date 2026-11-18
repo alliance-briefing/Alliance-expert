@@ -11,12 +11,14 @@ from alliance_api.audit import LogAuditSink
 from alliance_api.auth import DEMO_HEADER
 from alliance_api.main import create_app
 from alliance_api.stores import DemoItemStore
+from cryptography.fernet import Fernet
 from fastapi.testclient import TestClient
 
 from contracts.demo_data import available_days, load_items
 from contracts.models import Item
 from packages.collect.admin import main as admin
 from packages.collect.cli import main as collect
+from packages.collect.core.oauth import ReauthRequired, Tokens, TokenStore
 from packages.collect.core.retention import (
     RetentionPolicy,
     delete_user,
@@ -87,11 +89,26 @@ def test_delete_user_leaves_nothing_and_spares_the_others(root: Path) -> None:
     assert client.get(f"/items/mail:{A}-1", headers={DEMO_HEADER: A}).status_code == 404
 
 
-def test_delete_user_command_asks_for_yes(root: Path, capsys) -> None:
+def test_delete_user_command_asks_for_yes(root: Path, capsys, tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("TOKENS_DIR", str(tmp_path / "tokens"))
     assert admin(["--data-dir", str(root), "delete-user", "--user", A]) == 0
     assert "aperçu : 1 fichier(s)" in capsys.readouterr().out and (root / A).exists()
     assert admin(["--data-dir", str(root), "delete-user", "--user", A, "--yes"]) == 0
     assert not (root / A).exists()
+
+
+def test_delete_user_also_erases_the_oauth_tokens(root: Path, capsys, tmp_path, monkeypatch):
+    monkeypatch.setenv("TOKENS_DIR", str(tmp_path / "tokens"))
+    store = TokenStore(key=Fernet.generate_key().decode())
+    store.save(A, Tokens("ACCESS-a", "REFRESH-a", "2026-10-21T08:00:00+00:00"))
+    store.save(B, Tokens("ACCESS-b", "REFRESH-b", "2026-10-21T08:00:00+00:00"))
+    assert admin(["--data-dir", str(root), "delete-user", "--user", A]) == 0
+    assert "jetons OAuth" in capsys.readouterr().out and store.path(A).exists()  # aperçu seul
+    assert admin(["--data-dir", str(root), "delete-user", "--user", A, "--yes"]) == 0
+    assert "jetons OAuth effacés" in capsys.readouterr().out
+    assert not store.path(A).exists() and store.path(B).exists()  # Bob garde sa connexion
+    with pytest.raises(ReauthRequired):
+        store.load(A)
 
 
 def test_purge_removes_days_after_30_days_and_audit_after_90(root: Path) -> None:
