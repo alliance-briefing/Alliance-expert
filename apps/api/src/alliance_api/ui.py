@@ -27,7 +27,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from starlette.datastructures import State
 
-from alliance_api.auth import DEMO_COOKIE, optional_user, valid_user_id
+from alliance_api.auth import close_session, open_session, optional_user, valid_user_id
 from alliance_api.briefs import generate, view
 from alliance_api.errors import ApiError
 from contracts.models import Brief, Entry, Item
@@ -37,7 +37,6 @@ templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 STATIC_DIR = Path(__file__).parent / "static"
 
 PARIS = ZoneInfo("Europe/Paris")
-SESSION_SECONDS = 8 * 3600
 # « L'essentiel du jour » : 3 à 7 éléments classés (guide d'annotation v0.3, § But).
 # Au-delà, les entrées restent consultables dans un bloc replié, jamais supprimées.
 ESSENTIEL_MAX = 7
@@ -344,14 +343,12 @@ def login(request: Request, user_id: Annotated[str, Form()]) -> Response:
     if request.app.state.auth_mode != "demo" or not valid_user_id(user_id):
         return templates.TemplateResponse(request, "login.html", {"error": True}, status_code=401)
     response = RedirectResponse("/", status_code=303)
-    response.set_cookie(
-        DEMO_COOKIE, user_id, max_age=SESSION_SECONDS, httponly=True, samesite="strict"
-    )
+    open_session(request, response, user_id)
     return response
 
 
 @router.post("/logout")
-def logout() -> Response:
+def logout(request: Request) -> Response:
     response = RedirectResponse("/login", status_code=303)
-    response.delete_cookie(DEMO_COOKIE, httponly=True, samesite="strict")
+    close_session(request, response)
     return response

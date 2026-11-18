@@ -1,17 +1,14 @@
-"""Utilisateur connecté — authentification PROVISOIRE, en attendant L3.4 (OAuth/OpenID).
+"""Utilisateur connecté, droits et protection CSRF (L3.4, #112).
 
-Mode `demo` : l'utilisateur est lu dans l'en-tête X-Demo-User (clients d'API) ou dans le
-cookie `demo_user` (navigateur, posé par la page de connexion de l'interface ; SameSite=Strict
-en guise de protection CSRF en attendant L3.4). Ce n'est PAS une sécurité
-(n'importe qui peut se faire passer pour n'importe qui) : ce mode sert aux données
-synthétiques, en local et en CI. Tout autre mode refuse toutes les requêtes (401) :
-sans configuration explicite, l'API est fermée.
+Modes (`AUTH_MODE`) :
+- `demo` : la page de connexion accepte un identifiant de démonstration, et les clients
+  d'API peuvent envoyer l'en-tête X-Demo-User. Ce n'est PAS une sécurité (n'importe qui peut
+  choisir n'importe quel identifiant) : données synthétiques, local, CI, démo hors ligne.
+- tout autre valeur : l'API est fermée (401). La connexion OpenID Connect arrive en PR C.
 
-L3.4 remplacera uniquement `current_user` par la lecture d'une session ; les endpoints,
-qui ne connaissent que `Depends(current_user)`, ne changeront pas.
-
-Droits (#112) : une route exige une permission (`requires("brief:read_own")`), jamais un
-rôle ; le rôle de l'utilisateur et ses permissions viennent de `roles.toml` (permissions.py).
+Dans tous les modes, le navigateur reçoit une session côté serveur (`sessions.py`) : le
+cookie ne porte qu'un identifiant aléatoire. Les routes ne connaissent que `CurrentUser`
+et `requires(<permission>)` : changer de mode de connexion ne les touche pas.
 
 CSRF : cookie SameSite=Strict, et toute requête qui modifie quelque chose (POST…) venant
 d'une autre origine (en-tête Origin, à défaut Referer) est refusée (403).
@@ -21,6 +18,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from typing import Annotated, Any
 from urllib.parse import urlsplit
 
@@ -28,8 +26,10 @@ from fastapi import Depends, FastAPI, Request, Response
 
 from alliance_api.errors import ApiError, error_response
 
+AUTH_MODES = frozenset({"demo"})
 DEMO_HEADER = "X-Demo-User"
-DEMO_COOKIE = "demo_user"
+SESSION_COOKIE = "session"
+DEMO_COOKIE = SESSION_COOKIE  # ancien nom, encore utilisé par les tests de l'interface
 UNSAFE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 # L'identifiant sert aussi de nom de dossier dans les données de démo : format strict,
 # sinon « ../ » permettrait de lire hors du dossier de l'utilisateur.
@@ -40,19 +40,58 @@ def valid_user_id(value: str) -> bool:
     return bool(_USER_ID.match(value))
 
 
+@dataclass(frozen=True)
+class Principal:
+    user: str
+    role: str
+
+
+def _resolve(request: Request) -> tuple[Principal | None, bool]:
+    """(utilisateur connecté ou None, session expirée ?), calculé une fois par requête."""
+    cached = getattr(request.state, "auth", None)
+    if cached is None:
+        cached = request.state.auth = _lookup(request)
+    return cached
+
+
+def _lookup(request: Request) -> tuple[Principal | None, bool]:
+    state = request.app.state
+    if state.auth_mode not in AUTH_MODES:
+        return None, False
+    if state.auth_mode == "demo" and DEMO_HEADER in request.headers:
+        user = request.headers[DEMO_HEADER]
+        return (Principal(user, state.policy.role_of(user)) if valid_user_id(user) else None), False
+    session_id = request.cookies.get(SESSION_COOKIE)
+    if not session_id:
+        return None, False
+    status, session = state.sessions.lookup(session_id)
+    if status == "ok" and session is not None:
+        return Principal(session.user, state.policy.role_of(session.user)), False
+    return None, status == "expired"
+
+
 def optional_user(request: Request) -> str | None:
     """L'utilisateur connecté, ou None (l'interface redirige alors vers la connexion)."""
-    if request.app.state.auth_mode != "demo":
-        return None
-    user = request.headers.get(DEMO_HEADER) or request.cookies.get(DEMO_COOKIE, "")
-    return user if valid_user_id(user) else None
+    principal, _ = _resolve(request)
+    return principal.user if principal else None
+
+
+def session_expired(request: Request) -> bool:
+    """Vrai si le navigateur présente une session qui a expiré (et non une absence de session)."""
+    return _resolve(request)[1]
+
+
+def current_principal(request: Request) -> Principal:
+    principal, expired = _resolve(request)
+    if principal is None:
+        if expired:
+            raise ApiError(401, "session_expired", "session expirée, reconnectez-vous")
+        raise ApiError(401, "unauthenticated", "authentification requise")
+    return principal
 
 
 def current_user(request: Request) -> str:
-    user = optional_user(request)
-    if user is None:
-        raise ApiError(401, "unauthenticated", "authentification requise")
-    return user
+    return current_principal(request).user
 
 
 CurrentUser = Annotated[str, Depends(current_user)]
@@ -60,20 +99,42 @@ CurrentUser = Annotated[str, Depends(current_user)]
 
 def allowed(request: Request, permission: str) -> bool:
     """La permission est-elle accordée à l'utilisateur connecté ? (pour l'interface)"""
-    user = optional_user(request)
-    policy = request.app.state.policy
-    return user is not None and policy.allows(policy.role_of(user), permission)
+    principal, _ = _resolve(request)
+    return principal is not None and request.app.state.policy.allows(principal.role, permission)
 
 
 def requires(permission: str) -> Any:
-    """Dépendance de route : 401 sans utilisateur, 403 si son rôle n'a pas la permission."""
+    """Dépendance de route : 401 sans session, 403 si le rôle n'a pas la permission."""
 
     def check(request: Request) -> None:
-        policy = request.app.state.policy
-        if not policy.allows(policy.role_of(current_user(request)), permission):
+        principal = current_principal(request)
+        if not request.app.state.policy.allows(principal.role, permission):
             raise ApiError(403, "forbidden", "droits insuffisants")
 
     return Depends(check)
+
+
+def _cookie_options(request: Request) -> dict[str, Any]:
+    secure = request.url.scheme == "https"
+    return {"httponly": True, "samesite": "strict", "secure": secure, "path": "/"}
+
+
+def open_session(request: Request, response: Response, user: str) -> None:
+    """Ouvre une session pour `user` et pose le cookie."""
+    state = request.app.state
+    session = state.sessions.create(user)
+    max_age = int(state.sessions.max_age.total_seconds())
+    response.set_cookie(
+        SESSION_COOKIE, session.session_id, max_age=max_age, **_cookie_options(request)
+    )
+
+
+def close_session(request: Request, response: Response) -> None:
+    """Déconnexion : la session est effacée côté serveur, le cookie devient inutilisable."""
+    session_id = request.cookies.get(SESSION_COOKIE)
+    if session_id:
+        request.app.state.sessions.delete(session_id)
+    response.delete_cookie(SESSION_COOKIE, **_cookie_options(request))
 
 
 def _origin_of(request: Request) -> str | None:
