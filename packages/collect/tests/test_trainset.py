@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
+import re
 from collections import Counter
-from datetime import date, timedelta
+from datetime import date, time, timedelta
 
 import pytest
 
@@ -12,7 +13,7 @@ from packages.collect.trainset import build, load
 from packages.collect.trainset import phrases as P
 from packages.collect.trainset.facts import ACTIONS, Fact, label, label_on
 from packages.collect.trainset.metiers import METIERS
-from packages.collect.trainset.world import all_personas, at
+from packages.collect.trainset.world import PARIS, all_personas, at
 
 DAY = date(2026, 11, 4)
 
@@ -129,17 +130,18 @@ def test_l_etiquette_depend_du_jour():
 def test_items_valides_isoles_et_coherents(built, personas):
     for key, (items, rows) in built.items():
         owner = personas[key].owner
-        assert len(items) == len(rows) > 300
+        kept = [r for r in rows if r["collecte"]]
+        assert len(items) == len(kept) > 300
         assert len({i.item_id for i in items}) == len(items)
         assert all(i.owner_user_id == owner and i.acl.visible_to == [owner] for i in items)
-        assert [i.item_id for i in items] == [r["item_id"] for r in rows]
-        ids = {i.item_id for i in items}
+        assert [i.item_id for i in items] == [r["item_id"] for r in kept]
+        ids = {r["item_id"] for r in rows}  # un lien peut viser un fait non collecté
         assert all(set(r["links"]) <= ids for r in rows)
         assert all(r["action"] in ACTIONS for r in rows)
 
 
 def test_toutes_les_actions_et_les_pieges_sont_presents(built):
-    rows = [r for _, rs in built.values() for r in rs]
+    rows = [r for _, rs in built.values() for r in rs if r["collecte"]]
     assert {r["action"] for r in rows} == set(ACTIONS)
     by_source = {
         s: {r["action"] for r in rows if r["source"] == s}
@@ -147,10 +149,46 @@ def test_toutes_les_actions_et_les_pieges_sont_presents(built):
     }
     assert by_source["mail"] == set(ACTIONS)
     assert {"preparer", "repondre", "rien"} <= by_source["calendar"]
-    assert {"decider", "faire", "rien"} <= by_source["task"]
+    assert {"decider", "faire"} <= by_source["task"]  # tâche terminée : jamais collectée
     assert {"decider", "preparer", "relire", "informer", "rien"} <= by_source["file"]
     assert {"injection"} <= {r["trap"] for r in rows}
     assert any(r["alerte"] for r in rows)
+
+
+def test_forme_des_connecteurs_graph(built):
+    """L'écrivain produit ce que produiraient mail_graph, calendar_graph, tasks_graph et
+    files_graph : le modèle s'entraîne sur la forme qu'il verra en production."""
+    items = [i for its, _ in built.values() for i in its]
+    rows = {r["item_id"]: r for _, rs in built.values() for r in rs}
+    by = {s: [i for i in items if i.source == s] for s in ("mail", "calendar", "task", "file")}
+    assert all(i.content_text is None for i in items)  # mail et agenda : extrait seul
+    assert all(len(i.snippet) <= 500 for i in items)
+    for task in by["task"]:
+        assert task.participants == [] and task.snippet == "" and task.completed is False
+        assert task.due_at.astimezone(PARIS).time() == time(23, 59)
+        assert "/tasks/id/" in str(task.url) and "planner" not in str(task.url)
+    header = re.compile(
+        r"^[^/]+/[^/]+\.(docx|xlsx|pptx|pdf) · [A-Z]+ · [\d.]+ [KM]?o · modifié par "
+    )
+    for f in by["file"]:
+        assert header.match(f.snippet), f.snippet
+        assert (" — " in f.snippet) == f.title.endswith(".docx")
+        assert [p.role for p in f.participants] == ["modifier"] and f.native_importance is None
+    others = [i for i in items if i.source != "file"]
+    assert {i.native_importance for i in others} == {"normal", "high"}
+    rate = {
+        tone: sum(i.native_importance == "high" for i in group) / len(group)
+        for tone in ("urgent", "normal")
+        if (group := [i for i in others if rows[i.item_id]["urgence"] == tone])
+    }
+    assert rate["urgent"] > 0.25 and rate["normal"] < 0.08  # un indice, pas l'étiquette
+
+
+def test_taches_jamais_collectees_restent_dans_le_scenario(built):
+    lost = [r for _, rs in built.values() for r in rs if not r["collecte"]]
+    assert lost and {r["source"] for r in lost} == {"task"}
+    ids = {i.item_id for its, _ in built.values() for i in its}
+    assert not ids & {r["item_id"] for r in lost}
 
 
 def test_l_echeance_ecrite_n_est_pas_une_urgence(built):

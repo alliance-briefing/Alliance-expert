@@ -428,6 +428,45 @@ TASK_TITLE = {
 }
 CR_PREFIX = ("CR", "Compte_rendu", "CR_reunion")
 
+# --- fichiers : début du contenu d'un docx (files_graph le met après l'en-tête) ----------------
+FILE_TEXT: dict[str, tuple[str, ...]] = {
+    "cr": (
+        "Compte rendu – {topic} du {jour}. Points abordés : avancement, blocages, prochaines étapes.",
+        "{topic}, réunion du {jour}. Relevé de décisions et actions à suivre.",
+        "CR {topic} ({jour}). Ordre du jour traité, actions réparties en fin de séance.",
+        "Notes de la réunion {topic} du {jour}. Décisions prises et responsables désignés.",
+        "Réunion {topic} du {jour} : synthèse des échanges et suites à donner.",
+    ),
+    "signer": (
+        "{O}. Fait en deux exemplaires. Signature :",
+        "{O} – version pour signature. Bon pour accord, date et signature.",
+        "{O}. Lu et approuvé. Signature du responsable :",
+        "{O} – exemplaire à retourner signé.",
+        "{O}. Le signataire reconnaît avoir pris connaissance des conditions. Signature :",
+    ),
+    "relire": (
+        "{O} – version de travail v{v}. Commentaires bienvenus avant diffusion.",
+        "{O} (brouillon v{v}). Les passages surlignés restent à valider.",
+        "{O} – projet v{v}, non diffusé.",
+        "{O}. Version provisoire, à compléter.",
+        "{O} – v{v} en cours de rédaction, remarques en marge.",
+    ),
+    "reunion": (
+        "{O} – support pour la réunion du {jour}.",
+        "{O}. Document préparatoire, réunion du {jour}.",
+        "{O} : éléments à présenter le {jour}.",
+        "{O} – pour la séance du {jour}.",
+        "{O}. Annexe à l'ordre du jour du {jour}.",
+    ),
+    "autre": (
+        "{O} – version {v}.",
+        "{O}. Mise à jour du document.",
+        "{O} : état au {jour}.",
+        "{O}. Document de référence de l'équipe.",
+        "{O} – version {v}, diffusée à l'équipe.",
+    ),
+}
+
 
 def resolve(text: str, tu: bool) -> str:
     """`[a|b]` → a (tu) ou b (vous)."""
