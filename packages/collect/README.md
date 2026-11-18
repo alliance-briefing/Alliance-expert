@@ -39,6 +39,7 @@ Un connecteur qui échoue ne bloque pas les autres : il devient un `WARNING` (L1
 | `mail_graph` | Outlook (L1.3) | reçus dans les 24 h + adressés directement et sans réponse depuis 7 jours ; 500 au plus | `Mail.Read` | `MAIL_SOURCE=graph` |
 | `calendar_graph` | Calendrier Outlook (L1.4) | 48 prochaines heures + événement en cours ; récurrences dépliées | `Calendars.Read` | `CALENDAR_SOURCE=graph` |
 | `tasks_graph` | Microsoft To Do (L1.4) | en retard (50 au plus) + dues dans les 24 h ; sans échéance = jamais collectée | `Tasks.Read` | `TASKS_SOURCE=graph` |
+| `files_graph` | OneDrive (L1.5) | créés ou modifiés dans les 48 h ; 100 au plus ; extrait pour txt, md, csv, docx (< 2 Mo), métadonnées seules sinon | `Files.Read` | `FILES_SOURCE=graph` |
 | `files_graph` | OneDrive (L1.5) | créés ou modifiés dans les 48 h ; 100 au plus ; métadonnées seules | `Files.Read` | `FILES_SOURCE=graph` |
 | `demo` | fixtures `contracts/fixtures/demo` (L1.0) | journées générées, toutes sources | aucun | — |
 | `notes_demo` | notes Markdown factices (source n°5, L1.1) | notes écrites dans la fenêtre | aucun | — |
