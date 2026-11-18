@@ -15,6 +15,7 @@ from alliance_api.auth import CurrentUser, install_csrf
 from alliance_api.briefs import BriefGenerator, BriefStore, MemoryBriefStore
 from alliance_api.feedback import FeedbackStore, JsonlFeedbackStore, MemoryFeedbackStore
 from alliance_api.permissions import DEFAULT_ROLES_FILE, Policy, load_policy
+from alliance_api.resume import PendingStore
 from alliance_api.sessions import MemorySessionStore, SessionStore
 from alliance_api.stores import DemoItemStore, ItemStore
 from packages.analyse import generate_brief
@@ -28,6 +29,7 @@ def create_app(
     audit: AuditSink | None = None,
     feedback_store: FeedbackStore | None = None,
     session_store: SessionStore | None = None,
+    pending_store: PendingStore | None = None,
     policy: Policy | None = None,
     auth_mode: str | None = None,
 ) -> FastAPI:
@@ -38,6 +40,7 @@ def create_app(
     app.state.audit = audit or LogAuditSink()
     app.state.feedback = feedback_store or _default_feedback_store()
     app.state.sessions = session_store or _default_session_store()
+    app.state.pending = pending_store or PendingStore()  # reprise après expiration
     app.state.policy = policy or load_policy(Path(os.getenv("ROLES_FILE") or DEFAULT_ROLES_FILE))
     # Origines acceptées en plus de celle de l'application (proxy, nom de domaine) ; virgules.
     app.state.allowed_origins = {o for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o}
