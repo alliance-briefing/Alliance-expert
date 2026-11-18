@@ -14,3 +14,9 @@ Paris ; les mails envoyés ont `parentFolderId == sentFolderId`). Pour le jeu co
 Chaque message illustre un cas de la fenêtre du 21/10 à 8h30 : reçu dans les 24 h (0001-0003),
 direct sans réponse (0004), déjà répondu (0005 + 0105), en copie (0006), plus de 7 jours (0007),
 reçu après la collecte (0008), réponse postérieure à la collecte (0009 + 0109), heure d'hiver (0011).
+
+# Tâches To Do (`tasks/`)
+
+Fichiers **fabriqués à la main** (le jeu de David n'a pas de tâches), au format de l'appel
+Graph `GET /me/todo/lists` (`lists.json`) puis `/me/todo/lists/{id}/tasks` (un fichier par liste).
+Même persona fictive ; collecte de référence : 26/10/2026 07h30 (Paris). Servis à `u_demo_graph` seul.

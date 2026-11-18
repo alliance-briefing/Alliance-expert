@@ -1,0 +1,16 @@
+{
+  "value": [
+    {
+      "id": "list_travail",
+      "displayName": "Travail",
+      "isOwner": true,
+      "wellknownListName": "none"
+    },
+    {
+      "id": "list_perso",
+      "displayName": "Tâches",
+      "isOwner": true,
+      "wellknownListName": "defaultList"
+    }
+  ]
+}
