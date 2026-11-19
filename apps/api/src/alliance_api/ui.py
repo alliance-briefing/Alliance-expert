@@ -27,7 +27,14 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from starlette.datastructures import State
 
-from alliance_api.auth import close_session, open_session, optional_user, valid_user_id
+from alliance_api import resume
+from alliance_api.auth import (
+    close_session,
+    expired_user,
+    open_session,
+    optional_user,
+    valid_user_id,
+)
 from alliance_api.briefs import generate, view
 from alliance_api.errors import ApiError
 from contracts.models import Brief, Entry, Item
@@ -313,10 +320,16 @@ def _page(request: Request, user: str, day: Date, error: ApiError | None = None)
     return templates.TemplateResponse(request, "brief.html", context, status_code=status)
 
 
+def _query(request: Request) -> str:
+    return f"?{request.url.query}" if request.url.query else ""
+
+
 @router.get("/", response_class=HTMLResponse)
 def home(request: Request, day: Annotated[Date | None, Query(alias="date")] = None) -> Response:
     user = optional_user(request)
     if user is None:
+        if expired := expired_user(request):  # revenir sur cette page après reconnexion
+            return resume.defer(request, expired, str(request.url.path) + _query(request))
         return RedirectResponse("/login", status_code=303)
     return _page(request, user, day or _today())
 
@@ -325,6 +338,9 @@ def home(request: Request, day: Annotated[Date | None, Query(alias="date")] = No
 def generate_page(request: Request, day: Annotated[Date, Form(alias="date")]) -> Response:
     user = optional_user(request)
     if user is None:
+        if expired := expired_user(request):  # générer après reconnexion, sans rien perdre
+            data = {"date": day.isoformat()}
+            return resume.defer(request, expired, f"/?date={day.isoformat()}", "generate", data)
         return RedirectResponse("/login", status_code=303)
     try:
         generate(request.app.state, user, day)
@@ -334,8 +350,9 @@ def generate_page(request: Request, day: Annotated[Date, Form(alias="date")]) ->
 
 
 @router.get("/login", response_class=HTMLResponse)
-def login_page(request: Request) -> Response:
-    return templates.TemplateResponse(request, "login.html", {"error": False})
+def login_page(request: Request, expired: bool = False) -> Response:
+    context = {"error": False, "expired": expired, "user_hint": resume.pending_user(request)}
+    return templates.TemplateResponse(request, "login.html", context)
 
 
 @router.post("/login", response_class=HTMLResponse)
@@ -344,6 +361,7 @@ def login(request: Request, user_id: Annotated[str, Form()]) -> Response:
         return templates.TemplateResponse(request, "login.html", {"error": True}, status_code=401)
     response = RedirectResponse("/", status_code=303)
     open_session(request, response, user_id)
+    response.headers["location"] = resume.complete(request, response, user_id)
     return response
 
 
