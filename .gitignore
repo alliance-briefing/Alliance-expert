@@ -16,3 +16,5 @@ eval/hidden/
 # Jetons OAuth et clé : jamais dans le dépôt
 *.json.enc
 token_key
+# Comptes autorisés de la connexion OpenID Connect (USERS_FILE)
+users.toml
