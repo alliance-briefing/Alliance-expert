@@ -4,7 +4,9 @@ Modes (`AUTH_MODE`) :
 - `demo` : la page de connexion accepte un identifiant de démonstration, et les clients
   d'API peuvent envoyer l'en-tête X-Demo-User. Ce n'est PAS une sécurité (n'importe qui peut
   choisir n'importe quel identifiant) : données synthétiques, local, CI, démo hors ligne.
-- tout autre valeur : l'API est fermée (401). La connexion OpenID Connect arrive en PR C.
+- `oidc` : connexion OpenID Connect (Microsoft pour la démo, voir `oidc.py`) ; l'en-tête
+  X-Demo-User et le formulaire de démonstration sont ignorés.
+- toute autre valeur : l'API est fermée (401).
 
 Dans tous les modes, le navigateur reçoit une session côté serveur (`sessions.py`) : le
 cookie ne porte qu'un identifiant aléatoire. Les routes ne connaissent que `CurrentUser`
@@ -26,7 +28,7 @@ from fastapi import Depends, FastAPI, Request, Response
 
 from alliance_api.errors import ApiError, error_response
 
-AUTH_MODES = frozenset({"demo"})
+AUTH_MODES = frozenset({"demo", "oidc"})
 DEMO_HEADER = "X-Demo-User"
 SESSION_COOKIE = "session"
 DEMO_COOKIE = SESSION_COOKIE  # ancien nom, encore utilisé par les tests de l'interface

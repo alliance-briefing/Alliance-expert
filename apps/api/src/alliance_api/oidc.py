@@ -12,7 +12,6 @@ Parcours « code d'autorisation » avec PKCE :
    absent n'entre pas, même s'il est valide chez Microsoft ;
 5. la session s'ouvre comme en démo, et le travail en attente est repris (`resume.complete`).
 
-Ce module vérifie l'identité ; les routes `/auth/login` et `/auth/callback` arrivent en C2.
 Aucun jeton n'est gardé ni journalisé : seul l'identifiant interne (`u_…`) sert ensuite.
 """
 
@@ -22,7 +21,9 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 import os
+import secrets
 import threading
 import tomllib
 import urllib.error
@@ -34,10 +35,17 @@ from pathlib import Path
 from typing import Any, Protocol
 
 import jwt
+from fastapi import APIRouter, Request, Response
+from fastapi.responses import RedirectResponse
 
-from alliance_api.auth import valid_user_id
+from alliance_api import resume
+from alliance_api.auth import open_session, valid_user_id
+from alliance_api.errors import ApiError
 from alliance_api.sessions import Clock, utc_now
 
+logger = logging.getLogger("alliance_api")
+router = APIRouter(prefix="/auth", include_in_schema=False)
+STATE_COOKIE = "oidc_state"
 ATTEMPT_TTL = timedelta(minutes=10)
 _REQUIRED = ("OIDC_ISSUER", "OIDC_CLIENT_ID", "OIDC_REDIRECT_URI", "USERS_FILE")
 
@@ -209,3 +217,90 @@ def validate_id_token(oidc: Oidc, id_token: str, nonce: str) -> dict[str, Any]:
 
 def identity(oidc: Oidc, claims: dict[str, Any]) -> str:
     return ":".join(str(claims.get(name, "")) for name in oidc.config.identity_claims)
+
+
+def _oidc(request: Request) -> Oidc:
+    state = request.app.state
+    if state.auth_mode != "oidc" or state.oidc is None:
+        raise ApiError(404, "not_found", "connexion OpenID Connect non activée")
+    return state.oidc
+
+
+def _state_cookie(request: Request, response: Response, value: str | None) -> None:
+    # Lax : le cookie doit revenir avec la redirection du fournisseur (navigation entrante).
+    options: dict[str, Any] = {
+        "httponly": True,
+        "samesite": "lax",
+        "secure": request.url.scheme == "https",
+        "path": "/auth",
+    }
+    if value is None:
+        response.delete_cookie(STATE_COOKIE, **options)
+    else:
+        response.set_cookie(
+            STATE_COOKIE, value, max_age=int(ATTEMPT_TTL.total_seconds()), **options
+        )
+
+
+@router.get("/login")
+def login(request: Request, next: str = "/") -> Response:
+    oidc = _oidc(request)
+    state, nonce, verifier = (secrets.token_urlsafe(32) for _ in range(3))
+    oidc.start(state, Attempt(nonce, verifier, resume.safe_next(next), oidc.clock()))
+    params = {
+        "client_id": oidc.config.client_id,
+        "response_type": "code",
+        "response_mode": "query",
+        "redirect_uri": oidc.config.redirect_uri,
+        "scope": oidc.config.scopes,
+        "state": state,
+        "nonce": nonce,
+        "code_challenge": pkce_challenge(verifier),
+        "code_challenge_method": "S256",
+    }
+    try:
+        endpoint = oidc.provider.metadata()["authorization_endpoint"]
+    except LoginFailed as exc:
+        logger.warning("connexion oidc impossible : %s", exc.reason)
+        return RedirectResponse("/login?error=login_failed", status_code=303)
+    response = RedirectResponse(f"{endpoint}?{urllib.parse.urlencode(params)}", status_code=303)
+    _state_cookie(request, response, state)
+    return response
+
+
+@router.get("/callback")
+def callback(request: Request, code: str = "", state: str = "", error: str = "") -> Response:
+    oidc = _oidc(request)
+    cookie = request.cookies.get(STATE_COOKIE, "")
+    try:
+        if error:
+            raise LoginFailed(f"refus du fournisseur : {error[:40]!r}")
+        if not (code and state and cookie and hmac.compare_digest(state, cookie)):
+            raise LoginFailed("state absent ou différent du cookie")
+        attempt = oidc.finish(state)
+        form = {
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": oidc.config.redirect_uri,
+            "client_id": oidc.config.client_id,
+            "code_verifier": attempt.verifier,
+        }
+        if oidc.config.client_secret:
+            form["client_secret"] = oidc.config.client_secret
+        tokens = oidc.provider.exchange(form)
+        claims = validate_id_token(oidc, str(tokens.get("id_token", "")), attempt.nonce)
+        user = oidc.accounts.get(identity(oidc, claims))
+        if user is None:
+            raise LoginFailed("compte absent de USERS_FILE", public="unknown_account")
+    except LoginFailed as exc:
+        logger.warning("connexion oidc refusée : %s", exc.reason)
+        response = RedirectResponse(f"/login?error={exc.public}", status_code=303)
+        _state_cookie(request, response, None)
+        return response
+    response = RedirectResponse("/", status_code=303)
+    _state_cookie(request, response, None)
+    open_session(request, response, user)
+    target = resume.complete(request, response, user)
+    response.headers["location"] = attempt.next_url if target == "/" else target
+    logger.info("connexion oidc user=%s", user)
+    return response
