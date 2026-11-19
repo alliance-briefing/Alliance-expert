@@ -1,0 +1,1 @@
+{"debut": "2026-11-19T15:42:28+01:00", "fin": "2026-11-19T15:46:51+01:00", "model": "gemma2:9b", "digest": "ff02c3702f322b9e075e9568332d96c0a7028002f1a5a056e0a6784320a4db0b", "ollama": "0.40.16", "consigne": "mail-v7", "textes": 20, "passent": 18, "secondes_par_texte": 13.18, "secondes_llm": 198.5}

@@ -2,3 +2,5 @@
 # et l'échantillon sont versionnés.
 items/
 scenario/
+# Textes bruts de l'écrivain LLM (M3) : plusieurs dizaines de Mo, versionnés compressés à la fin.
+llm/*/textes.jsonl

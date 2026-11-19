@@ -1,0 +1,17 @@
+{
+ "model": "gemma2:9b",
+ "digest": "ff02c3702f322b9e075e9568332d96c0a7028002f1a5a056e0a6784320a4db0b",
+ "ollama": "0.40.16",
+ "prompt_version": "mail-v7",
+ "temperature": 0.8,
+ "top_p": 0.9,
+ "max_tries": 3,
+ "seed": 0,
+ "draw": 2,
+ "started": "2026-11-19T15:15:09+01:00",
+ "cases": 20,
+ "passed": 17,
+ "passed_first_try": 12,
+ "seconds_per_call": 6.66,
+ "seconds_per_text": 10.66
+}

@@ -1,0 +1,609 @@
+﻿================================================================================
+mail:projet_si-2-00456  {'action': 'decider', 'urgence': 'normal', 'alerte': False}  3 essai(s), 13.99 s, REJETÉ
+  exemples : repondre-relance-urgent, relire-calme ; 23 mots
+  rejet : longueur hors bornes (21 mots, attendu 50-80); acte changé (aucun mot de l'acte demandé); forme changée (la demande devait être une question)
+  rejet : longueur hors bornes (18 mots, attendu 50-80); forme changée (la demande devait être une question)
+  rejet : longueur hors bornes (23 mots, attendu 50-80); forme changée (la demande devait être une question)
+--- fiche ---
+Entreprise : Numéria Services
+De : Cédric Dupont, DSI — pour Romain : son N+1 (supérieur hiérarchique)
+À : Romain Morin, Chef de projet informatique (destinataire direct)
+Adresse : tutoiement (tu, te, ton, ta, tes) du début à la fin, jamais vous
+Sujet : le budget du lot 2
+Contexte : Cédric a préparé le budget du lot 2 ; sans décision, la suite est en attente.
+Demande : que Romain valide le budget du lot 2.
+Qui agit : c'est Romain qui décide ; Cédric attend sa décision et ne décide pas lui-même.
+Forme : question
+Échéance : aucune, n'en mets pas
+Ton : neutre (aucune formule de délai, ni urgente ni calme)
+Style : pressé, phrases courtes ; entre directement dans le sujet après la salutation ; 50 à 80 mots
+Signature : Cédric
+--- texte ---
+Objet : Le budget du lot 2
+Salut Romain,
+
+Le budget du lot 2 est prêt. Il te suffit de le valider ou de me retourner tes retours.
+
+Merci,
+Cédric
+================================================================================
+mail:chantier-3-00180  {'action': 'faire', 'urgence': 'normal', 'alerte': False}  1 essai(s), 4.68 s, ok
+  exemples : decider-indirecte, informer-point ; 51 mots
+--- fiche ---
+Entreprise : Bâtir Ensemble
+De : Guillaume Robin, Responsable QSE — pour Lucas : un pair (même niveau, autre service)
+À : Lucas Nicolas, Chef de chantier (destinataire direct)
+Adresse : tutoiement (tu, te, ton, ta, tes) du début à la fin, jamais vous
+Sujet : le compte rendu de chantier
+Contexte : Guillaume fait le point sur plusieurs dossiers en cours.
+Demande : que Lucas mette à jour le compte rendu de chantier.
+Qui agit : c'est Lucas qui doit agir ; Guillaume ne le fait pas lui-même et ne propose pas de le faire.
+Forme : indirecte (ne formule pas la demande : décris ce qui manque ou ce qui bloque)
+Échéance : aucune, n'en mets pas
+Ton : neutre (aucune formule de délai, ni urgente ni calme)
+Style : cordial et posé ; entre directement dans le sujet après la salutation ; 50 à 80 mots
+Signature : Guillaume
+--- texte ---
+Objet : Compte rendu de chantier : plusieurs dossiers en cours
+Bonjour Lucas,
+
+Je passe en revue les chantiers en cours et constate que le compte rendu de chantier n'est pas mis à jour pour certains d'entre eux. Pour permettre une bonne traçabilité et une bonne gestion des chantiers, pourrais-tu mettre à jour ces documents ?
+
+Merci d'avance pour ton aide.
+Guillaume
+================================================================================
+mail:drh-1-00011  {'action': 'preparer', 'urgence': 'normal', 'alerte': False}  1 essai(s), 4.84 s, ok
+  exemples : faire-urgent-tiers, repondre-relance-urgent ; 55 mots
+--- fiche ---
+Entreprise : Solvane Industrie
+De : Yasmine Mathieu, Directrice générale — pour Élodie : son N+1 (supérieur hiérarchique)
+À : Élodie Diallo, DRH (destinataire direct)
+Adresse : tutoiement (tu, te, ton, ta, tes) du début à la fin, jamais vous
+Sujet : la présentation au CSE
+Contexte : La réunion du jeudi 5 novembre réunit l'équipe et la direction.
+Demande : que Élodie prépare ses remarques concernant la présentation au CSE pour la réunion du jeudi 5 novembre.
+Qui agit : c'est Élodie qui doit agir ; Yasmine ne le fait pas elle-même et ne propose pas de le faire.
+Forme : directe (impératif ou « merci de… »), sans question
+Échéance : aucune, n'en mets pas
+Ton : neutre (aucune formule de délai, ni urgente ni calme)
+Style : cordial et posé ; commence par une nouvelle du dossier ; 70 à 110 mots
+Signature : Yasmine
+--- texte ---
+Objet : Préparation de la présentation au CSE
+Salut Élodie,
+
+Je passe à la réunion du CSE qui a lieu le jeudi 5 novembre. Pour la préparer, pourrais-tu me rédiger les points que nous souhaitons aborder ? Il s'agit de notre politique d'entreprise et des évolutions attendues pour les prochains mois.
+
+Je compte sur toi pour que nous puissions bien nous préparer.
+
+Yasmine
+================================================================================
+mail:collectivite-2-00182  {'action': 'decider', 'urgence': 'normal', 'alerte': False}  2 essai(s), 10.19 s, ok
+  exemples : repondre-relance-urgent, preparer-reunion ; 64 mots
+  rejet : ton changé (urgence ou calme écrit alors que le ton est normal); forme changée (la demande devait être une question)
+--- fiche ---
+Entreprise : Ville de Montclar
+De : Arnaud Martin, Responsable voirie — pour Jérôme : un membre de son équipe
+À : Jérôme Perrin, Directeur des services techniques (destinataire direct)
+Adresse : tutoiement (tu, te, ton, ta, tes) du début à la fin, jamais vous
+Sujet : le bon de commande Voirie Plus
+Contexte : C'est une relance : Arnaud a déjà écrit il y a deux jours et n'a pas eu de réponse.
+Demande : que Jérôme valide le bon de commande Voirie Plus.
+Qui agit : c'est Jérôme qui décide ; Arnaud attend sa décision et ne décide pas lui-même.
+Forme : question
+Échéance : mercredi 11 novembre
+Ton : neutre (aucune formule de délai, ni urgente ni calme)
+À écrire : « mercredi 11 novembre »
+Style : cordial et posé ; rappelle d'abord le message resté sans réponse ; 70 à 110 mots
+Détail : ajoute une phrase sur un aspect pratique du dossier (organisation, équipe, suite prévue), sans chiffre ni nom, sans nouvelle demande
+Signature : Arnaud
+--- texte ---
+Objet : Relance – validation du bon de commande Voirie Plus
+Bonjour Jérôme,
+
+Je relance pour le bon de commande Voirie Plus. Ton retour m'interroge encore, et je te rappelle que j'ai envoyé mon message il y a deux jours.
+
+L'organisation du chantier nécessite ton aval : sans ton accord, je ne peux pas continuer la procédure. Pourra-t-on avancer mercredi 11 novembre ?
+
+Je compte sur toi pour nous aider à tenir le planning.
+
+Arnaud
+================================================================================
+mail:ecole-3-00211  {'action': 'rien', 'urgence': 'normal', 'alerte': False}  1 essai(s), 3.83 s, ok
+  exemples : informer-point, repondre-relance-urgent ; 27 mots
+--- fiche ---
+Entreprise : École Jules Ferry
+De : Inès Blanc, Conseillère pédagogique — pour Léa : un pair (même niveau, autre service)
+À : Léa Marchand, Directrice d'école (destinataire direct)
+Adresse : tutoiement (tu, te, ton, ta, tes) du début à la fin, jamais vous
+Sujet : le budget de la coopérative
+Rien n'est demandé : Inès remercie ou accuse réception concernant le budget de la coopérative, sans nouvelle information.
+Ton : neutre (aucune formule de délai, ni urgente ni calme)
+Style : direct et efficace ; 35 à 60 mots
+Fautes : glisse une ou deux petites fautes de frappe, comme un mail écrit vite
+Signature : Inès
+--- texte ---
+Objet : Budget de la coopérative
+Salut Léa,
+
+Ta réponse sur le budget de la coopérative est parfaite ! Merci d'avoir pris le temps de me la transmettre. Tout est super clair.
+
+Inès
+================================================================================
+mail:daf-2-00022  {'action': 'informer', 'urgence': 'sans_urgence', 'alerte': False}  3 essai(s), 13.95 s, REJETÉ
+  exemples : repondre-relance-urgent, rien-merci ; 52 mots
+  rejet : manque « aucune urgence »; forme changée (la demande devait être une question)
+  rejet : manque « aucune urgence »; ton changé (le calme n'est pas écrit); forme changée (la demande devait être une question)
+  rejet : forme changée (la demande devait être une question)
+--- fiche ---
+Entreprise : Groupe Ardent
+De : Paul Garnier, Directrice commerciale — pour Chloé : un pair (même niveau, autre service)
+À : Julien Lucas, Trésorier (équipe de Chloé) ; Chloé Schmitt est seulement en copie : la demande s'adresse à Julien, pas à Chloé
+Adresse : tutoiement (tu, te, ton, ta, tes) du début à la fin, jamais vous
+Sujet : la procédure de validation des achats
+Contexte : Paul met Chloé en copie pour qu'il ou elle suive le sujet.
+Demande : que Julien mette à jour la procédure de validation des achats.
+Qui agit : c'est Julien qui doit agir ; Paul ne le fait pas lui-même et ne propose pas de le faire.
+Forme : question
+Échéance : aucune, n'en mets pas
+Ton : calme, sans urgence
+À écrire : « aucune urgence »
+Style : pressé, phrases courtes ; commence par situer le dossier ; 50 à 80 mots
+Détail : ajoute une phrase sur un aspect pratique du dossier (organisation, équipe, suite prévue), sans chiffre ni nom, sans nouvelle demande
+Signature : Paul
+--- texte ---
+Objet : Validation des achats : mise à jour de la procédure
+Salut Julien,
+
+Je t'envoie ce mail pour rappeler la procédure de validation des achats. J'aimerais que tu la mettes à jour, surtout concernant les nouveaux critères d'approbation.
+
+Cela nous aidera dans l'organisation du service et nous permettra de gagner en efficacité. Chloé est en copie pour suivre le sujet.
+
+Aucune urgence.
+
+Paul
+================================================================================
+mail:daf-3-00369  {'action': 'relire', 'urgence': 'normal', 'alerte': False}  3 essai(s), 14.57 s, REJETÉ
+  exemples : decider-indirecte, rien-merci ; 70 mots
+  rejet : longueur hors bornes (50 mots, attendu 70-110)
+  rejet : acte changé (aucun mot de l'acte demandé)
+  rejet : tutoiement ou vouvoiement non respecté
+--- fiche ---
+Entreprise : Groupe Ardent
+De : Agathe Schmitt, Comptable — pour Pierre : un membre de son équipe
+À : Pierre Haddad, Directeur administratif et financier (destinataire direct)
+Adresse : tutoiement (tu, te, ton, ta, tes) du début à la fin, jamais vous
+Sujet : la présentation au conseil
+Contexte : La présentation au conseil doit ensuite être diffusé ; Agathe l'a rédigé.
+Demande : que Pierre relise la présentation au conseil.
+Qui agit : c'est Pierre qui doit agir ; Agathe ne le fait pas elle-même et ne propose pas de le faire.
+Forme : directe (impératif ou « merci de… »), sans question
+Échéance : vendredi 20 novembre
+Ton : neutre (aucune formule de délai, ni urgente ni calme)
+À écrire : « vendredi 20 novembre »
+Style : formel et précis ; commence par rappeler votre dernier échange, sans date ; 70 à 110 mots
+Détail : ajoute une phrase sur un aspect pratique du dossier (organisation, équipe, suite prévue), sans chiffre ni nom, sans nouvelle demande
+Fautes : glisse une ou deux petites fautes de frappe, comme un mail écrit vite
+Signature : Agathe
+--- texte ---
+Objet : La présentation au conseil - Vérification finale
+Bonjour Pierre,
+
+Merci pour notre échange récent concernant la prochaine présentation au conseil. J’espère que tout va bien de ton côté.
+
+Je t’envoie le document final pour ton retour. Pourriez-vous le relire d’ici vendredi 20 novembre ?
+
+Cela permettra de finaliser tout en amont et d’éviter tout oubli au dernier moment. La réunion est très importante, il est donc crucial que nous soyons bien préparés.
+
+Merci pour ta collaboration.
+Agathe
+================================================================================
+mail:sante-3-00081  {'action': 'repondre', 'urgence': 'normal', 'alerte': False}  3 essai(s), 12.8 s, REJETÉ
+  exemples : faire-question-vous, faire-urgent-tiers ; 46 mots
+  rejet : longueur hors bornes (40 mots, attendu 70-110)
+  rejet : longueur hors bornes (50 mots, attendu 70-110)
+  rejet : longueur hors bornes (47 mots, attendu 70-110)
+--- fiche ---
+Entreprise : Clinique des Cèdres
+De : Marion Dumont, Famille, Famille Bertin — pour Marc : un client externe
+À : Marc Giraud, Cadre de santé (destinataire direct)
+Adresse : vouvoiement (vous, votre, vos) du début à la fin, jamais tu
+Sujet : le budget du service
+Contexte : Le client suit ce dossier de près.
+Demande : que Marc confirme que le budget du service est toujours d'actualité.
+Qui agit : c'est Marc qui répond ; Marion attend sa réponse.
+Forme : question
+Échéance : aucune, n'en mets pas
+Ton : neutre (aucune formule de délai, ni urgente ni calme)
+Style : direct et efficace ; commence par rappeler votre dernier échange, sans date ; 70 à 110 mots
+Signature : Marion Dumont, Famille Bertin
+--- texte ---
+Objet : Budget du service
+Monsieur Giraud,
+
+Je vous recontacte concernant notre dernière discussion sur le budget du service.
+
+Pourriez-vous confirmer que ce document reste d'actualité ? Nous avons besoin de cette information pour préparer notre plan financier annuel.
+
+Je vous remercie par avance pour votre retour.
+
+Marion Dumont
+Famille Bertin
+================================================================================
+mail:logistique-3-00407  {'action': 'repondre', 'urgence': 'normal', 'alerte': False}  3 essai(s), 14.78 s, ok
+  exemples : faire-question-vous, relire-calme ; 75 mots
+  rejet : date inventée : lundi
+  rejet : chiffres inventés : 15; date inventée : octobre
+--- fiche ---
+Entreprise : TransAlpes
+De : Céline Fournier, Client, Solvia — pour Sonia : un client externe
+À : Sonia Henry, Responsable logistique (destinataire direct)
+Adresse : vouvoiement (vous, votre, vos) du début à la fin, jamais tu
+Sujet : la commande de palettes
+Contexte : C'est une relance : Céline a déjà écrit il y a deux jours et n'a pas eu de réponse.
+Demande : que Sonia donne ses disponibilités demain pour un point concernant la commande de palettes.
+Qui agit : c'est Sonia qui répond ; Céline attend sa réponse.
+Forme : indirecte (ne formule pas la demande : décris ce qui manque ou ce qui bloque)
+Échéance : aucune, n'en mets pas
+Ton : neutre (aucune formule de délai, ni urgente ni calme)
+Style : direct et efficace ; rappelle d'abord le message resté sans réponse ; 70 à 110 mots
+Détail : ajoute une phrase sur un aspect pratique du dossier (organisation, équipe, suite prévue), sans chiffre ni nom, sans nouvelle demande
+Fautes : glisse une ou deux petites fautes de frappe, comme un mail écrit vite
+Signature : Céline Fournier, Solvia
+--- texte ---
+Objet : Commande de palettes
+Bonjour Sonia,
+
+Suite à ma demande de deux jours derniers pour la commande de palettes, je ne vois pas de réponse de votre part.
+
+Votre retour est nécessaire pour que nous puissions organiser la réception et le rangement des nouveaux produits.
+
+L'organisation de cette réception est la responsabilité de l'équipe logistique, et je tiens à ce que nous soyons bien coordonnés. Pouvez-vous me donner vos disponibilités pour ce point demain ?
+
+Merci,
+Céline Fournier
+Solvia
+================================================================================
+mail:ecole-2-00221  {'action': 'informer', 'urgence': 'normal', 'alerte': False}  2 essai(s), 10.6 s, ok
+  exemples : decider-indirecte, repondre-relance-urgent ; 63 mots
+  rejet : demande ajoutée à un mail qui n'en porte pas
+--- fiche ---
+Entreprise : École Jules Ferry
+De : Mehdi Lopez, Animatrice périscolaire — pour Guillaume : un membre de son équipe
+À : Guillaume Perrin, Directeur d'école (destinataire direct)
+Adresse : tutoiement (tu, te, ton, ta, tes) du début à la fin, jamais vous
+Sujet : la commande de manuels
+Contexte : Mehdi fait un point d'étape.
+Information donnée : la commande de manuels est bouclé. Guillaume n'a rien à faire ni à répondre.
+Ton : neutre (aucune formule de délai, ni urgente ni calme)
+Style : chaleureux et un peu bavard ; commence par rappeler votre dernier échange, sans date ; 70 à 110 mots
+Détail : ajoute une phrase sur un aspect pratique du dossier (organisation, équipe, suite prévue), sans chiffre ni nom, sans nouvelle demande
+Signature : Mehdi
+--- texte ---
+Objet : Point d'étape sur la commande des manuels
+Bonjour Guillaume,
+
+J'espère que tu vas bien ! On se parle souvent, donc je te rappelle que la commande des manuels est bouclée. C'est un gros effort de l'équipe qui s'est bien déroulé, et je suis contente du travail accompli.
+
+Cela permet maintenant de me concentrer sur l'organisation des ateliers d'animation, et de préparer l'arrivée des élèves.
+
+À bientôt pour d'autres nouvelles.
+
+Mehdi
+================================================================================
+mail:logistique-3-00194  {'action': 'decider', 'urgence': 'urgent', 'alerte': False}  1 essai(s), 6.03 s, ok
+  exemples : faire-urgent-tiers, repondre-relance-urgent ; 100 mots
+--- fiche ---
+Entreprise : TransAlpes
+De : David Clement, Préparatrice de commandes — pour Sonia : un membre de son équipe
+À : Sonia Henry, Responsable logistique (destinataire direct)
+Adresse : tutoiement (tu, te, ton, ta, tes) du début à la fin, jamais vous
+Sujet : le devis Transports Girard
+Contexte : Le devis Transports Girard est prêt du côté de David, qui attend une décision pour lancer la suite.
+Demande : que Sonia approuve le devis Transports Girard.
+Qui agit : c'est Sonia qui décide ; David attend sa décision et ne décide pas lui-même.
+Forme : directe (impératif ou « merci de… »), sans question
+Échéance : mercredi 11 novembre
+Ton : urgent : dis-le clairement (urgent, au plus vite, ça bloque…)
+À écrire : « mercredi 11 novembre »
+À écrire : « ça bloque »
+Style : chaleureux et un peu bavard ; commence par rappeler votre dernier échange, sans date ; 100 à 150 mots
+Fautes : glisse une ou deux petites fautes de frappe, comme un mail écrit vite
+Signature : David
+--- texte ---
+Objet : Devis Transports Girard
+Salut Sonia,
+
+J'espère que tu vas bien. On s'est déjà parlé du devis, il y a quelques jours, mais j'ai pas encore ton retour. Je t'avais fait celui de Transports Girard, tu te souviens ?
+
+Bref, j'ai fait le devis, j'ai fait le devis, il faut vraiment que tu me donnes ton accord. Ça bloque, alors que fais-tu, que fais-tu, Sonia ? Ça bloque ! J'aurais pu envoyer celui de VexTransport, mais non, je suis restée sur Transports Girard.
+
+Alors, dis-moi, ça te tente ? Au plus vite, je te prie, avant mercredi 11 novembre.
+
+Je pense à toi.
+
+David
+================================================================================
+mail:projet_si-3-00090  {'action': 'decider', 'urgence': 'normal', 'alerte': False}  3 essai(s), 13.85 s, REJETÉ
+  exemples : informer-point, relire-calme ; 72 mots
+  rejet : longueur hors bornes (55 mots, attendu 100-150); ton changé (urgence ou calme écrit alors que le ton est normal)
+  rejet : longueur hors bornes (49 mots, attendu 100-150)
+  rejet : tutoiement ou vouvoiement non respecté
+--- fiche ---
+Entreprise : Numéria Services
+De : Sylvain Dumont, DSI — pour Sophie : son N+1 (supérieur hiérarchique)
+À : Sophie Garnier, Cheffe de projet informatique (destinataire direct)
+Adresse : tutoiement (tu, te, ton, ta, tes) du début à la fin, jamais vous
+Sujet : le devis Prestatech
+Contexte : Le devis Prestatech est prêt du côté de Sylvain, qui attend une décision pour lancer la suite.
+Demande : que Sophie donne son accord pour engager le devis Prestatech.
+Qui agit : c'est Sophie qui décide ; Sylvain attend sa décision et ne décide pas lui-même.
+Forme : indirecte (ne formule pas la demande : décris ce qui manque ou ce qui bloque)
+Échéance : mardi 10 novembre
+Ton : neutre (aucune formule de délai, ni urgente ni calme)
+À écrire : « mardi 10 novembre »
+Style : formel et précis ; commence par une nouvelle du dossier ; 100 à 150 mots
+Signature : Sylvain
+--- texte ---
+Objet : Devis Prestatech : signature requise
+Bonjour Sophie,
+
+Le devis de Prestatech pour notre nouveau projet de gestion des stocks est prêt de mon côté. Je peux donc vous le soumettre pour validation.
+
+Cependant, je constate qu'un point reste flou : la durée d'intervention proposée par Prestatech. Je n'ai pas de référence interne sur laquelle me baser pour confirmer leur estimation.
+
+Pourriez-vous, s'il vous plaît, m'accorder votre retour avant mardi 10 novembre ?
+
+Merci pour votre collaboration,
+Sylvain
+================================================================================
+mail:drh-2-00032  {'action': 'faire', 'urgence': 'normal', 'alerte': False}  3 essai(s), 11.63 s, REJETÉ
+  exemples : repondre-question-vous, preparer-reunion ; 34 mots
+  rejet : longueur hors bornes (29 mots, attendu 50-80)
+  rejet : longueur hors bornes (31 mots, attendu 50-80)
+  rejet : longueur hors bornes (34 mots, attendu 50-80)
+--- fiche ---
+Entreprise : Solvane Industrie
+De : Yasmine Leroy, Partenaire, Organisme Formapro — pour Olivier : un client externe
+À : Olivier Lucas, DRH (destinataire direct)
+Adresse : vouvoiement (vous, votre, vos) du début à la fin, jamais tu
+Sujet : le planning des entretiens annuels
+Contexte : Le client suit ce dossier de près.
+Demande : que Olivier mette à jour le planning des entretiens annuels.
+Qui agit : c'est Olivier qui doit agir ; Yasmine ne le fait pas elle-même et ne propose pas de le faire.
+Forme : question
+Échéance : aucune, n'en mets pas
+Ton : neutre (aucune formule de délai, ni urgente ni calme)
+Style : pressé, phrases courtes ; entre directement dans le sujet après la salutation ; 50 à 80 mots
+Signature : Yasmine Leroy, Organisme Formapro
+--- texte ---
+Objet : Planning entretiens annuels
+Bonjour Monsieur Lucas,
+
+Peut-être que vous pourriez mettre à jour le planning des entretiens annuels ? Il est important que nous ayons toutes les dates et horaires bien fixés.
+
+Cordialement,
+Yasmine Leroy
+Organisme Formapro
+================================================================================
+mail:commercial-1-00025  {'action': 'relire', 'urgence': 'sans_urgence', 'alerte': False}  3 essai(s), 13.75 s, ok
+  exemples : informer-point, faire-urgent-tiers ; 60 mots
+  rejet : acte changé (aucun mot de l'acte demandé)
+  rejet : manque « pas pressé »; ton changé (le calme n'est pas écrit)
+--- fiche ---
+Entreprise : Lumen Équipements
+De : Hélène Picard, Chargée d'affaires — pour David : un membre de son équipe
+À : David Lopez, Responsable commercial (destinataire direct)
+Adresse : tutoiement (tu, te, ton, ta, tes) du début à la fin, jamais vous
+Sujet : le reporting des ventes
+Contexte : Hélène a terminé une version presque finale de le reporting des ventes.
+Demande : que David vérifie les chiffres concernant le reporting des ventes.
+Qui agit : c'est David qui doit agir ; Hélène ne le fait pas elle-même et ne propose pas de le faire.
+Forme : directe (impératif ou « merci de… »), sans question
+Échéance : aucune, n'en mets pas
+Ton : calme, sans urgence
+À écrire : « pas pressé »
+Style : cordial et posé ; commence par une nouvelle du dossier ; 70 à 110 mots
+Signature : Hélène
+--- texte ---
+Objet : Vérification du reporting des ventes
+Bonjour David,
+
+Je viens de terminer la version finale de notre reporting des ventes. Pour être certaines de son exactitude, merci de prendre le temps de vérifier les chiffres concernant les ventes du dernier trimestre. Si tout est correct, je peux l'envoyer à nos clients.
+
+Je sais que tu es occupé, donc pas pressé.
+
+Merci d'avance pour ton aide.
+
+Hélène
+================================================================================
+mail:agence-3-00336  {'action': 'informer', 'urgence': 'normal', 'alerte': False}  3 essai(s), 11.69 s, ok
+  exemples : faire-urgent-tiers, decider-indirecte ; 41 mots
+  rejet : longueur hors bornes (31 mots, attendu 50-80)
+  rejet : longueur hors bornes (35 mots, attendu 50-80)
+--- fiche ---
+Entreprise : Immo Horizon
+De : Bruno Vidal, Responsable d'agence voisine — pour Nora : un pair (même niveau, autre service)
+À : Nora Roger, Responsable d'agence (destinataire direct)
+Adresse : tutoiement (tu, te, ton, ta, tes) du début à la fin, jamais vous
+Sujet : la procédure d'état des lieux
+Contexte : Bruno fait un point d'étape.
+Information donnée : la procédure d'état des lieux est à jour. Nora n'a rien à faire ni à répondre.
+Ton : neutre (aucune formule de délai, ni urgente ni calme)
+Style : pressé, phrases courtes ; commence par une nouvelle du dossier ; 50 à 80 mots
+Signature : Bruno
+--- texte ---
+Objet : État des lieux : tout est bon côté agence
+Bonjour Nora,
+
+Je fais un point d'étape sur l'agence voisine concernant l'état des lieux. Tout est à jour côté nous.
+
+Je confirme que ta partie est correctement traitée.
+
+Je suis satisfait de la rapidité avec laquelle on gère ce dossier.
+
+Bruno
+================================================================================
+mail:chantier-2-00161  {'action': 'faire', 'urgence': 'normal', 'alerte': False}  3 essai(s), 14.8 s, REJETÉ
+  exemples : rien-merci, decider-indirecte ; 64 mots
+  rejet : tutoiement ou vouvoiement non respecté
+  rejet : tutoiement ou vouvoiement non respecté
+  rejet : tutoiement ou vouvoiement non respecté
+--- fiche ---
+Entreprise : Bâtir Ensemble
+De : Nadia Henry, Responsable QSE — pour Sarah : un pair (même niveau, autre service)
+À : Sarah Rousseau, Cheffe de chantier (destinataire direct)
+Adresse : tutoiement (tu, te, ton, ta, tes) du début à la fin, jamais vous
+Sujet : le compte rendu de chantier
+Contexte : Nadia doit répondre à son tour à quelqu'un et a besoin de cet élément.
+Demande : que Sarah dise si le compte rendu de chantier lui convient.
+Qui agit : c'est Sarah qui répond ; Nadia attend sa réponse.
+Forme : question
+Seconde demande, plus courte, à la fin : que Sarah envoie aussi le tableau à jour.
+Échéance : aucune, n'en mets pas
+Ton : neutre (aucune formule de délai, ni urgente ni calme)
+Style : cordial et posé ; commence par situer le dossier ; 70 à 110 mots
+Détail : ajoute une phrase sur un aspect pratique du dossier (organisation, équipe, suite prévue), sans chiffre ni nom, sans nouvelle demande
+Signature : Nadia
+--- texte ---
+Objet : le compte rendu de chantier
+Salut Sarah,
+
+Je reviens sur le compte rendu de la réunion d'hier. Est-ce que tu as le temps de vérifier si tout y est correct et si tu es d'accord avec la synthèse ?
+
+Par ailleurs, pourriez-vous m'envoyer le tableau à jour ? Il va me servir pour la prochaine réunion.
+
+Merci pour ton aide, c'est très utile pour organiser le suivant.
+
+Cordialement,
+Nadia
+================================================================================
+mail:sante-1-00095  {'action': 'faire', 'urgence': 'sans_urgence', 'alerte': False}  3 essai(s), 15.43 s, REJETÉ
+  exemples : repondre-question-vous, preparer-reunion ; 71 mots
+  rejet : manque « vendredi 6 novembre »
+  rejet : manque « vendredi 6 novembre »
+  rejet : manque « vendredi 6 novembre »
+--- fiche ---
+Entreprise : Clinique des Cèdres
+De : Hugo Nicolas, Famille, Famille Bertin — pour Sophie : un client externe
+À : Sophie Moreau, Cadre de santé (destinataire direct)
+Adresse : vouvoiement (vous, votre, vos) du début à la fin, jamais tu
+Sujet : les heures supplémentaires du mois
+Contexte : Le client suit ce dossier de près.
+Demande : que Sophie transmette les heures supplémentaires du mois à Rachid Colin.
+Qui agit : c'est Sophie qui doit agir ; Hugo ne le fait pas lui-même et ne propose pas de le faire.
+Forme : directe (impératif ou « merci de… »), sans question
+Échéance : vendredi 6 novembre
+Ton : calme, sans urgence
+À écrire : « vendredi 6 novembre »
+À écrire : « quand vous aurez un moment »
+Style : pressé, phrases courtes ; commence par situer le dossier ; 50 à 80 mots
+Détail : ajoute une phrase sur un aspect pratique du dossier (organisation, équipe, suite prévue), sans chiffre ni nom, sans nouvelle demande
+Signature : Hugo Nicolas, Famille Bertin
+--- texte ---
+Objet : Suivi des heures supplémentaires – dossier de Rachid
+Bonjour Madame Moreau,
+
+Pour le dossier de Rachid Colin, pourriez-vous bien me transmettre les heures supplémentaires du mois ?
+
+Je sais que vous avez plusieurs tâches en cours, donc quand vous aurez un moment, n'hésitez pas à me les envoyer.
+
+Par ailleurs, j'apprécierais que vous preniez le temps de bien organiser cette information, pour faciliter le suivi par l'équipe.
+
+Merci par avance pour votre aide.
+
+Bien cordialement,
+Hugo Nicolas
+Famille Bertin
+================================================================================
+mail:agence-2-00342  {'action': 'repondre', 'urgence': 'normal', 'alerte': False}  3 essai(s), 13.87 s, ok
+  exemples : faire-question-vous, faire-urgent-tiers ; 45 mots
+  rejet : manque « vendredi 20 novembre »
+  rejet : pas de signature
+--- fiche ---
+Entreprise : Immo Horizon
+De : Manon Chevalier, Client, SCI Les Tilleuls — pour Lucas : un client externe
+À : Lucas Roussel, Responsable d'agence (destinataire direct)
+Adresse : vouvoiement (vous, votre, vos) du début à la fin, jamais tu
+Sujet : le devis Diagnostics Plus
+Contexte : Le client a besoin de cet élément pour avancer de son côté.
+Demande : que Lucas propose une date pour le devis Diagnostics Plus.
+Qui agit : c'est Lucas qui répond ; Manon attend sa réponse.
+Forme : directe (impératif ou « merci de… »), sans question
+Échéance : vendredi 20 novembre
+Ton : neutre (aucune formule de délai, ni urgente ni calme)
+À écrire : « vendredi 20 novembre »
+Style : cordial et posé ; commence par situer le dossier ; 50 à 80 mots
+Signature : Manon Chevalier, SCI Les Tilleuls
+--- texte ---
+Objet : Dossier d'achat - devis Diagnostics Plus
+Monsieur Roussel,
+
+Je souhaiterais obtenir un devis Diagnostics Plus pour votre agence afin de finaliser notre dossier d'achat. Pourriez-vous me proposer une date pour obtenir ce devis d'ici vendredi 20 novembre ?
+
+Je vous remercie par avance pour votre retour.
+
+Manon Chevalier
+SCI Les Tilleuls
+================================================================================
+mail:collectivite-3-00415  {'action': 'informer', 'urgence': 'normal', 'alerte': False}  3 essai(s), 12.87 s, REJETÉ
+  exemples : decider-indirecte, informer-point ; 43 mots
+  rejet : longueur hors bornes (50 mots, attendu 70-110)
+  rejet : longueur hors bornes (43 mots, attendu 70-110); ton changé (urgence ou calme écrit alors que le ton est normal)
+  rejet : longueur hors bornes (47 mots, attendu 70-110); tutoiement ou vouvoiement non respecté
+--- fiche ---
+Entreprise : Ville de Montclar
+De : Fatou Girard, Directeur des finances — pour Cédric : un pair (même niveau, autre service)
+À : Pauline Lucas, Technicien bâtiments (équipe de Cédric) ; Cédric Roger est seulement en copie : la demande s'adresse à Pauline, pas à Cédric
+Adresse : tutoiement (tu, te, ton, ta, tes) du début à la fin, jamais vous
+Sujet : le planning de déneigement
+Contexte : Fatou met Cédric en copie pour qu'il ou elle suive le sujet.
+Demande : que Pauline envoie le planning de déneigement à Fatou.
+Qui agit : c'est Pauline qui doit agir ; Fatou ne le fait pas elle-même et ne propose pas de le faire.
+Forme : directe (impératif ou « merci de… »), sans question
+Échéance : aucune, n'en mets pas
+Ton : neutre (aucune formule de délai, ni urgente ni calme)
+Style : direct et efficace ; commence par situer le dossier ; 70 à 110 mots
+Détail : ajoute une phrase sur un aspect pratique du dossier (organisation, équipe, suite prévue), sans chiffre ni nom, sans nouvelle demande
+Signature : Fatou
+--- texte ---
+Objet : Planning de déneigement : merci de l'envoyer
+Bonjour Pauline,
+
+Je suis en train d'organiser le planning de déneigement pour l'hiver prochain. Pourriez-vous me le faire parvenir ?
+
+L'équipe de Cédric et toi devez bien sûr y collaborer étroitement. Merci de bien vouloir le préparer avec l'ensemble des services concernés.
+
+Fatou
+================================================================================
+mail:commercial-3-00282  {'action': 'preparer', 'urgence': 'normal', 'alerte': False}  3 essai(s), 13.93 s, ok
+  exemples : informer-point, decider-indirecte ; 58 mots
+  rejet : chiffres inventés : 10
+  rejet : longueur hors bornes (49 mots, attendu 70-110)
+--- fiche ---
+Entreprise : Lumen Équipements
+De : Sonia Lucas, Directeur commercial — pour Manon : son N+1 (supérieur hiérarchique)
+À : Manon Rousseau, Responsable commerciale (destinataire direct)
+Adresse : tutoiement (tu, te, ton, ta, tes) du début à la fin, jamais vous
+Sujet : la proposition commerciale Vernon
+Contexte : La réunion du lundi 16 novembre réunit l'équipe et la direction.
+Demande : que Manon présente la proposition commerciale Vernon à la réunion du lundi 16 novembre (dix minutes).
+Qui agit : c'est Manon qui doit agir ; Sonia ne le fait pas elle-même et ne propose pas de le faire.
+Forme : directe (impératif ou « merci de… »), sans question
+Échéance : aucune, n'en mets pas
+Ton : neutre (aucune formule de délai, ni urgente ni calme)
+Style : formel et précis ; commence par situer le dossier ; 70 à 110 mots
+Détail : ajoute une phrase sur un aspect pratique du dossier (organisation, équipe, suite prévue), sans chiffre ni nom, sans nouvelle demande
+Fautes : glisse une ou deux petites fautes de frappe, comme un mail écrit vite
+Signature : Sonia
+--- texte ---
+Objet : Présentation proposition Vernon
+Bonjour Manon,
+
+Je te remercie de bien vouloir présenter la proposition commerciale Vernon aux réunions du comité lundi prochain. Pour te faciliter la tâche, rappelle-toi des échanges d'été avec le client. Tu connais bien l'organigramme du site, c'est un atout.
+
+Merci d'y consacrer environ dix minutes. Le reste de la réunion sera consacré aux prévisions d'année prochaine.
+
+Sonia
+================================================================================
+qwen2.5:7b-instruct-q4_K_M : 11/20 passent les contrôles (4 du premier coup), 4.6 s par appel, 11.6 s par texte
