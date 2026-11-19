@@ -25,6 +25,10 @@ dans la même forme que `data/` (`items/`, `scenario/`, `manifest.json`), lisibl
 s'il passe les contrôles d'aujourd'hui, rejoués sur les morceaux enregistrés, et si le mail
 rassemblé est octet pour octet celui du PC GPU ; sinon, celui des gabarits. Un fichier
 partiel suffit : les faits pas encore écrits gardent les gabarits (`absent`).
+
+Comparer deux consignes sur les mêmes faits (les N premiers du plan, ordre fixe) :
+
+    uv run python -m packages.collect.trainset.llm_corpus --comparer mail-v7 mail-v8
 """
 
 from __future__ import annotations
@@ -32,6 +36,7 @@ from __future__ import annotations
 import hashlib
 import json
 import random
+import re
 import sys
 import time
 import urllib.error
@@ -355,6 +360,69 @@ def assemble_items(texts: Path | None = None, out: Path | None = None, seed: int
     return manifest
 
 
+# --- comparer deux consignes -------------------------------------------------------------------
+
+
+def _reason_kind(reason: str) -> str:
+    """« demande : ton changé (« au plus vite » hors du ton) » → « demande : ton changé »."""
+    return re.sub(r"\s*\(.*$", "", re.sub(r"« [^»]*»", "«…»", reason)).strip()
+
+
+def compare(old: Path, new: Path, seed: int = 0) -> str:
+    """Deux consignes sur les mêmes faits : contrôles passés, essais, temps, par acte.
+
+    L'ordre du plan est fixe : les N premiers textes de chaque consigne portent sur les mêmes
+    faits, la comparaison est appariée. L'ancienne consigne est aussi rejugée avec les
+    contrôles d'aujourd'hui (fiche d'aujourd'hui, morceaux du dernier essai), pour séparer ce
+    que gagne la consigne de ce que gagnent les contrôles.
+    """
+    rows_old, _ = read_texts(old / TEXTS)
+    rows_new, _ = read_texts(new / TEXTS)
+    common = sorted(set(rows_old) & set(rows_new))
+    if not common:
+        return f"Aucun fait écrit à la fois dans {old.name} et {new.name}."
+    facts = {f.item_id: (p, f) for p, f in plan(seed)}
+    client = L.Offline(L.MODEL, "")
+    writers: dict[str, L.LLMWriter] = {}
+
+    def rejudged(row: dict) -> bool:
+        p, f = facts[row["item_id"]]
+        w = writers.setdefault(p.key, L.LLMWriter(p, seed, client))
+        return not L.judge(f, w.sheet(f), row["llm"]["pieces"])[1]
+
+    old_drafts = [_draft_of(rows_old[i]) for i in common]
+    new_drafts = [_draft_of(rows_new[i]) for i in common]
+    variants = [
+        (f"{old.name}", [d.ok for d in old_drafts], old_drafts),
+        (f"{old.name} rejugée", [rejudged(rows_old[i]) for i in common], None),
+        (f"{new.name}", [d.ok for d in new_drafts], new_drafts),
+    ]
+    n = len(common)
+    lines = [f"{n} faits écrits par les deux consignes (comparaison appariée)."]
+    for label, oks, drafts in variants:
+        line = f"{label:<22} {sum(oks):5d}/{n} passent ({sum(oks) / n:.1%})"
+        if drafts:
+            first = sum(d.ok and d.tries == 1 for d in drafts) / n
+            calls = sum(d.tries for d in drafts) / n
+            seconds = sum(d.seconds for d in drafts) / n
+            line += f" · {first:.0%} du 1er coup · {calls:.2f} appels · {seconds:.1f} s par texte"
+        lines.append(line)
+    acts = Counter(facts[i][1].act for i in common)
+    lines.append("Par acte : " + " | ".join(label for label, _, _ in variants))
+    for act, total in acts.most_common():
+        rates = []
+        for _, oks, _ in variants:
+            ok = sum(o for o, i in zip(oks, common, strict=True) if facts[i][1].act == act)
+            rates.append(f"{ok / total:.0%}")
+        lines.append(f"  {act:<9} ({total:4d})  " + " | ".join(rates))
+    reasons = Counter(
+        kind for d in new_drafts if not d.ok for kind in {_reason_kind(r) for r in d.rejects[-1]}
+    )
+    lines.append(f"Raisons des rejets de {new.name} (dernier essai) :")
+    lines += [f"  {count:4d}  {kind}" for kind, count in reasons.most_common(8)]
+    return "\n".join(lines)
+
+
 def _assemble_main(args: list[str]) -> int:
     texts = Path(args[args.index("--textes") + 1]) if "--textes" in args else None
     try:
@@ -382,6 +450,10 @@ def main(argv: list[str]) -> int:
     args = list(argv)
     if "--assembler" in args:
         return _assemble_main(args)
+    if "--comparer" in args:
+        i = args.index("--comparer")
+        print(compare(OUT / args[i + 1], OUT / args[i + 2]))
+        return 0
     limit = None
     if "--limite" in args:
         i = args.index("--limite")

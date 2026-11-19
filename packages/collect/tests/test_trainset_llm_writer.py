@@ -335,6 +335,59 @@ def test_un_contexte_qui_repete_la_demande_est_retire(persona):
     assert "contexte" not in kept and "contexte : répète la demande" in dropped
 
 
+# --- v8 : leçons du corpus v7 (919 textes) -----------------------------------------------------
+
+
+def test_un_mail_sans_demande_voit_d_abord_un_exemple_sans_demande(persona):
+    """v7 : la demande restait vide pour 60 % des « S'informer », qui ne voyaient que des
+    exemples de mails qui demandent quelque chose."""
+    by_id = {e["id"]: e for e in L.EXAMPLES}
+    for act, other in (("informer", "rien"), ("rien", "informer")):
+        sh = L.LLMWriter(persona, client=FakeOllama([])).sheet(_mail(persona, act))
+        assert by_id[sh.examples[0]]["act"] == other
+        assert L.NO_REQUEST_PIECE[act] in sh.text
+    sh = L.LLMWriter(persona, client=FakeOllama([])).sheet(_mail(persona, "faire"))
+    assert L.NO_REQUEST_PIECE["informer"] not in sh.text
+
+
+def test_la_reecriture_rappelle_toujours_le_tu_ou_le_vous():
+    """v7 : 29 rejets sur 113 n'avaient plus que du vous dans un mail tutoyé."""
+    assert "jamais vous" in L.repair(["demande : vide"], tu=True)
+    assert "jamais tu" in L.repair(["demande : vide"], tu=False)
+
+
+@pytest.mark.parametrize(
+    ("act", "tone", "kind", "text", "ok"),
+    [
+        # Un remerciement n'est pas une demande ; « merci de m'envoyer » en est une.
+        ("rien", "normal", "demande", "Merci de m'avoir envoyé la confirmation.", True),
+        ("rien", "normal", "demande", "Merci de m'envoyer la confirmation.", False),
+        # Les mots de l'acte Faire et Répondre vus dans le corpus v7.
+        ("faire", "normal", "demande", "Merci de contacter le client à ce sujet.", True),
+        ("faire", "normal", "demande", "Mets à jour le tableau de suivi.", True),
+        ("repondre", "normal", "demande", "Peux-tu me faire savoir si le planning tient.", True),
+        # Une formule du même ton dans la demande est permise ; d'un autre ton, non.
+        ("decider", "urgent", "demande", "Merci de le valider dès que possible.", True),
+        ("decider", "normal", "demande", "Merci de le valider dès que possible.", False),
+        ("decider", "sans_urgence", "demande", "Merci de le valider quand tu as un moment.", True),
+        ("decider", "urgent", "demande", "Merci de le valider quand tu as un moment.", False),
+        # Un objet sans mots-outils reste du français.
+        ("decider", "normal", "objet", "Budget formation : choix attendu entre versions", True),
+    ],
+)
+def test_les_controles_corriges_en_v8(persona, act, tone, kind, text, ok):
+    fact = _mail(persona, act, tone=tone)
+    sh = L.LLMWriter(persona, client=FakeOllama([])).sheet(fact)
+    reasons = L.check_piece(kind, text, fact, sh)
+    assert (reasons == []) == ok, reasons
+
+
+def test_une_urgence_niee_se_lit_calme():
+    """v7 : « ce n'est pas une demande urgente » était lu comme urgent."""
+    text = L._norm("Ce n'est pas une demande urgente.")
+    assert L._CALM.search(text) and not L._URGENT.search(L._CALM.sub(" ", text))
+
+
 def test_la_reecriture_guidee_renvoie_les_morceaux_refuses_et_les_mots_fautifs(persona):
     """v6 : au lieu d'un nouveau tirage, le modèle corrige ses propres morceaux."""
     fact = _deadline_fact(persona)
@@ -673,6 +726,19 @@ def test_l_assemblage_refuse_un_fait_inconnu_du_simulateur(corpus, tmp_path):
     with pytest.raises(ValueError, match="inconnu du simulateur"):
         llm_corpus.assemble_items(path, tmp_path)
     assert not (tmp_path / "items").exists()
+
+
+def test_la_comparaison_de_deux_consignes_est_appariee(corpus, tmp_path):
+    """Seuls les faits écrits par les deux consignes sont comparés ; l'ancienne est aussi
+    rejugée avec les contrôles d'aujourd'hui."""
+    out, rows, _ = corpus
+    _write_rows(tmp_path / "ancienne" / "textes.jsonl", rows[:25])
+    result = llm_corpus.compare(tmp_path / "ancienne", out)
+    assert result.startswith("25 faits écrits par les deux consignes")
+    assert "ancienne rejugée" in result and "Par acte" in result
+    empty = tmp_path / "vide"
+    _write_rows(empty / "textes.jsonl", [])
+    assert llm_corpus.compare(empty, out).startswith("Aucun fait")
 
 
 def test_le_client_hors_ligne_n_appelle_jamais_le_llm(corpus):
