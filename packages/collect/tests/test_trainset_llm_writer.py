@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import json
+import random
+import re
 from collections import Counter
 from datetime import date
+from pathlib import Path
 
 import pytest
 
-from packages.collect.trainset import llm_corpus, sonde
+from contracts.models import Item
+from packages.collect.trainset import build, llm_corpus, load, sonde
 from packages.collect.trainset import llm_writer as L
 from packages.collect.trainset.facts import Fact
 from packages.collect.trainset.world import all_personas, at
@@ -457,3 +461,223 @@ def test_le_corpus_reprend_la_ou_il_s_est_arrete(tmp_path):
     assert ids == {f.item_id for _, f in llm_corpus.plan()[:5]}
     rows = (tmp_path / "seances.jsonl").read_text("utf-8").splitlines()
     assert len(rows) == 2 and json.loads(rows[0])["consigne"] == L.PROMPT_VERSION
+
+
+# --- l'assemblage du corpus (sans GPU) ---------------------------------------------------------
+
+_ACT_OF = (  # l'acte d'une fiche, retrouvé dans sa ligne « Demande »
+    ("decider", r"valide|signe|approuve|donne son accord|choisisse"),
+    ("faire", r"envoie|transmette|appelle|mette à jour|dépose"),
+    ("repondre", r"donne son avis|dise si|confirme|donne ses disponibilités|propose une date"),
+    ("relire", r"relise|vérifie"),
+    ("preparer", r"vienne à la réunion|présente|prépare ses remarques"),
+)
+_VERB = {
+    "decider": "valider {o}",
+    "faire": "mettre à jour {o}",
+    "repondre": "donner un avis sur {o}",
+    "relire": "relire {o}",
+    "preparer": "préparer {o} pour la réunion",
+}
+
+
+class FromSheet(FakeOllama):
+    """Écrit des morceaux sobres à partir de la fiche seule, comme un LLM docile : assez pour
+    fabriquer un `textes.jsonl` dont la plupart des textes passent les contrôles."""
+
+    def __init__(self) -> None:
+        super().__init__([])
+
+    def chat(self, conversation: list[dict], seed: int) -> dict:
+        self.seeds.append(seed)
+        sheet = [m["content"] for m in conversation if m["role"] == "user"][L.N_EXAMPLES]
+
+        def line(label: str) -> str:
+            found = re.search(rf"^{label} : (.*)$", sheet, flags=re.MULTILINE)
+            return found.group(1) if found else ""
+
+        tu = line("Adresse").startswith("tutoiement")
+        o = line("Sujet")
+        mark = re.search(r"« (.*) »", line("À écrire dans la demande"))
+        when = f" d'ici {mark.group(1)}" if mark else ""
+        tone = re.search(r"« (.*) »", line("À écrire dans le ton"))
+        act = next((a for a, verbs in _ACT_OF if re.search(verbs, line("Demande"))), None)
+        if "Information donnée" in sheet:
+            demande = f"{'Je te' if tu else 'Je vous'} confirme que le point sur {o} est fait."
+        elif act is None:
+            demande = f"Merci pour {o}, bien reçu de mon côté."
+        else:
+            verb = _VERB[act].format(o=o)
+            form = line("Forme")
+            if form.startswith("question"):
+                demande = f"{'Peux-tu' if tu else 'Pouvez-vous'} {verb}{when} ?"
+            elif form.startswith("directe"):
+                demande = f"Merci de {verb}{when}."
+            else:
+                demande = f"Il reste à {verb}{when}."
+        return {
+            "objet": "Point sur " + re.sub(r"^(le |la |les |l')", "", o),
+            "contexte": "",
+            "demande": demande,
+            "ton": f"Pour être clair : {tone.group(1)}." if tone else "",
+            "conclusion": "",
+        }
+
+
+N_TEXTS = 40
+
+
+def _copy(rows: list[dict]) -> list[dict]:
+    return json.loads(json.dumps(rows))
+
+
+def _write_rows(path: Path, rows: list[dict]) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    text = "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows)
+    path.write_text(text, encoding="utf-8", newline="\n")
+    return path
+
+
+def _assembled(out: Path, row: dict) -> tuple[Item, list[str]]:
+    """L'Item assemblé d'un fait et ses marques d'écrivain (scénario)."""
+    item = next(i for i in load.load_items(row["persona"], out) if i.item_id == row["item_id"])
+    scenario = load.load_scenario(row["persona"], out)
+    marks = next(r["templates"] for r in scenario if r["item_id"] == row["item_id"])
+    return item, marks
+
+
+@pytest.fixture(scope="module")
+def corpus(tmp_path_factory):
+    """Un `textes.jsonl` factice (les 40 premiers faits du plan) et son assemblage."""
+    out = tmp_path_factory.mktemp("mail-v7")
+    llm_corpus.run(out=out, limit=N_TEXTS, client=FromSheet(), log=lambda _: None)
+    rows = [json.loads(x) for x in (out / "textes.jsonl").read_text("utf-8").splitlines()]
+    return out, rows, llm_corpus.assemble_items(out=out)
+
+
+@pytest.fixture(scope="module")
+def templates():
+    """Le corpus des gabarits, par persona : la référence de l'assemblage."""
+    return {p.key: build.build_persona(p) for p in all_personas()}
+
+
+def test_l_assemblage_ecrit_tout_le_corpus_en_item_valides(corpus, templates):
+    """100 % des lignes sont des Item du contrat A : mêmes éléments, même ordre, mêmes
+    étiquettes que le corpus des gabarits ; seuls le texte et la marque d'écrivain changent."""
+    out, _, manifest = corpus
+    assert set(load.personas(data=out)) == set(templates)
+    for key, (items, scenario) in templates.items():
+        assembled = load.load_items(key, out)  # valide chaque ligne (contrat A)
+        assert [i.item_id for i in assembled] == [i.item_id for i in items]
+        same = [{k: v for k, v in r.items() if k != "templates"} for r in scenario]
+        got = [
+            {k: v for k, v in r.items() if k != "templates"} for r in load.load_scenario(key, out)
+        ]
+        assert got == same
+    c = manifest["llm"]
+    assert c["ecrits"] == N_TEXTS and c["a_reecrire"] == len(llm_corpus.plan())
+    assert c["retenus"] + c["rejetes"] + c["recontroles"] == N_TEXTS
+    assert not c["complet"] and c["absents"] == c["a_reecrire"] - N_TEXTS
+    by_split = manifest["llm_par_split"]
+    assert by_split["train"]["ecrits"] + by_split["tgen"]["ecrits"] == N_TEXTS
+
+
+def test_un_texte_retenu_donne_l_objet_et_l_extrait_du_llm(corpus):
+    out, rows, manifest = corpus
+    kept = [r for r in rows if r["llm"]["ok"]]
+    assert len(kept) >= N_TEXTS // 2  # le faux client est docile
+    assert manifest["llm"]["retenus"] == len(kept) and manifest["llm"]["recontroles"] == 0
+    for row in kept:
+        item, marks = _assembled(out, row)
+        assert item.snippet == row["extrait"] and item.content_text is None
+        assert item.title.endswith(row["llm"]["objet"])  # « Re: » ajouté pour une relance
+        assert marks == [f"llm:{L.PROMPT_VERSION}"]
+
+
+def test_un_texte_absent_garde_exactement_les_gabarits(corpus, templates):
+    out, rows, _ = corpus
+    written = {r["item_id"] for r in rows}
+    key = next(iter(templates))
+    items, _ = templates[key]
+    by_id = {i.item_id: i for i in load.load_items(key, out)}
+    marks = {r["item_id"]: r["templates"] for r in load.load_scenario(key, out)}
+    absent = [i for i in items if f"llm:{L.PROMPT_VERSION}:absent" in marks[i.item_id]]
+    assert absent and not {i.item_id for i in absent} & written
+    assert all(by_id[i.item_id] == i for i in absent)
+
+
+def test_un_texte_rejete_ou_refuse_au_recontrole_garde_les_gabarits(corpus, templates, tmp_path):
+    """Rejeté au moment de l'écrire, ou accepté alors mais refusé par les contrôles
+    d'aujourd'hui (morceau fautif, mail rassemblé différent) : texte des gabarits."""
+    _, rows, _ = corpus
+    rows = _copy(rows)
+    rejected, faulty, altered = [r for r in rows if r["llm"]["ok"]][:3]
+    rejected["llm"]["ok"] = False
+    faulty["llm"]["pieces"]["demande"] = "C'est urgent."
+    altered["llm"]["corps"] += "\nPS : un mot ajouté après coup."
+    out = tmp_path / "mail-v7"
+    manifest = llm_corpus.assemble_items(_write_rows(out / "textes.jsonl", rows), out)
+    assert manifest["llm"]["recontroles"] == 2
+    detail = {d["item_id"]: d["raisons"] for d in manifest["recontroles_detail"]}
+    assert detail[altered["item_id"]] == ["mail rassemblé différent de celui enregistré"]
+    assert all(r.startswith("demande : ") for r in detail[faulty["item_id"]])
+    for row, status in ((rejected, "rejete"), (faulty, "recontrole"), (altered, "recontrole")):
+        items, _ = templates[row["persona"]]
+        item, marks = _assembled(out, row)
+        assert item == next(i for i in items if i.item_id == row["item_id"])
+        assert marks[-1] == f"llm:{L.PROMPT_VERSION}:{status}"
+
+
+def test_l_assemblage_est_deterministe(corpus, tmp_path):
+    """Mêmes textes, mêmes octets, quel que soit l'ordre des lignes ; une ligne coupée par
+    un arrêt brutal (au milieu du fichier après une relance) est ignorée."""
+    _, rows, first = corpus
+    shuffled = list(rows)
+    random.Random(1).shuffle(shuffled)
+    out = tmp_path / "mail-v7"
+    path = _write_rows(out / "textes.jsonl", shuffled)
+    text = path.read_text("utf-8")
+    cut = text.index("\n", len(text) // 2) + 1
+    path.write_text(text[:cut] + '{"item_id": "mail:coupé\n' + text[cut:], "utf-8")
+    second = llm_corpus.assemble_items(path, out)
+    assert second["personas"] == first["personas"]  # empreintes des items et du scénario
+    assert second["llm"] == first["llm"] and second["textes"]["illisibles"] == 1
+
+
+def _first_llm(rows: list[dict], **change) -> list[dict]:
+    return [rows[0] | {"llm": rows[0]["llm"] | change}, *rows[1:]]
+
+
+@pytest.mark.parametrize(
+    ("change", "message"),
+    [
+        (lambda rows: [*rows, rows[0]], "deux fois"),
+        (lambda rows: _first_llm(rows, prompt_version="mail-v6"), "consignes"),
+        (lambda rows: _first_llm(rows, digest="sha256-autre"), "plusieurs modèles"),
+        (lambda rows: [rows[0] | {"llm": {"ok": True}}, *rows[1:]], "illisible"),
+        (lambda rows: [], "aucun texte"),
+    ],
+)
+def test_l_assemblage_refuse_un_corpus_douteux(corpus, tmp_path, change, message):
+    _, rows, _ = corpus
+    path = _write_rows(tmp_path / "textes.jsonl", change(_copy(rows)))
+    with pytest.raises(ValueError, match=message):
+        llm_corpus.assemble_items(path, tmp_path)
+    assert not (tmp_path / "manifest.json").exists()  # rien d'écrit à moitié
+
+
+def test_l_assemblage_refuse_un_fait_inconnu_du_simulateur(corpus, tmp_path):
+    _, rows, _ = corpus
+    stranger = _copy(rows[:1])[0] | {"item_id": "mail:inconnu-1"}
+    path = _write_rows(tmp_path / "textes.jsonl", [*rows, stranger])
+    with pytest.raises(ValueError, match="inconnu du simulateur"):
+        llm_corpus.assemble_items(path, tmp_path)
+    assert not (tmp_path / "items").exists()
+
+
+def test_le_client_hors_ligne_n_appelle_jamais_le_llm(corpus):
+    client = L.Offline(L.MODEL, "sha256-test")
+    with pytest.raises(RuntimeError, match="hors ligne"):
+        client.chat([], seed=0)
+    _, _, manifest = corpus  # l'assemblage a tourné avec ce client : aucun appel
+    assert manifest["modele"] == L.MODEL and manifest["empreinte"] == "sha256-test"

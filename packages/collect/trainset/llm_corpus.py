@@ -15,31 +15,47 @@ T-gen), dans un ordre mélangé à graine fixe : à tout moment, la partie déj�
   arrêt propre ; relancer suffit.
 - `--limite N` : s'arrête après N textes (mesure de vitesse). `--modele` : un autre modèle.
 
-L'assemblage en `Item` du contrat A (texte du LLM s'il passe les contrôles, sinon celui des
-gabarits) se fait ensuite, sans GPU, à partir de ce fichier.
+L'assemblage, sans GPU ni appel au LLM (client hors ligne) :
+
+    uv run python -m packages.collect.trainset.llm_corpus --assembler [--textes <fichier>]
+
+rejoue le simulateur et écrit, à côté de `textes.jsonl`, le corpus complet des 40 personas
+dans la même forme que `data/` (`items/`, `scenario/`, `manifest.json`), lisible par
+`load.py` avec `data=<dossier>`. Pour chaque mail réécrit, le texte du LLM n'est retenu que
+s'il passe les contrôles d'aujourd'hui, rejoués sur les morceaux enregistrés, et si le mail
+rassemblé est octet pour octet celui du PC GPU ; sinon, celui des gabarits. Un fichier
+partiel suffit : les faits pas encore écrits gardent les gabarits (`absent`).
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import random
 import sys
 import time
 import urllib.error
+from collections import Counter
 from collections.abc import Callable
-from dataclasses import asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
 
+from contracts.models import Item
 from packages.collect.trainset import llm_writer as L
+from packages.collect.trainset.build import _jsonl, _sha, build_persona, distribution
 from packages.collect.trainset.cases import Sim
 from packages.collect.trainset.facts import Fact
 from packages.collect.trainset.world import Persona, all_personas
 
 OUT = Path(__file__).with_name("data") / "llm"
+TEXTS = "textes.jsonl"
 PROGRESS_EVERY = 10
 NETWORK_RETRIES = 3
 NETWORK_PAUSE = 30.0  # secondes entre deux tentatives quand Ollama ne répond pas
+# Ce qui arrive à un mail réécrit à l'assemblage : texte du LLM retenu, rejeté par les
+# contrôles au moment de l'écrire, refusé par les contrôles d'aujourd'hui, pas encore écrit.
+STATUSES = ("retenu", "rejete", "recontrole", "absent")
 
 
 def folder() -> Path:
@@ -99,7 +115,7 @@ def run(
     """Écrit les faits restants (au plus `limit`) et rend le bilan de la séance."""
     out = out or folder()
     out.mkdir(parents=True, exist_ok=True)
-    path = out / "textes.jsonl"
+    path = out / TEXTS
     client = client or L.Ollama()
     todo = plan(seed)
     done = done_ids(path)
@@ -152,9 +168,220 @@ def run(
     return session | {"ecrits": total_done, "total": len(todo)}
 
 
+# --- l'assemblage (sans GPU) -------------------------------------------------------------------
+
+
+def read_texts(path: Path) -> tuple[dict[str, dict], int]:
+    """Les lignes de `textes.jsonl` par fait, et le nombre de lignes illisibles.
+
+    Une ligne coupée par un arrêt brutal est ignorée (comme `done_ids`) : le fait sera
+    réécrit à la relance. Un fait écrit deux fois est une erreur : on ne choisit pas.
+    """
+    rows: dict[str, dict] = {}
+    unreadable = 0
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+            item_id = row["item_id"]
+        except (json.JSONDecodeError, KeyError, TypeError):
+            unreadable += 1
+            continue
+        if item_id in rows:
+            raise ValueError(f"fait écrit deux fois dans {path.name} : {item_id}")
+        rows[item_id] = row
+    return rows, unreadable
+
+
+def _draft_of(row: dict) -> L.Draft:
+    try:
+        return L.Draft(**row["llm"])
+    except (KeyError, TypeError) as exc:  # champs ajoutés ou retirés depuis la rédaction
+        raise ValueError(f"brouillon illisible pour {row['item_id']} : {exc}") from exc
+
+
+def _identity(rows: dict[str, dict]) -> tuple[str, str]:
+    """Le modèle et son empreinte : une seule consigne et un seul modèle par corpus."""
+    drafts = [_draft_of(r) for r in rows.values()]
+    versions = {d.prompt_version for d in drafts}
+    if versions != {L.PROMPT_VERSION}:
+        raise ValueError(
+            f"consignes {sorted(versions)} : ce code assemble la consigne {L.PROMPT_VERSION} "
+            "(la fiche et les contrôles en font partie)"
+        )
+    models = {(d.model, d.digest) for d in drafts}
+    if len(models) != 1:
+        raise ValueError(f"plusieurs modèles dans le même corpus : {sorted(models)}")
+    return models.pop()
+
+
+def recheck(writer: L.LLMWriter, fact: Fact, d: L.Draft, extrait: str | None = None) -> list[str]:
+    """Les raisons de ne plus retenir un texte accepté au moment de l'écrire.
+
+    Les contrôles d'aujourd'hui sont rejoués sur les morceaux enregistrés (ils peuvent avoir
+    été durcis depuis), et le mail rassemblé doit être celui du PC GPU : même fiche, même
+    assemblage, même extrait du connecteur.
+    """
+    sh = writer.sheet(fact)
+    kept, reasons, _ = L.judge(fact, sh, d.pieces)
+    if reasons:
+        return reasons
+    if L.assemble(sh, kept) != (d.objet, d.corps):
+        return ["mail rassemblé différent de celui enregistré"]
+    if extrait is not None and L.extract(d.corps) != extrait:
+        return ["extrait différent de celui enregistré"]
+    return []
+
+
+@dataclass
+class Tally:
+    """Le compte de l'assemblage : statut de chaque mail réécrit, faits rencontrés."""
+
+    statuses: Counter = field(default_factory=Counter)  # (persona, statut) → nombre
+    seen: set[str] = field(default_factory=set)
+    rechecked: list[dict] = field(default_factory=list)
+
+
+def _choose(
+    writer: L.LLMWriter, rows: dict[str, dict], tally: Tally, fact: Fact
+) -> tuple[Item | None, list[str]]:
+    """L'Item d'un fait : texte du LLM retenu, sinon gabarits, avec le statut en marque."""
+    if not L.rewritable(fact):
+        return writer.choose(fact, None)
+    row = rows.get(fact.item_id)
+    d = None
+    if row is None:
+        status = "absent"
+    else:
+        tally.seen.add(fact.item_id)
+        if row.get("persona") != writer.p.key:
+            raise ValueError(f"{fact.item_id} : persona {row.get('persona')} ≠ {writer.p.key}")
+        d = _draft_of(row)
+        reasons = recheck(writer, fact, d, row.get("extrait")) if d.ok else []
+        if reasons:
+            tally.rechecked.append({"item_id": fact.item_id, "raisons": reasons})
+        status = "rejete" if not d.ok else "recontrole" if reasons else "retenu"
+    tally.statuses[writer.p.key, status] += 1
+    if status in ("retenu", "rejete"):
+        return writer.choose(fact, d)
+    item, used = writer.choose(fact, None)
+    return item, used + [f"llm:{L.PROMPT_VERSION}:{status}"]
+
+
+def _counts(statuses: Counter, keys: set[str] | None = None) -> dict:
+    c = Counter()
+    for (key, status), n in statuses.items():
+        if keys is None or key in keys:
+            c[status] += n
+    written = c["retenu"] + c["rejete"] + c["recontrole"]
+    return {
+        "a_reecrire": written + c["absent"],
+        "ecrits": written,
+        **{f"{s}s": c[s] for s in STATUSES},
+        "taux_controles": round(c["retenu"] / written, 4) if written else None,
+    }
+
+
+def assemble_items(texts: Path | None = None, out: Path | None = None, seed: int = 0) -> dict:
+    """Écrit le corpus LLM en `Item` (`items/`, `scenario/`, `manifest.json`) et rend le
+    manifeste. Tout est calculé avant d'écrire : un refus ne laisse pas un corpus à moitié."""
+    out = out or folder()
+    texts = texts or out / TEXTS
+    rows, unreadable = read_texts(texts)
+    if not rows:
+        raise ValueError(f"aucun texte lisible dans {texts}")
+    model, digest = _identity(rows)
+    client = L.Offline(model, digest)
+    tally = Tally()
+    rendered: dict[str, tuple[Persona, str, str, list[dict]]] = {}
+    for persona in all_personas(seed):
+        writer = L.LLMWriter(persona, seed, client)
+
+        def write(fact: Fact, writer: L.LLMWriter = writer) -> tuple[Item | None, list[str]]:
+            return _choose(writer, rows, tally, fact)
+
+        items, scenario = build_persona(persona, seed, write)
+        items_text = _jsonl([i.model_dump(mode="json") for i in items])
+        rendered[persona.key] = (persona, items_text, _jsonl(scenario), scenario)
+    unknown = sorted(set(rows) - tally.seen)
+    if unknown:
+        raise ValueError(
+            f"{len(unknown)} texte(s) d'un fait inconnu du simulateur (le monde a changé ?) : "
+            + ", ".join(unknown[:5])
+        )
+    manifest: dict = {
+        "seed": seed,
+        "consigne": L.PROMPT_VERSION,
+        "modele": model,
+        "empreinte": digest,
+        "textes": {
+            "sha256": hashlib.sha256(texts.read_bytes()).hexdigest(),
+            "lignes": len(rows),
+            "illisibles": unreadable,
+        },
+    }
+    splits: dict[str, set[str]] = {}
+    for key, (persona, *_) in rendered.items():
+        splits.setdefault(persona.split, set()).add(key)
+    llm = _counts(tally.statuses)
+    manifest["llm"] = llm | {"complet": llm["absents"] == 0}
+    manifest["llm_par_split"] = {s: _counts(tally.statuses, k) for s, k in sorted(splits.items())}
+    manifest["recontroles_detail"] = tally.rechecked
+    manifest["personas"] = {
+        key: {
+            "split": persona.split,
+            "elements": len(scenario),
+            "llm_retenus": tally.statuses[key, "retenu"],
+            "items_sha256": _sha(items_text),
+            "scenario_sha256": _sha(scenario_text),
+        }
+        for key, (persona, items_text, scenario_text, scenario) in rendered.items()
+    }
+    manifest["distribution"] = {
+        split: distribution([r for k in keys for r in rendered[k][3]])
+        for split, keys in sorted(splits.items())
+    }
+    for sub in ("items", "scenario"):
+        (out / sub).mkdir(parents=True, exist_ok=True)
+    for key, (_, items_text, scenario_text, _) in rendered.items():
+        for sub, text in (("items", items_text), ("scenario", scenario_text)):
+            (out / sub / f"{key}.jsonl").write_text(text, encoding="utf-8", newline="\n")
+    (out / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=1, sort_keys=True) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    return manifest
+
+
+def _assemble_main(args: list[str]) -> int:
+    texts = Path(args[args.index("--textes") + 1]) if "--textes" in args else None
+    try:
+        m = assemble_items(texts)
+    except (ValueError, FileNotFoundError) as exc:
+        print(f"Assemblage refusé : {exc}")
+        return 1
+    c = m["llm"]
+    print(
+        f"{c['ecrits']}/{c['a_reecrire']} mails écrits par {m['modele']} ({m['consigne']}) ; "
+        f"retenus {c['retenus']}, rejetés {c['rejetes']}, refusés au recontrôle "
+        f"{c['recontroles']}, pas encore écrits {c['absents']} (gabarits) ; "
+        f"{m['textes']['illisibles']} ligne(s) illisible(s)."
+    )
+    if c["taux_controles"] is not None:
+        print(
+            f"Passent les contrôles : {c['taux_controles']:.1%} des textes écrits (objectif 95 %)."
+        )
+    print(f"→ {folder()}")
+    return 0
+
+
 def main(argv: list[str]) -> int:
     sys.stdout.reconfigure(encoding="utf-8", line_buffering=True)  # type: ignore[attr-defined]
     args = list(argv)
+    if "--assembler" in args:
+        return _assemble_main(args)
     limit = None
     if "--limite" in args:
         i = args.index("--limite")

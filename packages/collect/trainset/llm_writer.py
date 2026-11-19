@@ -776,6 +776,21 @@ class Ollama:
         return json.loads(self._call("/api/chat", body)["message"]["content"])
 
 
+class Offline:
+    """Client hors ligne, pour assembler le corpus sans GPU (`llm_corpus --assembler`) : il
+    rend l'identité du modèle enregistrée avec les textes et refuse tout appel. Aucun texte
+    n'est rédigé ailleurs que sur le PC qui a le LLM."""
+
+    def __init__(self, model: str, digest: str) -> None:
+        self.model, self.digest = model, digest
+
+    def identity(self) -> dict:
+        return {"model": self.model, "digest": self.digest, "ollama": None}
+
+    def chat(self, conversation: list[dict], seed: int) -> dict:
+        raise RuntimeError("client hors ligne : aucun appel au LLM pendant l'assemblage")
+
+
 # --- l'écrivain --------------------------------------------------------------------------------
 
 
@@ -854,7 +869,9 @@ def llm_seed(seed: int, item_id: str, attempt: int) -> int:
 class LLMWriter:
     """Remplace le texte des gabarits par celui du LLM, fait par fait, étiquettes inchangées."""
 
-    def __init__(self, persona: Persona, seed: int = 0, client: Ollama | None = None) -> None:
+    def __init__(
+        self, persona: Persona, seed: int = 0, client: Ollama | Offline | None = None
+    ) -> None:
         self.p = persona
         self.seed = seed
         self.client = client or Ollama()
@@ -922,12 +939,21 @@ class LLMWriter:
         fields = item.model_dump() | {"title": title, "snippet": extract(d.corps)}
         return Item.model_validate(fields)
 
+    def choose(self, fact: Fact, d: Draft | None) -> tuple[Item | None, list[str]]:
+        """L'Item retenu : le texte du LLM s'il a passé les contrôles, sinon celui des gabarits.
+
+        Une seule règle pour la rédaction sur le PC GPU (`write`) et pour l'assemblage hors
+        ligne à partir de `textes.jsonl` (`llm_corpus.assemble_items`).
+        """
+        item, used = self.templates.write(fact)
+        if item is None or d is None or not rewritable(fact):
+            return item, used
+        if not d.ok:
+            return item, used + [f"llm:{d.prompt_version}:rejete"]
+        return self.item(fact, d), [f"llm:{d.prompt_version}"]
+
     def write(self, fact: Fact) -> tuple[Item | None, list[str], Draft | None]:
         """L'Item (texte du LLM s'il passe les contrôles, sinon celui des gabarits)."""
-        item, used = self.templates.write(fact)
-        if item is None or not rewritable(fact):
-            return item, used, None
-        d = self.draft(fact)
-        if not d.ok:
-            return item, used + [f"llm:{PROMPT_VERSION}:rejete"], d
-        return self.item(fact, d), [f"llm:{PROMPT_VERSION}"], d
+        d = self.draft(fact) if rewritable(fact) else None  # un mail est toujours collecté
+        item, used = self.choose(fact, d)
+        return item, used, d
