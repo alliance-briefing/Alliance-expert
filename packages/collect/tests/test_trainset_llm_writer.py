@@ -8,8 +8,8 @@ from datetime import date
 
 import pytest
 
+from packages.collect.trainset import llm_corpus, sonde
 from packages.collect.trainset import llm_writer as L
-from packages.collect.trainset import sonde
 from packages.collect.trainset.facts import Fact
 from packages.collect.trainset.world import all_personas, at
 
@@ -57,6 +57,8 @@ def _pieces(fact: Fact, **change: str) -> dict:
 
 class FakeOllama:
     """Rend les réponses prévues, dans l'ordre, et garde les graines reçues."""
+
+    model = L.MODEL
 
     def __init__(self, answers: list[dict]) -> None:
         self.answers = list(answers)
@@ -426,3 +428,32 @@ def test_la_sonde_n_ecrit_a_annoter_que_ce_que_voit_le_modele(tmp_path):
     expected = [json.loads(x) for x in (tmp_path / "attendu.jsonl").read_text("utf-8").splitlines()]
     assert all({"action", "urgence", "alerte", "extrait"} <= set(e) for e in expected)
     assert [r["case_id"] for r in rows] == [e["case_id"] for e in expected]
+
+
+# --- le corpus de nuit -------------------------------------------------------------------------
+
+
+def test_le_corpus_couvre_tous_les_mails_dans_un_ordre_fixe():
+    todo = llm_corpus.plan()
+    assert todo and all(L.rewritable(f) for _, f in todo)
+    assert {p.split for p, _ in todo} == {"train", "tgen"}
+    assert len({f.item_id for _, f in todo}) == len(todo)
+    first = [f.item_id for _, f in todo[:50]]
+    assert first == [f.item_id for _, f in llm_corpus.plan()[:50]]  # graine fixe
+    assert len({p.metier.key for p, _ in todo[:50]}) >= 8  # le début est déjà varié
+
+
+def test_le_corpus_reprend_la_ou_il_s_est_arrete(tmp_path):
+    """Arrêt puis relance : rien n'est réécrit, rien n'est perdu."""
+    quiet = []
+    first = llm_corpus.run(out=tmp_path, limit=3, client=SameAnswer([]), log=quiet.append)
+    assert first["textes"] == 3 and first["ecrits"] == 3
+    with (tmp_path / "textes.jsonl").open("a", encoding="utf-8") as file:
+        file.write('{"item_id": "mail:coupé')  # arrêt brutal au milieu d'une ligne
+    second = llm_corpus.run(out=tmp_path, limit=2, client=SameAnswer([]), log=quiet.append)
+    assert second["ecrits"] == 5
+    ids = llm_corpus.done_ids(tmp_path / "textes.jsonl")
+    assert len(ids) == 5
+    assert ids == {f.item_id for _, f in llm_corpus.plan()[:5]}
+    rows = (tmp_path / "seances.jsonl").read_text("utf-8").splitlines()
+    assert len(rows) == 2 and json.loads(rows[0])["consigne"] == L.PROMPT_VERSION
