@@ -5,6 +5,8 @@
 `… annotate --annotateur paul --paires` : paires des journées générées (pair_labels_paul.jsonl)
 `… annotate --annotateur paul --grille` : grille d'actions, calibrage (grid_labels_paul.jsonl)
 `… annotate --accord-grille` : accord entre annotateurs sur la grille (kappa, désaccords)
+`… annotate --annotateur theo --grille --cas <fichier>` : grille sur un autre fichier de cas
+(sonde de l'écrivain LLM, M3) ; réponses dans `<fichier>_labels_theo.jsonl`, à côté
 
 Chaque réponse est ajoutée en fin de `scoring/annotations/intent_labels.jsonl` (rien n'est
 jamais réécrit : fermer la page ne perd rien, la dernière réponse à une question compte).
@@ -58,6 +60,9 @@ GRID_CONTEXT = (
     "Vous êtes Claire Martin, directrice des opérations d'une entreprise de logistique "
     "(N+1 : Bruno Lefort, directeur général). Brief du mardi 10/11/2026 à 8 h 30."
 )
+# Autre fichier de cas (--cas) : chaque carte peut porter son propre contexte (« context »),
+# quand les cas viennent de managers différents.
+CASES_CONTEXT = "Chaque carte dit à la place de quel manager vous êtes, le matin du brief à 8 h 30."
 
 
 @dataclass(frozen=True)
@@ -310,16 +315,19 @@ class GridAnnotator:
     l'accord entre annotateurs. On peut revenir en arrière : la dernière réponse compte.
     """
 
-    def __init__(self, cases: list[dict], path: Path, annotator: str) -> None:
+    def __init__(
+        self, cases: list[dict], path: Path, annotator: str, context: str = GRID_CONTEXT
+    ) -> None:
         self.cases = {case["item_id"]: case for case in cases}
         self.order = sorted(self.cases)
         random.Random(f"grille:{annotator}").shuffle(self.order)
         self.path = path
+        self.context = context
         self.answers = load_grid_labels(path)
 
     def state(self) -> dict:
         return {
-            "context": GRID_CONTEXT,
+            "context": self.context,
             "cases": [self.cases[item_id] for item_id in self.order],
             "answers": self.answers,
         }
@@ -472,13 +480,17 @@ def serve(
     synth_pairs_path: Path = SYNTH_PAIRS_PATH,
     grid_mode: bool = False,
     grid_path: Path = GRID_CALIBRATION_PATH,
+    cases_path: Path | None = None,
 ):
-    if grid_mode:  # grille d'actions (M0) : calibrage
+    if grid_mode:  # grille d'actions (M0) : calibrage, ou un autre fichier de cas
         if annotator not in GRID_ANNOTATORS:
             raise ValueError(f"annotateur attendu : {', '.join(GRID_ANNOTATORS)}")
-        grid = GridAnnotator(
-            load_sample(grid_path), labels.with_name(f"grid_labels_{annotator}.jsonl"), annotator
-        )
+        if cases_path:
+            out = cases_path.with_name(f"{cases_path.stem}_labels_{annotator}.jsonl")
+            grid = GridAnnotator(load_sample(cases_path), out, annotator, CASES_CONTEXT)
+        else:
+            out = labels.with_name(f"grid_labels_{annotator}.jsonl")
+            grid = GridAnnotator(load_sample(grid_path), out, annotator)
         empty = Annotator([], LabelStore(labels.with_name(f"intent_labels_{annotator}.jsonl")))
         return ThreadingHTTPServer(("127.0.0.1", port), make_handler(empty, grid=grid))
     if annotator and pairs_mode:  # paires des journées générées, à l'aveugle, à deux
@@ -519,15 +531,24 @@ def main(argv: list[str]) -> int:
     pairs_mode = "--paires" in args
     if pairs_mode:
         args.remove("--paires")
-    grid_mode = "--grille" in args
-    if grid_mode:
+    cases_path = None
+    if "--cas" in args:  # un autre fichier de cas : la grille, sur ces cas
+        i = args.index("--cas")
+        cases_path = Path(args[i + 1]) if i + 1 < len(args) else None
+        del args[i : i + 2]
+        if cases_path is None or not cases_path.exists():
+            print(f"fichier de cas introuvable : {cases_path}")
+            return 1
+    grid_mode = "--grille" in args or cases_path is not None
+    if "--grille" in args:
         args.remove("--grille")
     port = int(args[0]) if args else 8765
-    server = serve(port, annotator=who, pairs_mode=pairs_mode, grid_mode=grid_mode)
+    server = serve(
+        port, annotator=who, pairs_mode=pairs_mode, grid_mode=grid_mode, cases_path=cases_path
+    )
     if grid_mode:
-        print(
-            f"Grille d'actions, calibrage ({who}) : http://127.0.0.1:{port}  (Ctrl+C pour arrêter)"
-        )
+        what = f"cas de {cases_path}" if cases_path else "calibrage"
+        print(f"Grille d'actions, {what} ({who}) : http://127.0.0.1:{port}  (Ctrl+C pour arrêter)")
     elif who and pairs_mode:
         print(f"Paires des journées générées ({who}) : http://127.0.0.1:{port}/paires")
     elif who:
