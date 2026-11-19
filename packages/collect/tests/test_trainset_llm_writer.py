@@ -21,13 +21,6 @@ def persona():
     return all_personas()[0]
 
 
-@pytest.fixture(autouse=True)
-def any_length(monkeypatch):
-    """Les textes des tests sont courts : la longueur n'est testée que par son propre test."""
-    monkeypatch.setattr(L, "LENGTHS", (((1, 1000), 1),))
-    monkeypatch.setattr(L, "SHORT", (1, 1000))
-
-
 def _mail(persona, act: str = "faire", **kw) -> Fact:
     kw.setdefault("author", persona.team[0])
     kw.setdefault("obj", persona.metier.objects[0])
@@ -51,18 +44,31 @@ def _good(persona, fact: Fact) -> str:
     )
 
 
+def _pieces(fact: Fact, **change: str) -> dict:
+    """Des morceaux fidèles au fait « envoyer l'objet, question, d'ici vendredi 6 novembre »."""
+    return {
+        "objet": "Pièce manquante au dossier",
+        "contexte": "Le dossier fournisseur avance bien et il ne reste plus qu'une pièce pour le compléter.",
+        "demande": f"Peux-tu m'envoyer {fact.obj.phrase} d'ici vendredi 6 novembre ?",
+        "ton": "",
+        "conclusion": "Le reste du dossier est déjà rangé dans l'espace partagé.",
+    } | change
+
+
 class FakeOllama:
     """Rend les réponses prévues, dans l'ordre, et garde les graines reçues."""
 
     def __init__(self, answers: list[dict]) -> None:
         self.answers = list(answers)
         self.seeds: list[int] = []
+        self.conversations: list[list[dict]] = []
 
     def identity(self) -> dict:
         return {"model": L.MODEL, "digest": "sha256-test", "ollama": "0.0.0"}
 
     def chat(self, conversation: list[dict], seed: int) -> dict:
         self.seeds.append(seed)
+        self.conversations.append(conversation)
         return self.answers.pop(0)
 
 
@@ -83,9 +89,10 @@ def test_la_fiche_decrit_l_acte_sans_nommer_l_etiquette(persona):
     first = persona.manager.first
     assert f"Demande : que {first} " in sh.text
     assert f"Qui agit : c'est {first} qui doit agir" in sh.text
-    assert "À écrire : « vendredi 6 novembre »" in sh.text
+    assert "À écrire dans la demande : « vendredi 6 novembre »" in sh.text
     assert (sh.target, sh.signer) == (first, fact.author.first)
-    assert "Contexte : " in sh.text and "Style : " in sh.text and " mots" in sh.text
+    assert "Contexte : " in sh.text and "Style : " in sh.text
+    assert first in sh.frame["greeting"] or "Bonjour" in sh.frame["greeting"]
     banned = ("Faire", "S'informer", "étiquette", "une action concrète", "se préparer")
     assert not any(word in sh.text for word in banned)
     assert sh.text == L.LLMWriter(persona, client=FakeOllama([])).sheet(fact).text  # graine
@@ -106,7 +113,8 @@ def test_deux_exemples_d_autres_actes_precedent_la_fiche(persona):
         "user",
     ]
     assert conversation[-1]["content"] == sh.text
-    assert set(json.loads(conversation[2]["content"])) == {"objet", "corps"}
+    assert set(json.loads(conversation[2]["content"])) == set(L.PIECES)
+    assert "À écrire : " not in conversation[1]["content"]  # fiche d'exemple au format v7
 
 
 def test_les_exemples_n_emploient_que_des_noms_du_monde():
@@ -161,6 +169,8 @@ def test_un_texte_fidele_passe(persona, case):
         # Défauts vus dans la sonde v2 (consigne mail-v2, 14/20).
         (lambda t: t.replace("Merci !", "Fais-moi signe dès que tu as un moment."), "ton changé"),
         (lambda t: t.replace("Merci !", "Quand tu es libre."), "ton changé"),
+        # Sonde v7 : formule de calme passée dans un mail neutre.
+        (lambda t: t.replace(" ? Merci", ", à l'heure qui te convient ? Merci"), "ton changé"),
         (lambda t: t.replace("Merci !", "Je vais t'envoyer le reste."), "rôle inversé"),
         (lambda t: t.replace("Peux-tu", "Demande : peux-tu"), "intitulé de la fiche"),
         (lambda t: t.split("\n\n", 1)[1], "pas de salutation"),
@@ -203,7 +213,7 @@ def test_un_mail_d_information_ne_demande_rien(persona):
     sign = f"\n\n{fact.author.first}"
     assert L.check(fact, sh, "Pour info", text + sign) == []
     reasons = L.check(fact, sh, "Pour info", text + " Tu me confirmes ?" + sign)
-    assert "demande ajoutée à un mail qui n'en porte pas" in reasons
+    assert any(r.startswith("demande ajoutée à un mail qui n'en porte pas") for r in reasons)
 
 
 def test_le_calme_doit_etre_ecrit(persona):
@@ -223,7 +233,8 @@ def test_une_demande_de_retour_n_est_rejetee_que_si_elle_change_l_etiquette(pers
     sh = L.LLMWriter(persona, client=FakeOllama([])).sheet(relire)
     text = f"Salut {persona.manager.first},\n\nTu peux relire {relire.obj.phrase} ? {ask}"
     text += f"\n\n{relire.author.first}"
-    assert "demande de retour ajoutée" in L.check(relire, sh, "Relecture", text)
+    reasons = L.check(relire, sh, "Relecture", text)
+    assert any(r.startswith("demande de retour ajoutée") for r in reasons)
     faire = _mail(persona, form="question", deadline=at(date(2026, 11, 6), 12.0))
     sh = L.LLMWriter(persona, client=FakeOllama([])).sheet(faire)
     text = _good(persona, faire).replace("Merci !", ask)
@@ -245,10 +256,14 @@ def test_le_role_inverse_est_rejete_pour_une_decision(persona):
 # --- nouvelles rédactions et traçabilité -------------------------------------------------------
 
 
+def _deadline_fact(persona) -> Fact:
+    return _mail(persona, form="question", deadline=at(date(2026, 11, 6), 12.0))
+
+
 def test_un_texte_rejete_est_reecrit_avec_une_autre_graine(persona):
-    fact = _mail(persona, form="question", deadline=at(date(2026, 11, 6), 12.0))
-    bad = {"objet": "Devis", "corps": "C'est urgent."}
-    client = FakeOllama([bad, {"objet": "Devis", "corps": _good(persona, fact)}])
+    fact = _deadline_fact(persona)
+    bad = _pieces(fact, demande="C'est urgent.")
+    client = FakeOllama([bad, _pieces(fact)])
     draft = L.LLMWriter(persona, client=client).draft(fact)
     assert draft.ok and draft.tries == 2
     assert len(set(client.seeds)) == 2 and draft.seed == client.seeds[-1]
@@ -260,21 +275,118 @@ def test_un_texte_rejete_est_reecrit_avec_une_autre_graine(persona):
     )
 
 
+def test_le_mail_est_assemble_par_le_code_autour_des_morceaux(persona):
+    """v7 : salutation, ordre, signature viennent du code ; le LLM n'écrit que les morceaux."""
+    fact = _deadline_fact(persona)
+    draft = L.LLMWriter(persona, client=FakeOllama([_pieces(fact)])).draft(fact)
+    sh = L.LLMWriter(persona, client=FakeOllama([])).sheet(fact)
+    assert draft.ok and draft.objet == "Pièce manquante au dossier"
+    assert draft.corps.startswith(sh.frame["greeting"])
+    assert draft.corps.endswith(sh.signature)
+    pieces = _pieces(fact)
+    assert pieces["demande"] in draft.corps and pieces["contexte"] in draft.corps
+
+
+def test_un_morceau_facultatif_qui_echoue_est_retire_sans_refuser_le_mail(persona):
+    fact = _deadline_fact(persona)
+    asking = _pieces(fact, conclusion="Tu peux aussi regarder le planning ?")
+    draft = L.LLMWriter(persona, client=FakeOllama([asking])).draft(fact)
+    assert draft.ok and draft.tries == 1
+    assert "planning" not in draft.corps
+    assert draft.dropped and draft.dropped[0].startswith("conclusion : demande ajoutée")
+
+
+@pytest.mark.parametrize(
+    ("change", "reason"),
+    [
+        ({"demande": "Peux-tu m'envoyer le document ?"}, "manque « vendredi 6 novembre »"),
+        ({"contexte": "Le dossier avance, mais c'est urgent et il faut le traiter vite."}, "ton"),
+        (
+            {"demande": "Merci de m'envoyer le devis Froid Service d'ici vendredi 6 novembre."},
+            "forme",
+        ),
+        ({"ton": "C'est urgent."}, None),  # ton neutre : un ton rendu est ignoré
+    ],
+)
+def test_le_controle_par_morceau(persona, change, reason):
+    fact = _deadline_fact(persona)
+    sh = L.LLMWriter(persona, client=FakeOllama([])).sheet(fact)
+    kept, reasons, dropped = L.judge(fact, sh, _pieces(fact, **change))
+    if reason is None:
+        assert reasons == [] and "ton" not in kept
+    else:
+        assert any(reason in r for r in reasons + dropped), (reasons, dropped)
+
+
+def test_un_contexte_qui_repete_la_demande_est_retire(persona):
+    """Essai v7 : « la procédure est maintenant à jour », écrit dans le contexte et la demande."""
+    fact = _deadline_fact(persona)
+    echo = f"Pour mémoire, j'attends toujours {fact.obj.phrase} d'ici vendredi 6 novembre."
+    repeated = _pieces(fact, contexte=echo)
+    kept, _, dropped = L.judge(
+        fact, L.LLMWriter(persona, client=FakeOllama([])).sheet(fact), repeated
+    )
+    assert "contexte" not in kept and "contexte : répète la demande" in dropped
+
+
+def test_la_reecriture_guidee_renvoie_les_morceaux_refuses_et_les_mots_fautifs(persona):
+    """v6 : au lieu d'un nouveau tirage, le modèle corrige ses propres morceaux."""
+    fact = _deadline_fact(persona)
+    urgent = _pieces(fact, demande=f"Au plus vite, peux-tu m'envoyer {fact.obj.phrase} d'ici "
+                                   "vendredi 6 novembre ?")  # fmt: skip
+    client = FakeOllama([urgent, _pieces(fact)])
+    draft = L.LLMWriter(persona, client=client).draft(fact)
+    assert draft.ok and draft.tries == 2
+    first, second = client.conversations
+    assert second[: len(first)] == first
+    assert second[-2] == {"role": "assistant", "content": json.dumps(urgent, ensure_ascii=False)}
+    assert "« au plus vite »" in second[-1]["content"]
+
+
 def test_apres_trois_rejets_l_item_garde_le_texte_des_gabarits(persona):
     fact = _mail(persona, form="question")
-    client = FakeOllama([{"objet": "x", "corps": "C'est urgent."}] * L.MAX_TRIES)
+    client = FakeOllama([_pieces(fact, demande="C'est urgent.")] * L.MAX_TRIES)
     item, used, draft = L.LLMWriter(persona, client=client).write(fact)
     assert not draft.ok and draft.tries == L.MAX_TRIES
-    assert used[-1].endswith(":rejete") and "urgent" not in item.content_text.lower()
+    assert used[-1].endswith(":rejete") and "urgent" not in item.snippet.lower()
 
 
-def test_l_item_porte_le_texte_du_llm_et_reste_valide(persona):
-    fact = _mail(persona, form="question", deadline=at(date(2026, 11, 6), 12.0))
-    client = FakeOllama([{"objet": "Devis à m'envoyer", "corps": _good(persona, fact)}])
+def test_l_item_a_la_forme_du_connecteur_mail(persona):
+    """Comme mail_graph : objet, extrait nettoyé de 500 caractères au plus, pas de corps."""
+    fact = _deadline_fact(persona)
+    client = FakeOllama([_pieces(fact)])
     item, used, draft = L.LLMWriter(persona, client=client).write(fact)
     assert draft.ok and used == [f"llm:{L.PROMPT_VERSION}"]
-    assert item.title == "Devis à m'envoyer"
-    assert "vendredi 6 novembre" in item.content_text and item.snippet
+    assert item.title == "Pièce manquante au dossier" and item.content_text is None
+    assert "vendredi 6 novembre" in item.snippet and len(item.snippet) <= 500
+    assert persona.manager.first not in item.snippet.split(".")[0]  # salutation retirée
+
+
+def test_ce_qui_porte_l_etiquette_doit_tenir_dans_l_extrait(persona, case):
+    """Le modèle ne lit que 500 caractères : une échéance écrite plus loin est perdue."""
+    fact, sh = case
+    filler = "Le dossier avance bien et toute l'équipe a fait le point sur l'organisation. " * 8
+    text = _good(persona, fact).replace(" d'ici vendredi 6 novembre ?", " ?")
+    text = text.replace("Merci !", f"{filler}\n\nÀ faire d'ici vendredi 6 novembre.")
+    reasons = L.check(fact, sh, "Devis", text)
+    assert "« vendredi 6 novembre » hors de l'extrait lu" in reasons
+
+
+@pytest.mark.parametrize(
+    ("act", "added", "reason"),
+    [
+        # Défauts vus avec Gemma (essai v4).
+        ("relire", "Merci de me confirmer ton accord.", "décision ajoutée"),
+        ("relire", "Le document est ici : [Lien vers le document].", "texte à trous"),
+        ("preparer", "N'hésite pas à me faire signe.", "demande de retour ajoutée"),
+    ],
+)
+def test_les_garde_fous_de_l_essai_gemma(persona, act, added, reason):
+    fact = _mail(persona, act)
+    sh = L.LLMWriter(persona, client=FakeOllama([])).sheet(fact)
+    text = f"Salut {persona.manager.first},\n\nTu peux relire {fact.obj.phrase} pour la réunion ?"
+    text += f" {added}\n\n{fact.author.first}"
+    assert any(r.startswith(reason) for r in L.check(fact, sh, "Relecture", text))
 
 
 # --- la sonde ----------------------------------------------------------------------------------
@@ -297,30 +409,20 @@ def test_la_sonde_tire_vingt_faits_varies():
     assert not {f.item_id for f in facts} & {f.item_id for _, _, f in second}
 
 
-def test_la_carte_ne_montre_aucune_etiquette(persona):
-    fact = _mail(persona)
-    draft = L.Draft(fact.item_id, "Objet", "Corps", True, "m", "d", "v", 1, 1, 1.0, [[]])
-    row = sonde.card("sonde-01", persona, fact, draft)
-    assert set(row) == {"item_id", "source", "title", "when", "fields", "text", "context"}
-    assert row["item_id"] == "sonde-01" and "mail:" not in json.dumps(row)
+class SameAnswer(FakeOllama):
+    """Rend toujours le même mail : assez pour faire tourner une sonde entière."""
+
+    def chat(self, conversation: list[dict], seed: int) -> dict:
+        self.seeds.append(seed)
+        return dict.fromkeys(L.PIECES, "Un texte.")
 
 
-def test_la_comparaison_compte_les_textes_conformes(tmp_path):
-    expected = [
-        {"case_id": f"sonde-{n:02d}", "emplacement": "x", "action": "faire", "urgence": "normal"}
-        | {"alerte": False}
-        for n in range(1, 3)
-    ]
-    (tmp_path / "attendu.jsonl").write_text(
-        "".join(json.dumps(e) + "\n" for e in expected), encoding="utf-8"
-    )
-    answers = [
-        {"item_id": "sonde-01", "action": "faire", "urgence": "normal", "alerte": False},
-        {"item_id": "sonde-02", "action": "faire", "urgence": "urgent", "alerte": False},
-    ]
-    (tmp_path / "cases_labels_theo.jsonl").write_text(
-        "".join(json.dumps(a) + "\n" for a in answers), encoding="utf-8"
-    )
-    report = sonde.compare(tmp_path)
-    assert "theo : 1 conformes sur 2 annotés" in report
-    assert "≠ sonde-02 [x] urgence urgent au lieu de normal" in report
+def test_la_sonde_n_ecrit_a_annoter_que_ce_que_voit_le_modele(tmp_path):
+    summary = sonde.run(out=tmp_path, client=SameAnswer([]))
+    rows = [json.loads(x) for x in (tmp_path / "a_annoter.jsonl").read_text("utf-8").splitlines()]
+    assert len(rows) == sonde.N_CASES and summary["cases"] == sonde.N_CASES
+    assert all(set(r) == {"case_id", "persona", "jour", "item"} for r in rows)
+    assert all(r["item"]["content_text"] is None for r in rows)
+    expected = [json.loads(x) for x in (tmp_path / "attendu.jsonl").read_text("utf-8").splitlines()]
+    assert all({"action", "urgence", "alerte", "extrait"} <= set(e) for e in expected)
+    assert [r["case_id"] for r in rows] == [e["case_id"] for e in expected]

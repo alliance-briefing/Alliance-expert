@@ -293,48 +293,6 @@ def test_serveur_grille_enregistre_et_relit_la_derniere_reponse(grid_server):
         assert err.value.code == 400
 
 
-def test_grille_sur_un_autre_fichier_de_cas(tmp_path):
-    """--cas : les réponses vont à côté du fichier de cas, chaque carte garde son contexte."""
-    cases = [
-        {
-            "item_id": f"sonde-{i:02d}",
-            "source": "mail",
-            "title": f"T{i}",
-            "when": "hier",
-            "fields": [["De", "x"]],
-            "text": "",
-            "context": f"Vous êtes Manager {i}. Brief du lundi à 8 h 30.",
-        }
-        for i in range(2)
-    ]
-    write_sample(cases, tmp_path / "cases.jsonl")
-    httpd = annotate.serve(
-        0, labels=tmp_path / "labels.jsonl", annotator="theo", grid_mode=True,
-        cases_path=tmp_path / "cases.jsonl",
-    )  # fmt: skip
-    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-    thread.start()
-    url = f"http://127.0.0.1:{httpd.server_address[1]}"
-    try:
-        assert b"c.context" in _get(url + "/")[1]
-        state = json.loads(_get(url + "/api/grid")[1])
-        assert state["context"] == annotate.CASES_CONTEXT
-        assert {c["context"] for c in state["cases"]} == {c["context"] for c in cases}
-        answer = {"item_id": "sonde-01", "action": "relire", "urgence": "normal", "alerte": False}
-        assert _post(url + "/api/grid/answer", answer) == (200, {"ok": True})
-    finally:
-        httpd.shutdown()
-        httpd.server_close()
-    saved = annotate.load_grid_labels(tmp_path / "cases_labels_theo.jsonl")
-    assert saved == {"sonde-01": {"action": "relire", "urgence": "normal", "alerte": False}}
-    assert not (tmp_path / "grid_labels_theo.jsonl").exists()
-
-
-def test_fichier_de_cas_introuvable(tmp_path, capsys):
-    assert annotate.main(["--annotateur", "theo", "--cas", str(tmp_path / "absent.jsonl")]) == 1
-    assert "introuvable" in capsys.readouterr().out
-
-
 def test_annotateur_de_grille_inconnu_refuse(tmp_path):
     with pytest.raises(ValueError):
         annotate.serve(0, labels=tmp_path / "l.jsonl", annotator="inconnu", grid_mode=True)

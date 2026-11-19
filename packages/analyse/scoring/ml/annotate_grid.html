@@ -79,7 +79,7 @@ const ACTIONS = [
 ];
 const URGENCY = [["urgent", "Urgent", "u"], ["normal", "Normal", "n"], ["sans_urgence", "Sans urgence", "s"]];
 const SOURCES = { mail: "Mail", calendar: "Réunion", task: "Tâche", file: "Fichier" };
-let cases = [], answers = {}, index = 0, current = null, context = "";
+let cases = [], answers = {}, index = 0, current = null;
 
 const $ = (id) => document.getElementById(id);
 
@@ -133,7 +133,6 @@ function renderCard() {
     return;
   }
   const c = cases[index];
-  $("context").textContent = c.context || context;  // un contexte par carte, s'il y en a un
   const head = el("div");
   head.append(el("span", { class: "source" }, SOURCES[c.source] || c.source));
   head.append(el("span", { class: "when" }, c.when));
@@ -182,8 +181,7 @@ document.addEventListener("keydown", (e) => {
 
 (async () => {
   const data = await (await fetch("/api/grid")).json();
-  context = data.context;
-  $("context").textContent = context;
+  $("context").textContent = data.context;
   cases = data.cases;
   answers = data.answers;
   index = cases.findIndex((c) => !answers[c.item_id]);

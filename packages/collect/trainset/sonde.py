@@ -3,20 +3,22 @@
 `uv run python -m packages.collect.trainset.sonde --tirage 2` tire 20 faits de mails variés
 (actes, formes, tons, tu ou vous, relances, copie), jamais tirés avant, les fait écrire par
 le LLM et écrit dans `data/sonde/<consigne>-tirage<n>/` :
-- `cases.jsonl` : les 20 cartes au format de la grille d'annotation, sans aucune étiquette ;
-- `attendu.jsonl` : étiquettes du simulateur, fiche, texte des gabarits et traçabilité du
-  LLM (à ne pas ouvrir avant d'avoir annoté) ;
+- `a_annoter.jsonl` : par cas, la persona, le jour du brief et l'`Item` tel que le verrait
+  le modèle (objet et extrait de 500 caractères), sans aucune étiquette ;
+- `attendu.jsonl` : étiquettes du simulateur, fiche, texte complet, extrait, texte des
+  gabarits et traçabilité du LLM (à ne pas ouvrir avant d'avoir annoté) ;
 - `sonde.json` : modèle exact, consigne, graine, temps.
 
-`… sonde --comparer` lit les annotations (`cases_labels_<annotateur>.jsonl`, écrites par la
-page de la grille) et compte les textes conformes. Critère fixé d'avance : un texte est
-conforme si l'action, l'urgence et l'alerte annotées sont celles du simulateur ; la sonde
-passe avec au moins 16 conformes sur 20, pour chaque annotateur.
+L'annotation passe par l'outil unifié du lot 2 (M4) : `packages.analyse.scoring.ml.sonde_m3`
+en fait une série pour `annoter.py`, puis compare les réponses au simulateur. Critère fixé
+d'avance : un texte est conforme si l'action, l'urgence et l'alerte annotées sont celles du
+simulateur ; la sonde passe avec au moins 16 conformes sur 20, pour chaque annotateur.
 
 `… sonde --essai <item_id>…` réécrit des faits connus et montre fiche, texte et contrôles,
 sans rien écrire : pour vérifier une consigne sur les cas déjà ratés, jamais pour mesurer.
 
-Historique : consigne mail-v2, tirage 1 → 14/20 (Théo seul), voir `mail-v2-tirage1/`.
+Historique : consigne mail-v2, tirage 1 → 14/20 (Théo seul, cartes au texte complet, avec
+l'ancien `annotate.py`), voir `mail-v2-tirage1/`.
 """
 
 from __future__ import annotations
@@ -33,14 +35,12 @@ from pathlib import Path
 from packages.collect.trainset import llm_writer as L
 from packages.collect.trainset.cases import Sim
 from packages.collect.trainset.facts import Fact, label
-from packages.collect.trainset.world import Persona, all_personas, fr_day
+from packages.collect.trainset.world import Persona, all_personas
 from packages.collect.trainset.writer import Writer
 
 OUT = Path(__file__).with_name("data") / "sonde"
 N_CASES = 20
-THRESHOLD = 16  # conformes sur 20, fixé avant toute mesure
 MAX_PER_METIER = 2
-KEYS = ("action", "urgence", "alerte")
 
 
 def _tu(f: Fact) -> bool:
@@ -132,15 +132,7 @@ def _draw(pool: list, seed: int, draw: int, seen: set[str]) -> list[tuple[str, P
     return chosen
 
 
-# --- la carte montrée à l'annotateur -----------------------------------------------------------
-
-RELATION_SHORT = {
-    "hierarchie": "votre N+1",
-    "pair": "un pair",
-    "equipe": "votre équipe",
-    "externe_client": "client",
-    "externe_fournisseur": "fournisseur",
-}
+# --- génération --------------------------------------------------------------------------------
 
 
 def brief_day(moment: datetime) -> datetime:
@@ -151,44 +143,6 @@ def brief_day(moment: datetime) -> datetime:
     while day.weekday() >= 5:
         day += timedelta(days=1)
     return day
-
-
-def when(moment: datetime, brief: datetime) -> str:
-    hour = moment.strftime("%H:%M")
-    if moment.date() == brief.date():
-        return f"reçu ce matin à {hour}"
-    if (brief.date() - moment.date()).days == 1:
-        return f"reçu hier à {hour}"
-    return f"reçu le {fr_day(moment.date())} à {hour}"
-
-
-def card(case_id: str, persona: Persona, fact: Fact, draft: L.Draft) -> dict:
-    m, a = persona.manager, fact.author
-    brief = brief_day(fact.at)
-    sender = f"{a.name}, {L.gendered(a.role, a.female)} ({RELATION_SHORT[a.kind]})"
-    if fact.to_manager:
-        fields = [["De", sender], ["À", "vous (destinataire direct)"]]
-    else:
-        t = fact.addressee or fact.recipients[0]
-        fields = [["De", sender], ["À", f"{t.name}, {t.role}"], ["Cc", "vous"]]
-    boss = persona.boss
-    context = (
-        f"Vous êtes {m.name}, {L.gendered(m.role, m.female)} chez {persona.metier.company} "
-        f"(N+1 : {boss.name}, {L.gendered(boss.role, boss.female)}). "
-        f"Brief du {fr_day(brief.date())} à 8 h 30."
-    )
-    return {
-        "item_id": case_id,
-        "source": "mail",
-        "title": draft.objet,
-        "when": when(fact.at, brief),
-        "fields": fields,
-        "text": draft.corps,
-        "context": context,
-    }
-
-
-# --- génération et comparaison -----------------------------------------------------------------
 
 
 def _write_jsonl(path: Path, rows: list[dict]) -> None:
@@ -220,7 +174,17 @@ def run(
         draft = writer.draft(fact)
         case_id = f"sonde-{n:02d}"
         template, _ = Writer(persona, seed).write(fact)
-        cases.append(card(case_id, persona, fact, draft))
+        # L'Item tel que le verrait le modèle, texte du LLM même rejeté : la sonde mesure le
+        # LLM. Ni étiquette ni profil : la carte est construite côté lot 2 (annoter.py).
+        item = writer.item(fact, draft)
+        cases.append(
+            {
+                "case_id": case_id,
+                "persona": persona.key,
+                "jour": brief_day(fact.at).date().isoformat(),
+            }
+            | {"item": item.model_dump(mode="json")}
+        )
         expected.append(
             {
                 "case_id": case_id,
@@ -242,14 +206,15 @@ def run(
                 },
                 "fiche": writer.sheet(fact).text,
                 "llm": asdict(draft),
-                "gabarit": {"title": template.title, "text": template.content_text},
+                "extrait": item.snippet,
+                "gabarit": {"title": template.title, "text": template.snippet},
             }
         )
         # Rien qui relie un cas à son profil : l'annotation reste à l'aveugle.
         status = "ok" if draft.ok else "rejeté"
         print(f"{case_id}  {draft.seconds:5.1f} s  {draft.tries} essai(s)  {status}")
     out.mkdir(parents=True, exist_ok=True)
-    _write_jsonl(out / "cases.jsonl", cases)
+    _write_jsonl(out / "a_annoter.jsonl", cases)
     _write_jsonl(out / "attendu.jsonl", expected)
     drafts = [e["llm"] for e in expected]
     summary = {
@@ -273,16 +238,6 @@ def run(
         json.dumps(summary, ensure_ascii=False, indent=1) + "\n", encoding="utf-8", newline="\n"
     )
     return summary
-
-
-def _labels(path: Path) -> dict[str, dict]:
-    """{case_id: réponse} ; la dernière réponse à un cas compte."""
-    answers: dict[str, dict] = {}
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if line:
-            row = json.loads(line)
-            answers[row["item_id"]] = {k: row[k] for k in KEYS}
-    return answers
 
 
 def essai(item_ids: list[str], seed: int = 0, client: L.Ollama | None = None) -> str:
@@ -311,6 +266,8 @@ def essai(item_ids: list[str], seed: int = 0, client: L.Ollama | None = None) ->
             "--- texte ---",
             f"Objet : {d.objet}",
             d.corps,
+            "--- extrait lu par le modèle ---",
+            L.extract(d.corps),
         ]
     if drafts:
         calls = sum(d.tries for d in drafts)
@@ -324,41 +281,6 @@ def essai(item_ids: list[str], seed: int = 0, client: L.Ollama | None = None) ->
             ),
         ]
     return "\n".join(out)
-
-
-def compare(out: Path | None = None) -> str:
-    out = out or folder()
-    expected = {
-        row["case_id"]: row
-        for row in map(json.loads, (out / "attendu.jsonl").read_text(encoding="utf-8").splitlines())
-    }
-    files = sorted(out.glob("cases_labels_*.jsonl"))
-    if not files:
-        return "Aucune annotation (cases_labels_<annotateur>.jsonl) dans " + str(out)
-    lines = []
-    for path in files:
-        who = path.stem.removeprefix("cases_labels_")
-        answers = _labels(path)
-        done = [c for c in expected if c in answers]
-        ok = [c for c in done if all(answers[c][k] == expected[c][k] for k in KEYS)]
-        verdict = (
-            "atteint" if len(ok) >= THRESHOLD and len(done) == len(expected) else "non atteint"
-        )
-        lines.append(
-            f"{who} : {len(ok)} conformes sur {len(done)} annotés "
-            f"(critère {THRESHOLD}/{len(expected)} : {verdict})"
-        )
-        for key in KEYS:
-            agree = sum(answers[c][key] == expected[c][key] for c in done)
-            lines.append(f"  {key:<8} {agree}/{len(done)}")
-        for c in done:
-            if c not in ok:
-                e = expected[c]
-                diff = ", ".join(
-                    f"{k} {answers[c][k]} au lieu de {e[k]}" for k in KEYS if answers[c][k] != e[k]
-                )
-                lines.append(f"  ≠ {c} [{e['emplacement']}] {diff}")
-    return "\n".join(lines)
 
 
 def main(argv: list[str]) -> int:
@@ -378,9 +300,6 @@ def main(argv: list[str]) -> int:
         i = args.index("--tirage")
         draw = int(args[i + 1])
         del args[i : i + 2]
-    if "--comparer" in args:
-        print(compare(folder(draw)))
-        return 0
     summary = run(draw=draw, client=client)
     print(
         f"{summary['passed']}/{summary['cases']} textes passent les contrôles "

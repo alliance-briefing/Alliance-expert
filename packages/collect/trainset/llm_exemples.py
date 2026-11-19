@@ -1,4 +1,4 @@
-"""Exemples écrits à la main pour l'écrivain LLM (consigne mail-v4) : une fiche, le mail.
+"""Exemples écrits à la main pour l'écrivain LLM : une fiche, le mail, et ses morceaux.
 
 Deux exemples sont montrés au modèle avant chaque fiche (jamais du même acte que le fait à
 écrire) : ils lui montrent ce qu'est un mail réaliste (un contexte, une demande reformulée,
@@ -6,7 +6,9 @@ une conclusion), bien mieux qu'une règle. Les noms et les organisations viennen
 simulé : un texte qui les recopierait hors de sa fiche est rejeté par les contrôles (nom ou
 organisation inventés), comme un texte qui reprend 8 mots de suite d'un exemple.
 
-Les fiches suivent exactement le format de `llm_writer.sheet`.
+Depuis mail-v7, le modèle n'écrit plus le mail entier mais ses morceaux (`MORCEAUX` : objet,
+contexte, demande, ton, conclusion) ; le code les assemble. Les fiches suivent le format de
+`llm_writer.sheet` (la ligne « Style » des fiches ci-dessous est raccourcie à la volée).
 """
 
 from __future__ import annotations
@@ -143,13 +145,11 @@ Signature : Camille""",
         "objet": "Procédure d'accueil : la nouvelle version est prête",
         "corps": """Bonjour Nicolas,
 
-J'ai enfin terminé la nouvelle procédure d'accueil des nouveaux arrivants ! Après les retours des managers d'atelier, j'ai revu toute la partie sur la première semaine : la visite du site, la remise des équipements et le rendez-vous avec le tuteur sont maintenant décrits étape par étape, avec une liste à cocher.
+J'ai enfin terminé la nouvelle procédure d'accueil des nouveaux arrivants ! Avant de la diffuser aux équipes, j'aimerais beaucoup que tu la relises. Rien ne presse, la prochaine arrivée n'est pas pour tout de suite.
 
-J'ai aussi simplifié le passage sur les accès informatiques, qui était devenu illisible au fil des versions.
+Après les retours des managers d'atelier, j'ai revu toute la partie sur la première semaine : la visite du site, la remise des équipements et le rendez-vous avec le tuteur sont maintenant décrits étape par étape, avec une liste à cocher. J'ai aussi simplifié le passage sur les accès informatiques, qui était devenu illisible au fil des versions.
 
-Avant de la diffuser aux équipes, j'aimerais beaucoup que tu la relises : tu as une vision plus large que moi des sujets sensibles, et ton regard sur le ton général me sera précieux. Tu peux annoter directement dans le document partagé.
-
-Rien ne presse, la prochaine arrivée n'est pas pour tout de suite.
+Tu as une vision plus large que moi des sujets sensibles, et ton regard sur le ton général me sera précieux. Tu peux annoter directement dans le document partagé.
 
 Merci d'avance,
 Camille""",
@@ -251,3 +251,70 @@ Je compte sur toi, c'est le dernier document qui manque.
 Pierre""",
     },
 )
+
+# Les mêmes exemples, en morceaux (mail-v7) : ce que le modèle doit rendre pour chaque fiche.
+MORCEAUX: dict[str, dict[str, str]] = {
+    "decider-indirecte": {
+        "objet": "Contrat frigorifique : tout est prêt de notre côté",
+        "contexte": "Le transporteur a intégré nos remarques sur les créneaux de livraison, et la version reçue hier soir est propre. Je l'ai reprise avec l'équipe de quai, rien ne coince côté exploitation.",
+        "demande": "Il ne manque plus que ta signature sur le contrat de transport frigorifique : sans elle, je ne peux pas confirmer les tournées, et le transporteur attend notre retour pour le jeudi 12 novembre.",
+        "ton": "",
+        "conclusion": "Le contrat est rangé dans le dossier partagé, avec les remarques intégrées.",
+    },
+    "faire-question-vous": {
+        "objet": "Dossier fournisseur – rapport d'audit hygiène",
+        "contexte": "Nous préparons le référencement de vos produits pour la saison prochaine, et notre service qualité doit réunir un dossier fournisseur complet avant le comité interne.",
+        "demande": "Pourriez-vous nous faire parvenir le rapport d'audit hygiène de votre site ?",
+        "ton": "",
+        "conclusion": "Une version numérique suffira, notre équipe se chargera de l'intégrer au dossier.",
+    },
+    "repondre-question-vous": {
+        "objet": "Cahier des charges des barquettes – nouvelle version",
+        "contexte": "Suite à vos remarques sur l'épaisseur des barquettes et leur tenue au froid, nous avons repris le cahier des charges, et notre atelier a confirmé la faisabilité des modifications.",
+        "demande": "Pourriez-vous me dire si cette nouvelle version du cahier des charges des barquettes vous convient, d'ici le vendredi 13 novembre ?",
+        "ton": "",
+        "conclusion": "Nous pourrons ensuite lancer la fabrication des échantillons.",
+    },
+    "repondre-relance-urgent": {
+        "objet": "Relance – bascule du serveur de fichiers",
+        "contexte": "Mon message d'avant-hier sur la bascule du serveur de fichiers est resté sans réponse. De notre côté, l'équipe est prête et le matériel est en place.",
+        "demande": "Donne-moi une date pour la bascule, même approximative, que je puisse réserver l'intervention.",
+        "ton": "Là, ça bloque : sans cette date, tout est à l'arrêt.",
+        "conclusion": "",
+    },
+    "relire-calme": {
+        "objet": "Procédure d'accueil : la nouvelle version est prête",
+        "contexte": "J'ai terminé la nouvelle procédure d'accueil des nouveaux arrivants : la première semaine est maintenant décrite étape par étape, avec une liste à cocher.",
+        "demande": "Avant de la diffuser aux équipes, j'aimerais que tu relises la procédure d'accueil des nouveaux arrivants, en annotant directement le document partagé.",
+        "ton": "Rien ne presse, la prochaine arrivée n'est pas pour tout de suite.",
+        "conclusion": "Ton regard sur le ton général me sera précieux.",
+    },
+    "preparer-reunion": {
+        "objet": "Réunion de chantier – ton point sur les finitions",
+        "contexte": "Le maître d'ouvrage sera présent à la prochaine réunion et voudra comprendre l'enchaînement des corps de métier sur les derniers étages.",
+        "demande": "Présente le planning des finitions à la réunion du mardi 17 novembre : prévois une dizaine de minutes sur les grandes étapes et les points de vigilance.",
+        "ton": "",
+        "conclusion": "La salle sera équipée d'un écran pour tes supports.",
+    },
+    "informer-point": {
+        "objet": "Matériel de perfusion : commande passée",
+        "contexte": "Suite à notre échange sur les ruptures de la semaine dernière, j'ai revu les quantités avec la consommation de ton service.",
+        "demande": "La commande de matériel de perfusion est partie chez le fournisseur ce matin : tu n'as rien à faire de ton côté.",
+        "ton": "",
+        "conclusion": "Je m'occupe du suivi de la livraison.",
+    },
+    "rien-merci": {
+        "objet": "Re: rapport de non-conformité",
+        "contexte": "",
+        "demande": "Merci pour ton retour sur le rapport de non-conformité, c'est bien noté.",
+        "ton": "",
+        "conclusion": "Tes remarques sur l'analyse des causes étaient très claires.",
+    },
+    "faire-urgent-tiers": {
+        "objet": "Attestation de trésorerie pour la banque",
+        "contexte": "Yanis Caron m'a relancé ce matin : la banque attend toujours l'attestation de trésorerie pour finaliser son dossier.",
+        "demande": "Peux-tu lui transmettre l'attestation de trésorerie ?",
+        "ton": "C'est à faire au plus vite, c'est le dernier document qui manque.",
+        "conclusion": "Il est joignable toute la journée.",
+    },
+}  # fmt: skip

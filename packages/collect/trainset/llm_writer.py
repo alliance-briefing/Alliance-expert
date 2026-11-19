@@ -27,45 +27,55 @@ import urllib.request
 from dataclasses import dataclass, field
 
 from contracts.models import Item
-from packages.collect.core.text import normalize_whitespace, strip_quotes_and_signature, truncate
+from packages.collect.connectors.mail_graph.mapping import snippet as graph_snippet
 from packages.collect.trainset import phrases as P
 from packages.collect.trainset.facts import Fact
-from packages.collect.trainset.llm_exemples import EXAMPLES
+from packages.collect.trainset.llm_exemples import EXAMPLES, MORCEAUX
 from packages.collect.trainset.metiers import METIERS
 from packages.collect.trainset.world import FEMALE, LAST, MALE, MONTHS, WEEKDAYS, Persona, fr_day
 from packages.collect.trainset.writer import Writer, _short
 
 OLLAMA_URL = "http://localhost:11434"
-MODEL = "qwen2.5:7b-instruct-q4_K_M"
+# Gemma 2 9B plutôt que Qwen 2.5 7B (décision de Théo, 02/11) : sur les 20 faits de la sonde
+# v2, en v4, 13/20 contre 11/20 aux contrôles et un français nettement meilleur, pour un
+# appel 1,7 fois plus lent. Qwen reste utilisable avec --modele.
+MODEL = "gemma2:9b"
 # v2 (sonde : 14/20) : fautes de ton, rôles inversés, fiche recopiée.
 # v3 (essai) : justes mais courts, la ligne « Demande » mise à l'impératif : des gabarits.
 # v4 : des mails réalistes. Deux exemples écrits à la main avant chaque fiche, un contexte,
 # un style et une longueur tirés par fait (et contrôlée), les garde-fous de la v3.
-PROMPT_VERSION = "mail-v4"
+# v5 : le connecteur mail ne garde qu'un extrait de 500 caractères (#114) : la demande,
+# l'échéance et le ton doivent tenir au début du mail, et sont contrôlés dans l'extrait.
+# v6 : réécriture guidée. Un mail refusé revient au modèle avec les raisons du refus et les
+# mots fautifs (essai v5 : 13/20, surtout des formules d'urgence dans des mails neutres).
+# v7 : écriture par morceaux. Le modèle n'écrit plus le mail mais ses morceaux (objet,
+# contexte, demande, ton, conclusion), contrôlés un par un ; le code assemble la salutation,
+# l'ordre, la signature (v6 : 11/20, Gemma raccourcit ou dérive dès qu'on corrige le style,
+# et le style embrouillait l'annotation).
+PROMPT_VERSION = "mail-v7"
 TEMPERATURE = 0.8
 TOP_P = 0.9
 MAX_TRIES = 3
-MAX_TOKENS = 700
-NUM_CTX = 4096  # consigne + 2 exemples + fiche ≈ 1 650 jetons : fixé, pas laissé au défaut
+MAX_TOKENS = 500
+NUM_CTX = 4096  # consigne + 2 exemples + fiche ≈ 1 500 jetons : fixé, pas laissé au défaut
 N_EXAMPLES = 2
+PIECES = ("objet", "contexte", "demande", "ton", "conclusion")
 
-SYSTEM = """Tu écris des e-mails professionnels réalistes, en français, pour entraîner un assistant de tri. On te donne une fiche ; tu écris l'e-mail que l'expéditeur enverrait vraiment.
+SYSTEM = """Tu écris les morceaux d'un e-mail professionnel réaliste, en français, pour entraîner un assistant de tri. On te donne une fiche ; un programme assemblera tes morceaux et ajoutera lui-même la salutation et la signature.
 
-Ce qui rend l'e-mail réaliste :
-- une introduction qui situe le dossier (pourquoi on écrit maintenant), puis la demande, puis une phrase de conclusion ;
-- des phrases variées, avec la personnalité indiquée dans « Style » ; la longueur indiquée est obligatoire ;
-- la demande reformulée avec tes propres mots : ne recopie jamais la ligne « Demande » ni les intitulés de la fiche (« Demande : », « Qui agit : »…).
+Remplis chaque morceau :
+- objet : l'objet du mail, court (3 à 10 mots).
+- contexte : 1 ou 2 phrases (15 à 35 mots) qui situent le dossier : ce qui s'est passé, où on en est. Aucune demande, aucune question, aucune échéance, aucune formule d'urgence ou de calme.
+- demande : 1 ou 2 phrases (10 à 35 mots) qui portent la demande de la fiche, reformulée avec tes propres mots, dans la forme indiquée, avec l'échéance s'il y en a une. Pour une information, la phrase qui la donne ; pour un remerciement, la phrase de remerciement. Rien d'autre : ni urgence, ni calme, ni autre demande.
+- ton : si le ton de la fiche est urgent ou calme, une courte phrase qui le dit, avec la formule « À écrire » qui lui est destinée ; si le ton est neutre, une chaîne vide.
+- conclusion : une courte phrase neutre (5 à 20 mots) sur un aspect pratique du dossier, sans demande, sans question, sans formule de délai ; ou une chaîne vide.
 
-Ce qui est interdit, car l'e-mail doit rester fidèle à la fiche :
-1. Inventer un fait vérifiable : personne, entreprise, adresse, téléphone, lien, montant, chiffre, date ou jour de la semaine absents de la fiche. Tu peux ajouter des détails généraux, sans chiffre ni nom.
-2. Ajouter une autre demande que celle de la fiche, même polie : pas de « fais-moi signe », « tiens-moi au courant », « dis-moi si tu as des questions », pas de question en plus.
-3. Inverser les rôles : la personne qui agit est celle de la ligne « Qui agit ». L'expéditeur ne fait pas l'acte, ne dit pas qu'il va le faire et ne donne pas lui-même la décision.
-4. Changer le ton. Ton neutre : aucune formule de délai ni d'humeur, ni d'urgence (urgent, au plus vite, dès que possible, rapidement, en priorité) ni de calme (quand tu as un moment, quand tu es libre, rien ne presse). Une échéance s'écrit simplement : ce n'est pas une urgence. Ton urgent ou calme : la formule « À écrire » le dit.
-5. Changer d'adresse : le tutoiement ou le vouvoiement de la fiche, du début à la fin.
-6. Un registre familier : pas de « bisous », d'émoticône ni d'abréviation.
-
-Les éléments « À écrire » apparaissent dans le corps, avec ces mots-là. Commence par une salutation et termine par la signature de la fiche. Les exemples montrent le ton juste : ne recopie jamais leurs phrases.
-Réponds uniquement en JSON : {"objet": "...", "corps": "..."}, avec des sauts de ligne entre les paragraphes du corps."""
+Règles :
+1. N'invente aucun fait vérifiable : personne, entreprise, adresse, téléphone, lien, montant, chiffre, date ou jour de la semaine absents de la fiche. Les détails généraux, sans chiffre ni nom, sont permis.
+2. La personne qui agit est celle de la ligne « Qui agit » : l'expéditeur ne fait pas l'acte à sa place, ne dit pas qu'il va le faire et ne donne pas lui-même la décision.
+3. Respecte le tutoiement ou le vouvoiement de la fiche dans chaque morceau. Registre professionnel : pas de « bisous », d'émoticône ni d'abréviation.
+4. Écris avec tes propres mots : ne recopie ni les intitulés de la fiche (« Demande : »…) ni les phrases des exemples.
+Réponds uniquement en JSON avec les cinq clés : objet, contexte, demande, ton, conclusion."""
 
 RELATION = {
     "hierarchie": "son N+1 (supérieur hiérarchique)",
@@ -160,18 +170,17 @@ STYLES = (
     "pressé, phrases courtes",
     "cordial et posé",
 )
-OPENINGS = (
-    "commence par situer le dossier",
-    "commence par une nouvelle du dossier",
-    "commence par rappeler votre dernier échange, sans date",
-    "entre directement dans le sujet après la salutation",
-)
-# Longueur du corps en mots (salutation et signature comprises), contrôlée : les textes courts
-# de la v3 n'apportaient rien de plus que les gabarits.
-# Qwen 7B ne tient pas 120 à 180 mots (essai : 70 à 80) : bandes à sa portée.
-LENGTHS = (((50, 80), 3), ((70, 110), 5), ((100, 150), 2))
-SHORT = (35, 60)  # un remerciement ou un accusé de réception reste bref
-DETAIL_SHARE = 0.4  # une phrase sur un aspect pratique du dossier, sans chiffre ni nom
+# Bornes en mots de chaque morceau : au-delà, la demande sortirait de l'extrait de 500
+# caractères ; en deçà, le morceau n'apporte rien. Un morceau facultatif hors bornes est retiré.
+PIECE_WORDS = {
+    "objet": (2, 14),
+    "contexte": (8, 45),
+    "demande": (5, 45),
+    "ton": (2, 25),
+    "conclusion": (3, 25),
+}
+REQUEST_FIRST_SHARE = 0.3  # la demande avant le contexte, pour varier l'ordre du mail
+REPEAT_RUN = 6  # mots consécutifs communs avec la demande : le morceau la répète
 TONE = {
     "normal": "neutre (aucune formule de délai, ni urgente ni calme)",
     "urgent": "urgent : dis-le clairement (urgent, au plus vite, ça bloque…)",
@@ -182,7 +191,6 @@ MUST_CALM = {
     False: ("rien d'urgent", "rien ne presse", "quand vous aurez un moment", "aucune urgence"),
 }
 MUST_URGENT = ("urgent", "au plus vite", "ça bloque", "c'est pressé", "en priorité")
-TYPO_SHARE = 0.2  # une ou deux fautes de frappe, comme un mail écrit vite
 
 
 def rewritable(fact: Fact) -> bool:
@@ -215,8 +223,12 @@ class Sheet:
     style: dict = field(default_factory=dict)
     target: str = ""  # prénom de la personne saluée
     signer: str = ""  # prénom de l'expéditeur, attendu dans la signature
-    words: tuple[int, int] = (0, 10_000)  # longueur demandée du corps, en mots
+    words: tuple[int, int] = (0, 10_000)  # longueur demandée du corps, en mots (v4 à v6)
     examples: list[str] = field(default_factory=list)  # identifiants des exemples montrés
+    deadline: tuple[str, ...] | None = None  # à écrire dans la demande (v7)
+    tone_mark: tuple[str, ...] | None = None  # à écrire dans le ton (v7)
+    signature: str = ""  # signature complète, ajoutée par le code (v7)
+    frame: dict = field(default_factory=dict)  # salutation, fin, second acte, ordre (v7)
 
 
 def sheet(persona: Persona, fact: Fact, rng: random.Random) -> Sheet:
@@ -269,14 +281,7 @@ def sheet(persona: Persona, fact: Fact, rng: random.Random) -> Sheet:
             f"Rien n'est demandé : {a.first} remercie ou accuse réception concernant {o}, "
             "sans nouvelle information."
         )
-    if fact.secondary in SECOND:
-        lines.append(
-            "Seconde demande, plus courte, à la fin : "
-            + SECOND[fact.secondary].format(**slots)
-            + "."
-        )
-    elif fact.secondary:
-        lines.append(f"Information à ajouter à la fin : {slots['qui']} est en congé jusqu'à lundi")
+    # v7 : le second acte éventuel est ajouté par le code (banque des gabarits), pas par le LLM.
     if fact.deadline:
         day = fact.deadline.date()
         shown = fr_day(day)
@@ -286,62 +291,85 @@ def sheet(persona: Persona, fact: Fact, rng: random.Random) -> Sheet:
     elif fact.act not in ("informer", "rien"):
         lines.append("Échéance : aucune, n'en mets pas")
     lines.append(f"Ton : {TONE[fact.tone]}")
+    deadline_mark = must[0] if must else None
+    tone_mark = None
     if fact.tone == "sans_urgence":
-        must.append((rng.choice(MUST_CALM[tu]),))
+        tone_mark = (rng.choice(MUST_CALM[tu]),)
     elif fact.tone == "urgent":
-        must.append((rng.choice(MUST_URGENT),))
-    lines += [f"À écrire : « {x[0]} »" for x in must]
-    bands, weights = [b for b, _ in LENGTHS], [w for _, w in LENGTHS]
-    words = SHORT if fact.act == "rien" else rng.choices(bands, weights)[0]
-    if fact.meta.get("relance"):
-        opening = "rappelle d'abord le message resté sans réponse"
-    else:
-        opening = rng.choice(OPENINGS)
-    trait = rng.choice(STYLES)
-    if trait.startswith("pressé"):  # des phrases courtes ne font pas un mail long
-        words = min(words, bands[0])
-    style = {
-        "trait": trait,
-        "ouverture": None if fact.act == "rien" else opening,
-        "mots": words,
-        "detail": fact.act != "rien" and rng.random() < DETAIL_SHARE,
-        "fautes": rng.random() < TYPO_SHARE,
-    }
-    parts = [style["trait"], style["ouverture"], f"{words[0]} à {words[1]} mots"]
-    lines.append("Style : " + " ; ".join(p for p in parts if p))
-    if style["detail"]:
-        lines.append(
-            "Détail : ajoute une phrase sur un aspect pratique du dossier (organisation, équipe, "
-            "suite prévue), sans chiffre ni nom, sans nouvelle demande"
-        )
-    if style["fautes"]:
-        lines.append(
-            "Fautes : glisse une ou deux petites fautes de frappe, comme un mail écrit vite"
-        )
+        tone_mark = (rng.choice(MUST_URGENT),)
+    if tone_mark:
+        must.append(tone_mark)
+    if deadline_mark:
+        lines.append(f"À écrire dans la demande : « {deadline_mark[0]} »")
+    if tone_mark:
+        lines.append(f"À écrire dans le ton : « {tone_mark[0]} »")
+    # Le style : une personnalité tirée par fait. Longueur, ouverture et fautes ne sont plus
+    # demandées (v7) : le code assemble le mail, et les fautes embrouillaient l'annotation.
+    style = {"trait": rng.choice(STYLES)}
+    lines.append(f"Style : {style['trait']}")
     if tu:
         signature = a.first
     elif a.kind.startswith("externe"):
-        signature = f"{a.name}, {a.role.split(', ', 1)[-1]}"
+        signature = f"{a.name}\n{a.role.split(', ', 1)[-1]}"
     else:
-        signature = f"{a.name}, {gendered(a.role, a.female)}"
-    lines.append(f"Signature : {signature}")
+        signature = f"{a.name}\n{gendered(a.role, a.female)}"
+    lines.append(f"Signature : {signature.replace(chr(10), ', ')}")
+    # Ce que le code ajoute autour des morceaux (v7), tiré par fait : salutation, second acte
+    # (banque des gabarits), formule de fin, et l'ordre contexte / demande.
+    greetings = [g for g in (P.GREETING_TU if tu else P.GREETING_VOUS) if g]
+    civ = "Madame" if target.female else "Monsieur"
+    second = ""
+    if fact.secondary:
+        second = P.resolve(P.SECOND[fact.secondary], tu).format(**slots)
+        lines.append(f"Phrase ajoutée par le programme après la demande : « {second} »")
+    frame = {
+        "greeting": rng.choice(greetings).format(prenom=target.first, nom=target.last, civ=civ),
+        "closing": P.resolve(rng.choice([c for c in P.CLOSING if c]), tu),
+        "second": second,
+        "request_first": fact.act in ACTS and rng.random() < REQUEST_FIRST_SHARE,
+    }
     # Deux exemples d'autres actes (la forme d'un vrai mail, sans souffler la demande), au
     # même tu ou vous d'abord : un exemple au vous faisait glisser Qwen du tu au vous.
     pool = [e for e in EXAMPLES if e["act"] != fact.act]
     rng.shuffle(pool)
     pool.sort(key=lambda e: ("tutoiement" in e["fiche"]) != tu)
     examples = [e["id"] for e in pool[:N_EXAMPLES]]
-    return Sheet("\n".join(lines), must, style, target.first, a.first, words, examples)
+    return Sheet(
+        "\n".join(lines),
+        must,
+        style,
+        target.first,
+        a.first,
+        examples=examples,
+        deadline=deadline_mark,
+        tone_mark=tone_mark,
+        signature=signature,
+        frame=frame,
+    )
+
+
+def example_sheet(fiche: str) -> str:
+    """Une fiche d'exemple (écrite pour la v4) au format v7 : style réduit à la personnalité,
+    « À écrire » rangé dans la demande (une date) ou dans le ton (le reste)."""
+    fiche = re.sub(r"^(Style : [^;\n]+).*$", r"\1", fiche, flags=re.MULTILINE)
+
+    def where(m: re.Match) -> str:
+        dated = any(month in m.group(1) for month in MONTHS)
+        return f"À écrire dans {'la demande' if dated else 'le ton'} : « {m.group(1)} »"
+
+    return re.sub(r"^À écrire : « (.+) »$", where, fiche, flags=re.MULTILINE)
 
 
 def messages(sh: Sheet) -> list[dict]:
-    """La conversation envoyée au modèle : consigne, exemples (fiche → mail), puis la fiche."""
+    """La conversation envoyée au modèle : consigne, exemples (fiche → morceaux), la fiche."""
     by_id = {e["id"]: e for e in EXAMPLES}
     out = [{"role": "system", "content": SYSTEM}]
     for eid in sh.examples:
-        e = by_id[eid]
-        answer = json.dumps({"objet": e["objet"], "corps": e["corps"]}, ensure_ascii=False)
-        out += [{"role": "user", "content": e["fiche"]}, {"role": "assistant", "content": answer}]
+        answer = json.dumps(MORCEAUX[eid], ensure_ascii=False)
+        out += [
+            {"role": "user", "content": example_sheet(by_id[eid]["fiche"])},
+            {"role": "assistant", "content": answer},
+        ]
     return out + [{"role": "user", "content": sh.text}]
 
 
@@ -393,6 +421,10 @@ _CALM = re.compile(
     r"|quand (tu es|tu seras|vous etes|vous serez) (libre|dispo)|quand (tu peux|vous pouvez)"
     r"|a l'occasion|a ta convenance|a votre convenance|ca peut attendre|prends ton temps"
     r"|prenez votre temps|pas de stress"
+    # Sonde v7 : « à l'heure qui te convient » est passé dans un mail neutre.
+    r"|(a l'heure|au moment|le jour|quand) (qui|que) (te|vous) (convient|conviendra|arrange)"
+    r"|quand (tu veux|vous voulez|tu voudras|vous voudrez)|des que tu peux te liberer"
+    r"|sans te presser|sans vous presser|tranquillement"
 )
 # Familles de mots qui portent chaque acte (texte normalisé). L'acte d'un texte qui n'en
 # contient aucune a sans doute changé : le LLM a reformulé la demande en une autre.
@@ -415,9 +447,19 @@ _REQUEST = re.compile(
 _FEEDBACK = re.compile(
     r"fai(s|tes)[- ]moi signe|laisse(z)?[- ]moi savoir|me laisser savoir|tien(s|ez)[- ]moi"
     r"|di(s|tes)[- ]moi quand|preven(s|ez)[- ]moi|confirme(z)?[- ]moi|me (dire|confirmer) quand"
-    r"|revien(s|ez) vers moi"
+    r"|revien(s|ez) vers moi|me faire (signe|savoir|part)|me tenir (au courant|informee?)"
+    r"|me (le |la )?confirmer"
 )
 REPLY_FLIPS = ("preparer", "relire", "informer", "rien")
+# Une décision demandée en plus fait passer tout autre acte à Décider (le plus engageant) :
+# « merci de la relire et de me confirmer ton accord » (Gemma, essai v4) se lit Décider.
+_DECIDE_ASK = re.compile(
+    r"\b(ton|votre) (accord|feu vert|aval|validation|visa|approbation|signature)\b"
+    r"|(peux-tu|pouvez-vous|pourrais-tu|pourriez-vous|merci de|il faut) (le |la |les )?"
+    r"(valider|signer|approuver|arbitrer|trancher)"
+)
+# Texte à trous laissé par le modèle : « [Lien vers le devis] » (Gemma, essai v4).
+_PLACEHOLDER = re.compile(r"\[[^\]\n]{1,60}\]|\{[^}\n]{1,60}\}|<[^>\n]{1,60}>")
 # Rôle inversé : l'expéditeur décide ou agit à la place de la personne de la fiche.
 _SELF = {
     "decider": re.compile(
@@ -448,8 +490,16 @@ def _runs(text: str, n: int = COPY_RUN) -> set[tuple[str, ...]]:
     return {tuple(words[i : i + n]) for i in range(len(words) - n + 1)}
 
 
-_EXAMPLE_RUNS = {e["id"]: _runs(e["corps"]) for e in EXAMPLES}
+_EXAMPLE_RUNS = {
+    e["id"]: _runs(e["corps"]) | _runs(" ".join(MORCEAUX[e["id"]].values())) for e in EXAMPLES
+}
 _VOUS = re.compile(r"\b(vous|votre|vos)\b")
+
+
+def _quote(pattern: re.Pattern, text: str, limit: int = 3) -> str:
+    """Les passages qui déclenchent une règle, cités : « au plus vite », « ca bloque »."""
+    found = list(dict.fromkeys(m.group(0).strip() for m in pattern.finditer(text)))
+    return ", ".join(f"« {x} »" for x in found[:limit])
 
 
 def _present(alternatives: tuple[str, ...], text: str) -> bool:
@@ -464,13 +514,52 @@ def _object_words(fact: Fact) -> tuple[list[str], list[str]]:
     return proper, common
 
 
+def _invented(text: str, sh: Sheet) -> list[str]:
+    """Rien d'inventé : personnes, organisations, coordonnées, chiffres, jours, mois absents
+    de la fiche."""
+    reasons = []
+    low, sheet_low = _norm(text), _norm(sh.text)
+    for name in sorted(_NAMES - set(re.findall(r"\w+", sh.text))):
+        hits = re.finditer(rf"(?<![\w-]){name}(?![\w-])", text)
+        if name in _AMBIGUOUS:  # seulement précédé d'un prénom : « Julie Petit »
+            hits = (h for h in hits if re.search(r"[A-ZÀ-Ý]\w+\s*$", text[: h.start()]))
+        if next(hits, None):
+            reasons.append(f"nom inventé : {name}")
+    reasons += [
+        f"organisation inventée : {org}"
+        for org in sorted(_ORGS)
+        if org in text and org not in sh.text
+    ]
+    if _EMAIL.search(text) or _URL.search(text):
+        reasons.append("adresse ou lien inventé")
+    invented = sorted(set(re.findall(r"\d+", text)) - set(re.findall(r"\d+", sh.text)))
+    if invented:
+        reasons.append(f"chiffres inventés : {', '.join(invented)}")
+    for word in (*WEEKDAYS, *MONTHS):
+        w = _norm(word)
+        if re.search(rf"\b{w}\b", low) and not re.search(rf"\b{w}\b", sheet_low):
+            reasons.append(f"date inventée : {word}")
+    return reasons
+
+
+def extract(corps: str) -> str:
+    """Ce que le modèle verra du corps : l'extrait du vrai connecteur mail (`mail_graph`),
+    sans salutation, citation ni signature, sur une ligne, 500 caractères au plus."""
+    return graph_snippet({"body": {"contentType": "text", "content": corps}})
+
+
 def check(fact: Fact, sh: Sheet, objet: str, corps: str) -> list[str]:
-    """Les raisons de rejeter un texte (liste vide : il passe)."""
+    """Les raisons de rejeter un texte (liste vide : il passe).
+
+    Ce qui porte l'étiquette (demande, échéance, ton, objet) est cherché dans l'objet et
+    l'extrait que lira le modèle ; ce qui ne doit figurer nulle part (invention, autre
+    demande, registre), dans tout le mail.
+    """
     reasons = []
     full = f"{objet}\n{corps}"
     low = _norm(full)
     body = _norm(corps)
-    sheet_low = _norm(sh.text)
+    seen = _norm(f"{objet}\n{extract(corps)}")
     if not objet.strip() or len(objet) > 90 or "\n" in objet.strip():
         reasons.append("objet vide, trop long ou sur plusieurs lignes")
     # La longueur demandée, avec de la marge : un mail de 3 lignes n'apporte rien de plus
@@ -493,49 +582,40 @@ def check(fact: Fact, sh: Sheet, objet: str, corps: str) -> list[str]:
     for x in sh.must:
         if not _present(x, body):
             reasons.append(f"manque « {x[0]} »")
+        elif not _present(x, seen):
+            reasons.append(f"« {x[0]} » hors de l'extrait lu")
     proper, common = _object_words(fact)
-    missing = [w for w in proper if _norm(w) not in low]
-    if missing or (common and sum(_norm(w)[:5] in low for w in common) * 2 < len(common)):
-        reasons.append(f"objet absent ({_short(fact)})")
-    # Rien d'inventé : personnes, organisations, coordonnées, chiffres, jours, mois.
-    for name in sorted(_NAMES - set(re.findall(r"\w+", sh.text))):
-        hits = re.finditer(rf"(?<![\w-]){name}(?![\w-])", full)
-        if name in _AMBIGUOUS:  # seulement précédé d'un prénom : « Julie Petit »
-            hits = (h for h in hits if re.search(r"[A-ZÀ-Ý]\w+\s*$", full[: h.start()]))
-        if next(hits, None):
-            reasons.append(f"nom inventé : {name}")
-    reasons += [
-        f"organisation inventée : {org}"
-        for org in sorted(_ORGS)
-        if org in full and org not in sh.text
-    ]
-    if _EMAIL.search(full) or _URL.search(full):
-        reasons.append("adresse ou lien inventé")
-    numbers = set(re.findall(r"\d+", sh.text))
-    invented = sorted(set(re.findall(r"\d+", full)) - numbers)
-    if invented:
-        reasons.append(f"chiffres inventés : {', '.join(invented)}")
-    for word in (*WEEKDAYS, *MONTHS):
-        w = _norm(word)
-        if re.search(rf"\b{w}\b", low) and not re.search(rf"\b{w}\b", sheet_low):
-            reasons.append(f"date inventée : {word}")
-    # Le ton écrit : c'est lui seul qui porte l'urgence.
-    calm = bool(_CALM.search(low))
-    urgent = bool(_URGENT.search(_CALM.sub(" ", low)))
-    if fact.tone == "normal" and (urgent or calm):
-        reasons.append("ton changé (urgence ou calme écrit alors que le ton est normal)")
-    if fact.tone == "sans_urgence" and (urgent or not calm):
-        reasons.append("ton changé (le calme n'est pas écrit)")
-    if fact.tone == "urgent" and not urgent:
-        reasons.append("ton changé (l'urgence n'est pas écrite)")
-    # L'acte demandé.
-    if fact.act in _ACT_WORDS and not re.search(_ACT_WORDS[fact.act], body):
-        reasons.append("acte changé (aucun mot de l'acte demandé)")
+    missing = [w for w in proper if _norm(w) not in seen]
+    if missing or (common and sum(_norm(w)[:5] in seen for w in common) * 2 < len(common)):
+        reasons.append(f"objet absent de l'extrait lu ({_short(fact)})")
+    reasons += _invented(full, sh)
+    # Le ton écrit : c'est lui seul qui porte l'urgence. Neutre : rien nulle part ; urgent ou
+    # calme : écrit dans l'extrait lu.
+    urgent_anywhere = bool(_URGENT.search(_CALM.sub(" ", low)))
+    calm_seen = bool(_CALM.search(seen))
+    urgent_seen = bool(_URGENT.search(_CALM.sub(" ", seen)))
+    # Les mots fautifs sont cités : la réécriture guidée les renvoie au modèle.
+    if fact.tone == "normal" and (urgent_anywhere or _CALM.search(low)):
+        words = _quote(_URGENT, _CALM.sub(" ", low)) or _quote(_CALM, low)
+        reasons.append(f"ton changé ({words} écrit alors que le ton est neutre)")
+    if fact.tone == "sans_urgence" and urgent_anywhere:
+        reasons.append(f"ton changé ({_quote(_URGENT, _CALM.sub(' ', low))} dans un mail calme)")
+    elif fact.tone == "sans_urgence" and not calm_seen:
+        reasons.append("ton changé (le calme n'est pas écrit dans l'extrait lu)")
+    if fact.tone == "urgent" and not urgent_seen:
+        reasons.append("ton changé (l'urgence n'est pas écrite dans l'extrait lu)")
+    # L'acte demandé, lisible dans l'extrait ; aucun acte plus engageant ajouté.
+    if fact.act in _ACT_WORDS and not re.search(_ACT_WORDS[fact.act], seen):
+        reasons.append("acte changé (aucun mot de l'acte demandé dans l'extrait lu)")
+    if "decider" not in (fact.act, fact.secondary) and _DECIDE_ASK.search(body):
+        reasons.append(f"décision ajoutée ({_quote(_DECIDE_ASK, body)} : acte plus engageant)")
+    if _PLACEHOLDER.search(full):
+        reasons.append(f"texte à trous ({_quote(_PLACEHOLDER, full)})")
     if fact.act in ("informer", "rien") and _REQUEST.search(body):
-        reasons.append("demande ajoutée à un mail qui n'en porte pas")
+        reasons.append(f"demande ajoutée à un mail qui n'en porte pas ({_quote(_REQUEST, body)})")
     elif fact.act in REPLY_FLIPS and _FEEDBACK.search(body):
-        reasons.append("demande de retour ajoutée")
-    if fact.act in ACTS and fact.form == "question" and "?" not in corps:
+        reasons.append(f"demande de retour ajoutée ({_quote(_FEEDBACK, body)})")
+    if fact.act in ACTS and fact.form == "question" and "?" not in seen:
         reasons.append("forme changée (la demande devait être une question)")
     if fact.act in _SELF and _SELF[fact.act].search(body):
         reasons.append("rôle inversé (l'expéditeur décide ou agit lui-même)")
@@ -553,6 +633,100 @@ def check(fact: Fact, sh: Sheet, objet: str, corps: str) -> list[str]:
     if _CASUAL.search(body) or _EMOJI.search(corps):
         reasons.append("registre familier")
     return reasons
+
+
+# --- les morceaux (v7) -------------------------------------------------------------------------
+
+
+def required(kind: str, fact: Fact) -> bool:
+    """Un morceau sans lequel le mail ne dit pas le fait : refusé, il faut réécrire. Les autres
+    (contexte, conclusion) sont simplement retirés s'ils échouent."""
+    return kind in ("objet", "demande") or (kind == "ton" and fact.tone != "normal")
+
+
+def check_piece(kind: str, text: str, fact: Fact, sh: Sheet) -> list[str]:
+    """Les raisons de refuser un morceau (liste vide : il passe)."""
+    reasons = []
+    low = _norm(text)
+    n = len(re.findall(r"\w+", text))
+    lo, hi = PIECE_WORDS[kind]
+    if not lo <= n <= hi:
+        reasons.append(f"longueur hors bornes ({n} mots, attendu {lo} à {hi})")
+    if kind == "objet" and "\n" in text.strip():
+        reasons.append("objet sur plusieurs lignes")
+    if _FOREIGN.search(text):
+        reasons.append("caractères d'une autre langue")
+    tokens = re.findall(r"[a-z]+", low)
+    if len(tokens) >= 6 and sum(t in _FRENCH for t in tokens) / len(tokens) < 0.15:
+        reasons.append("pas en français")
+    reasons += _invented(text, sh)
+    if _PLACEHOLDER.search(text):
+        reasons.append(f"texte à trous ({_quote(_PLACEHOLDER, text)})")
+    tu = fact.meta.get("tu", True)
+    if (tu and _VOUS.search(low)) or (not tu and _TU.search(low)):
+        reasons.append("tutoiement ou vouvoiement non respecté")
+    if _LEAK.search(low):
+        reasons.append("intitulé de la fiche recopié")
+    if _CASUAL.search(low) or _EMOJI.search(text):
+        reasons.append("registre familier")
+    # Le ton n'est porté que par son morceau ; les autres sont neutres.
+    calm, urgent = _CALM.search(low), _URGENT.search(_CALM.sub(" ", low))
+    if kind == "ton":
+        if fact.tone == "urgent" and (calm or not urgent):
+            reasons.append("ton changé (l'urgence n'est pas écrite)")
+        if fact.tone == "sans_urgence" and (urgent or not calm):
+            reasons.append("ton changé (le calme n'est pas écrit)")
+        if sh.tone_mark and not _present(sh.tone_mark, low):
+            reasons.append(f"manque « {sh.tone_mark[0]} »")
+        if "?" in text:
+            reasons.append("question dans la phrase de ton")
+    elif urgent and not (kind == "objet" and fact.tone == "urgent"):
+        reasons.append(f"ton changé ({_quote(_URGENT, _CALM.sub(' ', low))} hors du ton)")
+    elif calm:
+        reasons.append(f"ton changé ({_quote(_CALM, low)} hors du ton)")
+    if kind in ("contexte", "conclusion"):
+        for pattern in (_REQUEST, _FEEDBACK, _DECIDE_ASK):
+            if pattern.search(low):
+                reasons.append(f"demande ajoutée ({_quote(pattern, low)})")
+                break
+    if kind == "demande":
+        reasons += _request_reasons(text, low, fact, sh)
+    return reasons
+
+
+def _request_reasons(text: str, low: str, fact: Fact, sh: Sheet) -> list[str]:
+    """Ce que doit porter la phrase de demande : l'acte, l'échéance, la forme, rien de plus."""
+    reasons = []
+    if fact.act in _ACT_WORDS and not re.search(_ACT_WORDS[fact.act], low):
+        reasons.append("acte changé (aucun mot de l'acte demandé)")
+    if sh.deadline and not _present(sh.deadline, low):
+        reasons.append(f"manque « {sh.deadline[0]} »")
+    if fact.act in ACTS and fact.form == "question" and "?" not in text:
+        reasons.append("forme changée (la demande devait être une question)")
+    if fact.act in ACTS and fact.form != "question" and "?" in text:
+        reasons.append("forme changée (la demande ne devait pas être une question)")
+    if "decider" not in (fact.act, fact.secondary) and _DECIDE_ASK.search(low):
+        reasons.append(f"décision ajoutée ({_quote(_DECIDE_ASK, low)} : acte plus engageant)")
+    if fact.act in ("informer", "rien") and _REQUEST.search(low):
+        reasons.append(f"demande ajoutée à un mail qui n'en porte pas ({_quote(_REQUEST, low)})")
+    elif fact.act in REPLY_FLIPS and _FEEDBACK.search(low):
+        reasons.append(f"demande de retour ajoutée ({_quote(_FEEDBACK, low)})")
+    if fact.act in _SELF and _SELF[fact.act].search(low):
+        reasons.append("rôle inversé (l'expéditeur décide ou agit lui-même)")
+    return reasons
+
+
+def assemble(sh: Sheet, pieces: dict[str, str]) -> tuple[str, str]:
+    """Le mail assemblé par le code : salutation, contexte et demande (dans un ordre tiré par
+    fait), second acte, ton, conclusion, formule de fin et signature."""
+    f = sh.frame
+    core = [pieces.get("contexte", ""), pieces.get("demande", "")]
+    if f.get("request_first"):
+        core.reverse()
+    first = " ".join(x for x in (*core, f.get("second", ""), pieces.get("ton", "")) if x)
+    paragraphs = [f.get("greeting", ""), first, pieces.get("conclusion", "")]
+    paragraphs.append("\n".join(x for x in (f.get("closing", ""), sh.signature) if x))
+    return pieces.get("objet", ""), "\n\n".join(p for p in paragraphs if p)
 
 
 # --- Ollama ------------------------------------------------------------------------------------
@@ -587,8 +761,8 @@ class Ollama:
             "stream": False,
             "format": {
                 "type": "object",
-                "properties": {"objet": {"type": "string"}, "corps": {"type": "string"}},
-                "required": ["objet", "corps"],
+                "properties": {kind: {"type": "string"} for kind in PIECES},
+                "required": list(PIECES),
             },
             "options": {
                 "temperature": TEMPERATURE,
@@ -621,6 +795,55 @@ class Draft:
     seconds: float  # temps total de rédaction, essais rejetés compris
     rejects: list[list[str]]  # raisons de rejet de chaque essai
     examples: list[str] = field(default_factory=list)  # exemples montrés au modèle
+    pieces: dict = field(default_factory=dict)  # morceaux rendus par le modèle (dernier essai)
+    dropped: list[str] = field(default_factory=list)  # morceaux facultatifs retirés, et pourquoi
+
+
+def repair(reasons: list[str]) -> str:
+    """Le message de réécriture guidée : les raisons du refus, telles que les contrôles les
+    donnent (avec les mots fautifs), et la consigne de ne corriger que ces points."""
+    listed = "\n".join(f"- {r}" for r in reasons)
+    tone = any("ton changé" in r for r in reasons)
+    return (
+        f"Ces morceaux sont refusés :\n{listed}\n"
+        "Réécris-les en corrigeant seulement ces points, sans raccourcir les autres morceaux."
+        + (" Hors du morceau « ton », aucune formule de délai ni de calme." if tone else "")
+        + " Réponds uniquement en JSON avec les cinq clés."
+    )
+
+
+def judge(fact: Fact, sh: Sheet, pieces: dict[str, str]) -> tuple[dict, list[str], list[str]]:
+    """Les morceaux gardés, les raisons de refuser l'essai, les morceaux facultatifs retirés.
+
+    Un morceau requis qui échoue fait refuser l'essai ; un facultatif est retiré. Le mail
+    assemblé repasse ensuite les contrôles du mail entier (extrait lu, inventions, copie).
+    """
+    kept, reasons, dropped = {}, [], []
+    for kind in PIECES:
+        text = pieces.get(kind, "").strip()
+        if kind == "ton" and fact.tone == "normal":
+            continue  # ton neutre : rien à écrire, un ton rendu quand même est ignoré
+        if not text:
+            if required(kind, fact):
+                reasons.append(f"{kind} : vide")
+            continue
+        problems = check_piece(kind, text, fact, sh)
+        if not problems:
+            kept[kind] = text
+        elif required(kind, fact):
+            reasons += [f"{kind} : {p}" for p in problems]
+        else:
+            dropped.append(f"{kind} : {'; '.join(problems)}")
+    # Un contexte ou une conclusion qui répète la demande (« la procédure est à jour », deux
+    # fois, essai v7) n'apporte rien et brouille la lecture : retiré.
+    request_runs = _runs(kept.get("demande", ""), REPEAT_RUN)
+    for kind in ("contexte", "conclusion"):
+        if kind in kept and _runs(kept[kind], REPEAT_RUN) & request_runs:
+            dropped.append(f"{kind} : répète la demande")
+            del kept[kind]
+    if not reasons:
+        reasons = check(fact, sh, *assemble(sh, kept))
+    return kept, reasons, dropped
 
 
 def llm_seed(seed: int, item_id: str, attempt: int) -> int:
@@ -643,21 +866,35 @@ class LLMWriter:
 
     def draft(self, fact: Fact) -> Draft:
         sh = self.sheet(fact)
-        conversation = messages(sh)
+        first = messages(sh)
+        conversation = first
         rejects: list[list[str]] = []
         start = time.perf_counter()
-        objet = corps = ""
+        pieces: dict[str, str] = {}
+        kept: dict[str, str] = {}
+        dropped: list[str] = []
         for attempt in range(MAX_TRIES):
             seed = llm_seed(self.seed, fact.item_id, attempt)
             try:
                 out = self.client.chat(conversation, seed)
-                objet, corps = str(out["objet"]).strip(), str(out["corps"]).strip()
-                reasons = check(fact, sh, objet, corps)
+                pieces = {kind: str(out[kind]).strip() for kind in PIECES}
+                kept, reasons, dropped = judge(fact, sh, pieces)
+                readable = True
             except (KeyError, TypeError, json.JSONDecodeError) as exc:
-                reasons = [f"réponse illisible : {exc}"]
+                reasons, readable = [f"réponse illisible : {exc}"], False
             rejects.append(reasons)
             if not reasons:
                 break
+            # Réécriture guidée : les morceaux refusés et leurs raisons, plutôt qu'un nouveau
+            # tirage (Gemma refaisait souvent la même faute de ton).
+            conversation = first
+            if readable:
+                conversation = first + [
+                    {"role": "assistant", "content": json.dumps(pieces, ensure_ascii=False)},
+                    {"role": "user", "content": repair(reasons)},
+                ]
+        # Refusé : le mail montre quand même tous les morceaux rendus (la sonde mesure le LLM).
+        objet, corps = assemble(sh, kept if not rejects[-1] else pieces)
         return Draft(
             item_id=fact.item_id,
             objet=objet,
@@ -671,23 +908,26 @@ class LLMWriter:
             seconds=round(time.perf_counter() - start, 2),
             rejects=rejects,
             examples=sh.examples,
+            pieces=pieces,
+            dropped=dropped,
         )
 
-    def write(self, fact: Fact) -> tuple[Item, list[str], Draft | None]:
+    def item(self, fact: Fact, d: Draft) -> Item:
+        """L'Item de l'écrivain par gabarits, avec l'objet et l'extrait du texte du LLM, sous
+        la forme du connecteur mail (`content_text` vide, extrait de 500 caractères)."""
+        item, _ = self.templates.write(fact)
+        title = d.objet
+        if fact.meta.get("relance") and not re.match(r"(re ?:|relance)", _norm(title)):
+            title = "Re: " + title
+        fields = item.model_dump() | {"title": title, "snippet": extract(d.corps)}
+        return Item.model_validate(fields)
+
+    def write(self, fact: Fact) -> tuple[Item | None, list[str], Draft | None]:
         """L'Item (texte du LLM s'il passe les contrôles, sinon celui des gabarits)."""
         item, used = self.templates.write(fact)
-        if not rewritable(fact):
+        if item is None or not rewritable(fact):
             return item, used, None
         d = self.draft(fact)
         if not d.ok:
             return item, used + [f"llm:{PROMPT_VERSION}:rejete"], d
-        title = d.objet
-        if fact.meta.get("relance") and not re.match(r"(re ?:|relance)", _norm(title)):
-            title = "Re: " + title
-        clean = strip_quotes_and_signature(normalize_whitespace(d.corps)) or d.corps
-        fields = item.model_dump() | {
-            "title": title,
-            "snippet": truncate(re.sub(r"\s+", " ", clean).strip()),
-            "content_text": clean,
-        }
-        return Item.model_validate(fields), [f"llm:{PROMPT_VERSION}"], d
+        return self.item(fact, d), [f"llm:{PROMPT_VERSION}"], d
