@@ -382,6 +382,45 @@ def test_les_controles_corriges_en_v8(persona, act, tone, kind, text, ok):
     assert (reasons == []) == ok, reasons
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Merci de le valider dans les meilleurs délais.",
+        "Merci de le valider dans les plus brefs délais.",
+        "Merci de le valider dès que cela sera possible.",
+        "Merci de le valider dès que vous le pourrez.",
+    ],
+)
+def test_les_formules_d_urgence_lues_dans_l_echantillon(persona, text):
+    """Échantillon M3 relu à l'aveugle : lues urgentes dans des mails neutres."""
+    fact = _mail(persona, "decider")
+    sh = L.LLMWriter(persona, client=FakeOllama([])).sheet(fact)
+    assert any("ton changé" in r for r in L.check_piece("demande", text, fact, sh))
+
+
+def test_l_intitule_a_ecrire_recopie_sans_deux_points_est_refuse(persona):
+    fact = _mail(persona, "relire", tone="sans_urgence")
+    sh = L.LLMWriter(persona, client=FakeOllama([])).sheet(fact)
+    text = f"À écrire {sh.tone_mark[0]}."
+    assert "intitulé de la fiche recopié" in L.check_piece("ton", text, fact, sh)
+
+
+def test_un_remerciement_perd_son_contexte_et_sa_conclusion(persona):
+    """Échantillon M3 : le contexte d'un mail « Rien » y ajoutait un fait (lu S'informer)."""
+    fact = _mail(persona, "rien")
+    sh = L.LLMWriter(persona, client=FakeOllama([])).sheet(fact)
+    pieces = {
+        "objet": "Bien reçu",
+        "contexte": "J'ai passé la commande auprès du fournisseur ce matin.",
+        "demande": f"Merci pour {fact.obj.phrase}, c'est bien noté.",
+        "ton": "",
+        "conclusion": "Je te tiens au courant des prochaines étapes.",
+    }
+    kept, reasons, dropped = L.judge(fact, sh, pieces)
+    assert reasons == [] and set(kept) == {"objet", "demande"}
+    assert [d.split(" : ")[0] for d in dropped] == ["contexte", "conclusion"]
+
+
 def test_une_urgence_niee_se_lit_calme():
     """v7 : « ce n'est pas une demande urgente » était lu comme urgent."""
     text = L._norm("Ce n'est pas une demande urgente.")
@@ -584,6 +623,28 @@ def _copy(rows: list[dict]) -> list[dict]:
     return json.loads(json.dumps(rows))
 
 
+@pytest.fixture(scope="module")
+def plan_facts():
+    return {f.item_id: (p, f) for p, f in llm_corpus.plan()}
+
+
+def _as_generated(row: dict, plan_facts: dict, **pieces: str) -> dict:
+    """La ligne qu'aurait écrite le PC GPU avec ces morceaux, tous gardés : le mail et
+    l'extrait enregistrés sont rassemblés à partir d'eux."""
+    p, f = plan_facts[row["item_id"]]
+    sh = L.LLMWriter(p, client=FakeOllama([])).sheet(f)
+    row["llm"]["pieces"] |= pieces
+    kept = {
+        k: v
+        for k, v in row["llm"]["pieces"].items()
+        if v and not (k == "ton" and f.tone == "normal")
+    }
+    objet, corps = L.assemble(sh, kept)
+    row["llm"] |= {"objet": objet, "corps": corps}
+    row["extrait"] = L.extract(corps)
+    return row
+
+
 def _write_rows(path: Path, rows: list[dict]) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     text = "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows)
@@ -659,14 +720,16 @@ def test_un_texte_absent_garde_exactement_les_gabarits(corpus, templates):
     assert all(by_id[i.item_id] == i for i in absent)
 
 
-def test_un_texte_rejete_ou_refuse_au_recontrole_garde_les_gabarits(corpus, templates, tmp_path):
+def test_un_texte_rejete_ou_refuse_au_recontrole_garde_les_gabarits(
+    corpus, templates, plan_facts, tmp_path
+):
     """Rejeté au moment de l'écrire, ou accepté alors mais refusé par les contrôles
     d'aujourd'hui (morceau fautif, mail rassemblé différent) : texte des gabarits."""
     _, rows, _ = corpus
     rows = _copy(rows)
     rejected, faulty, altered = [r for r in rows if r["llm"]["ok"]][:3]
     rejected["llm"]["ok"] = False
-    faulty["llm"]["pieces"]["demande"] = "C'est urgent."
+    _as_generated(faulty, plan_facts, demande="C'est urgent.")
     altered["llm"]["corps"] += "\nPS : un mot ajouté après coup."
     out = tmp_path / "mail-v7"
     manifest = llm_corpus.assemble_items(_write_rows(out / "textes.jsonl", rows), out)
@@ -679,6 +742,36 @@ def test_un_texte_rejete_ou_refuse_au_recontrole_garde_les_gabarits(corpus, temp
         item, marks = _assembled(out, row)
         assert item == next(i for i in items if i.item_id == row["item_id"])
         assert marks[-1] == f"llm:{L.PROMPT_VERSION}:{status}"
+
+
+def test_une_regle_nouvelle_raccourcit_le_mail_sans_le_rejeter(corpus, plan_facts, tmp_path):
+    """Un mail « Rien » écrit avec un contexte (accepté sur le PC GPU) : l'assemblage
+    d'aujourd'hui retire le contexte, garde le texte du LLM et le compte comme raccourci."""
+    _, rows, _ = corpus
+    rows = _copy(rows)
+    thanks = next(r for r in rows if r["llm"]["ok"] and plan_facts[r["item_id"]][1].act == "rien")
+    added = "Le dossier avance bien de mon côté et toute l'équipe a fait le point cette semaine."
+    _as_generated(thanks, plan_facts, contexte=added)
+    assert "avance bien" in thanks["llm"]["corps"]
+    out = tmp_path / "mail-v8"
+    manifest = llm_corpus.assemble_items(_write_rows(out / "textes.jsonl", rows), out)
+    assert manifest["llm"]["raccourcis"] == 1 and manifest["llm"]["recontroles"] == 0
+    item, marks = _assembled(out, thanks)
+    assert marks == [f"llm:{L.PROMPT_VERSION}"] and "avance bien" not in item.snippet
+    assert thanks["llm"]["pieces"]["demande"] in item.snippet
+
+
+def test_le_mail_enregistre_doit_s_expliquer_par_ses_morceaux(corpus, plan_facts):
+    """La preuve que les deux PC concordent : une combinaison des morceaux rendus redonne
+    exactement le mail enregistré."""
+    _, rows, _ = corpus
+    row = _copy([next(r for r in rows if r["llm"]["ok"])])[0]
+    p, f = plan_facts[row["item_id"]]
+    sh = L.LLMWriter(p, client=FakeOllama([])).sheet(f)
+    d = llm_corpus._draft_of(row)
+    assert llm_corpus.generation_kept(sh, d) is not None
+    other = L.Draft(**(row["llm"] | {"corps": d.corps.replace(d.pieces["demande"], "Autre.")}))
+    assert llm_corpus.generation_kept(sh, other) is None
 
 
 def test_l_assemblage_est_deterministe(corpus, tmp_path):

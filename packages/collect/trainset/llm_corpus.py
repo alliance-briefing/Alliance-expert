@@ -42,8 +42,9 @@ import time
 import urllib.error
 from collections import Counter
 from collections.abc import Callable
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime
+from itertools import combinations
 from pathlib import Path
 
 from contracts.models import Item
@@ -221,22 +222,44 @@ def _identity(rows: dict[str, dict]) -> tuple[str, str]:
     return models.pop()
 
 
-def recheck(writer: L.LLMWriter, fact: Fact, d: L.Draft, extrait: str | None = None) -> list[str]:
-    """Les raisons de ne plus retenir un texte accepté au moment de l'écrire.
+def generation_kept(sh: L.Sheet, d: L.Draft) -> set[str] | None:
+    """Les morceaux que le PC GPU a gardés : la combinaison des morceaux rendus qui redonne
+    exactement le mail enregistré (au plus 8 essais : contexte, ton, conclusion facultatifs).
+    None : aucune, la fiche ou l'assemblage diffèrent entre les deux PC."""
+    present = [k for k in L.PIECES if d.pieces.get(k)]
+    optional = [k for k in present if k in ("contexte", "ton", "conclusion")]
+    base = [k for k in present if k not in optional]
+    for n in range(len(optional) + 1):
+        for extra in combinations(optional, n):
+            kept = {k: d.pieces[k] for k in (*base, *extra)}
+            if L.assemble(sh, kept) == (d.objet, d.corps):
+                return set(kept)
+    return None
 
-    Les contrôles d'aujourd'hui sont rejoués sur les morceaux enregistrés (ils peuvent avoir
-    été durcis depuis), et le mail rassemblé doit être celui du PC GPU : même fiche, même
-    assemblage, même extrait du connecteur.
+
+def recheck(
+    writer: L.LLMWriter, fact: Fact, d: L.Draft, extrait: str | None = None
+) -> tuple[list[str], L.Draft]:
+    """Les raisons de ne plus retenir un texte accepté au moment de l'écrire, et le
+    brouillon à utiliser.
+
+    Le mail enregistré doit d'abord s'expliquer par la fiche et l'assemblage d'ici : la preuve
+    que les deux PC concordent. Puis les contrôles d'aujourd'hui sont rejoués sur les morceaux
+    enregistrés : un morceau requis refusé fait retomber sur les gabarits ; un morceau
+    facultatif retiré par une règle nouvelle raccourcit le mail. Une règle d'aujourd'hui peut
+    retirer un morceau, jamais en rajouter un que le PC GPU avait retiré.
     """
     sh = writer.sheet(fact)
+    stored = generation_kept(sh, d)
+    if stored is None:
+        return ["mail rassemblé différent de celui enregistré"], d
+    if extrait is not None and L.extract(d.corps) != extrait:
+        return ["extrait différent de celui enregistré"], d
     kept, reasons, _ = L.judge(fact, sh, d.pieces)
     if reasons:
-        return reasons
-    if L.assemble(sh, kept) != (d.objet, d.corps):
-        return ["mail rassemblé différent de celui enregistré"]
-    if extrait is not None and L.extract(d.corps) != extrait:
-        return ["extrait différent de celui enregistré"]
-    return []
+        return reasons, d
+    objet, corps = L.assemble(sh, {k: v for k, v in kept.items() if k in stored})
+    return [], replace(d, objet=objet, corps=corps)
 
 
 @dataclass
@@ -246,6 +269,7 @@ class Tally:
     statuses: Counter = field(default_factory=Counter)  # (persona, statut) → nombre
     seen: set[str] = field(default_factory=set)
     rechecked: list[dict] = field(default_factory=list)
+    shortened: list[str] = field(default_factory=list)  # retenus, raccourcis par une règle nouvelle
 
 
 def _choose(
@@ -263,7 +287,12 @@ def _choose(
         if row.get("persona") != writer.p.key:
             raise ValueError(f"{fact.item_id} : persona {row.get('persona')} ≠ {writer.p.key}")
         d = _draft_of(row)
-        reasons = recheck(writer, fact, d, row.get("extrait")) if d.ok else []
+        reasons: list[str] = []
+        if d.ok:
+            reasons, used = recheck(writer, fact, d, row.get("extrait"))
+            if not reasons and used.corps != d.corps:
+                tally.shortened.append(fact.item_id)
+            d = used
         if reasons:
             tally.rechecked.append({"item_id": fact.item_id, "raisons": reasons})
         status = "rejete" if not d.ok else "recontrole" if reasons else "retenu"
@@ -330,7 +359,7 @@ def assemble_items(texts: Path | None = None, out: Path | None = None, seed: int
     for key, (persona, *_) in rendered.items():
         splits.setdefault(persona.split, set()).add(key)
     llm = _counts(tally.statuses)
-    manifest["llm"] = llm | {"complet": llm["absents"] == 0}
+    manifest["llm"] = llm | {"complet": llm["absents"] == 0, "raccourcis": len(tally.shortened)}
     manifest["llm_par_split"] = {s: _counts(tally.statuses, k) for s, k in sorted(splits.items())}
     manifest["recontroles_detail"] = tally.rechecked
     manifest["personas"] = {

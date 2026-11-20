@@ -430,6 +430,9 @@ _FRENCH = set(
 _URGENT = re.compile(
     r"\burgen|au plus vite|des que possible|des que (tu peux|vous pouvez)|rapidement"
     r"|priorit|sans tarder|\bpresse\b|immediatement|\basap\b|ca bloque|bloquant"
+    # Échantillon M3 (v8, relu à l'aveugle) : lues comme urgentes dans des mails neutres.
+    r"|brefs? delais|meilleurs delais|des que (cela|ce) sera possible"
+    r"|des que (tu|vous) (le |la |les )?(pourras|pourrez)"
 )
 # Le calme écrit, sous toutes ses formes : la sonde v2 a laissé passer « dès que tu as un
 # moment » et « quand tu es libre », que le guide range dans Sans urgence.
@@ -660,6 +663,16 @@ def check(fact: Fact, sh: Sheet, objet: str, corps: str) -> list[str]:
 # --- les morceaux (v7) -------------------------------------------------------------------------
 
 
+# Échantillon M3 (v8, relu à l'aveugle) : environ 20 mails « Rien » sur 68 lus « S'informer »,
+# le contexte ou la conclusion y ajoutant un fait (« j'ai passé la commande », « je te tiens au
+# courant »). Un remerciement n'a ni l'un ni l'autre : ils sont toujours retirés, comme un
+# morceau facultatif qui échoue. Aucune règle ne sait dire « pas d'information nouvelle ».
+NO_INFO_DROP = {
+    "contexte": "un remerciement n'apporte pas de contexte (retiré d'office)",
+    "conclusion": "un remerciement n'apporte pas de conclusion (retirée d'office)",
+}
+
+
 def required(kind: str, fact: Fact) -> bool:
     """Un morceau sans lequel le mail ne dit pas le fait : refusé, il faut réécrire. Les autres
     (contexte, conclusion) sont simplement retirés s'ils échouent."""
@@ -705,6 +718,9 @@ def check_piece(kind: str, text: str, fact: Fact, sh: Sheet) -> list[str]:
             reasons.append(f"manque « {sh.tone_mark[0]} »")
         if "?" in text:
             reasons.append("question dans la phrase de ton")
+        # Échantillon M3 : « À écrire quand tu as un moment », recopié sans les deux-points.
+        if "a ecrire" in low and "intitulé de la fiche recopié" not in reasons:
+            reasons.append("intitulé de la fiche recopié")
     # Une formule du même ton dans la demande (« signe-le dès que possible » dans un mail
     # urgent) ne change pas l'étiquette : permise depuis la v8 (corpus v7 : 18 rejets, dont
     # une majorité de ce cas). Le contrôle du mail entier garde la cohérence du ton.
@@ -870,6 +886,10 @@ def judge(fact: Fact, sh: Sheet, pieces: dict[str, str]) -> tuple[dict, list[str
         text = pieces.get(kind, "").strip()
         if kind == "ton" and fact.tone == "normal":
             continue  # ton neutre : rien à écrire, un ton rendu quand même est ignoré
+        if kind in NO_INFO_DROP and fact.act == "rien":
+            if text:
+                dropped.append(f"{kind} : {NO_INFO_DROP[kind]}")
+            continue
         if not text:
             if required(kind, fact):
                 reasons.append(f"{kind} : vide")
