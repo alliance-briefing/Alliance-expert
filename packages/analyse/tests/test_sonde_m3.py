@@ -300,6 +300,48 @@ def test_la_relecture_choisit_sur_des_criteres_visibles_et_reste_a_l_aveugle(cor
     assert "texte changé 1" in after and "vers le simulateur 1" in after
 
 
+def test_la_confirmation_tire_des_textes_jamais_vus(corpora, tmp_path):
+    """Corpus corrigé, textes retenus que le premier échantillon n'a pas montrés ; critère
+    et limites écrits dans le tirage, avant toute annotation."""
+    _, llm, chosen, _, _ = corpora
+    sonde_m3.build_sample(CONSIGNE, series=tmp_path, llm=llm)
+    first = json.loads((tmp_path / f"m3-{CONSIGNE}-echantillon.tirage.json").read_text("utf-8"))
+    path = sonde_m3.build_confirmation(CONSIGNE, size=20, series=tmp_path, llm=llm)
+    assert path.name == f"m3-{CONSIGNE}-confirmation.jsonl"
+    tasks = annoter.load_series(path)  # à l'aveugle (check_blind)
+    info = json.loads((tmp_path / f"m3-{CONSIGNE}-confirmation.tirage.json").read_text("utf-8"))
+    annoter.check_blind(info)
+    ids = list(info["elements"].values())
+    assert len(tasks) == 20 and len(set(ids)) == 20 and set(ids) <= chosen
+    assert not set(ids) & set(first["elements"].values())  # jamais vus
+    assert tasks[0]["task_id"] == "c-001" and "90%" in info["critere"] and info["limites"]
+    with pytest.raises(FileExistsError):
+        sonde_m3.build_confirmation(CONSIGNE, size=20, series=tmp_path, llm=llm)
+    other = tmp_path / "autre"
+    shutil.copytree(tmp_path, other, ignore=shutil.ignore_patterns("*confirmation*"))
+    sonde_m3.build_confirmation(CONSIGNE, size=20, series=other, llm=llm)
+    again = json.loads((other / f"m3-{CONSIGNE}-confirmation.tirage.json").read_text("utf-8"))
+    assert list(again["elements"].values()) == ids  # graine fixe : même tirage
+    for done in other.glob("*confirmation*"):
+        done.unlink()
+    with pytest.raises(ValueError, match="jamais vus"):
+        sonde_m3.build_confirmation(CONSIGNE, size=10_000, series=other, llm=llm)
+
+
+def test_la_conformite_de_la_confirmation(corpora, tmp_path):
+    _, llm, _, scenario, _ = corpora
+    sonde_m3.build_sample(CONSIGNE, series=tmp_path, llm=llm)
+    sonde_m3.build_confirmation(CONSIGNE, size=20, series=tmp_path, llm=llm)
+    name = f"m3-{CONSIGNE}-confirmation"
+    behind = json.loads((tmp_path / f"{name}.tirage.json").read_text("utf-8"))["elements"]
+    store = annoter.AnswerStore(annoter.answers_path(name, "theo", tmp_path))
+    for t, item_id in behind.items():
+        store.record(t, False, _answer(scenario, item_id))
+    report = sonde_m3.conformity(CONSIGNE, tmp_path, llm, name=name)
+    assert report.startswith("Ensemble : 20 conformes sur 20 (100.0%")
+    assert "critère 90% : atteint" in report and "Après relecture" not in report
+
+
 def test_l_intervalle_de_wilson():
     low, high = sonde_m3.wilson(90, 100)
     assert 0.82 < low < 0.9 < high < 0.95

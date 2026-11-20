@@ -23,6 +23,8 @@ annotateur. Seules les premières présentations comptent (pas les répétitions
     uv run python -m packages.analyse.scoring.ml.sonde_m3 --repartir [consigne]   # à deux
     uv run python -m packages.analyse.scoring.ml.sonde_m3 --conformite [consigne]
     uv run python -m packages.analyse.scoring.ml.sonde_m3 --relecture [consigne]  # selon le guide
+    uv run python -m packages.analyse.scoring.ml.sonde_m3 --confirmation [consigne]  # 150 neufs
+    uv run python -m packages.analyse.scoring.ml.sonde_m3 --conformite-confirmation [consigne]
 
 - diversité : « bien plus de modèles de phrases distincts qu'avec les gabarits » (mesure de
   l'ADR-0003), comparée sur les mêmes mails écrits des deux façons ;
@@ -71,6 +73,9 @@ CONFORMITY = 0.90  # part de textes conformes exigée sur l'échantillon (plan, 
 SHARE, CAP = 0.05, 400  # taille de l'échantillon : 5 % du corpus LLM attendu, 400 au plus
 TOP = 20  # modèles les plus fréquents dont on mesure la part
 COMMON = 40  # cartes jugées par deux annotateurs, pour l'accord (kappa)
+# Échantillon de confirmation : à 95 % de conformes, 150 cartes donnent un intervalle de
+# confiance d'environ 91,5-97,5 % (100 cartes : 89,5-98, la borne basse sous le critère).
+CONFIRMATION_SIZE = 150
 
 
 def series_name(folder: str) -> str:
@@ -288,10 +293,58 @@ def build_sample(
     """
     folder = llm / consigne
     name = sample_name(consigne)
+    if (series / f"{name}.jsonl").exists():
+        raise FileExistsError(f"{name}.jsonl existe : un échantillon de mesure ne se retire pas")
+    return _write_sample(name, draw(folder, seed), folder, series, {"graine": seed})
+
+
+def confirmation_name(consigne: str) -> str:
+    return f"m3-{consigne}-confirmation"
+
+
+def build_confirmation(
+    consigne: str = PROMPT_VERSION,
+    size: int = CONFIRMATION_SIZE,
+    series: Path = SERIES,
+    llm: Path = LLM,
+    seed: int = 1,
+) -> Path:
+    """L'échantillon de confirmation : `size` textes LLM retenus du corpus corrigé, tirés au
+    hasard parmi ceux que le premier échantillon n'a pas montrés. Il mesure le corpus après
+    les corrections conçues sur le premier échantillon, sans en hériter le biais.
+    Critère fixé avant le tirage : au moins 90 % de textes conformes."""
+    folder = llm / consigne
+    name = confirmation_name(consigne)
+    if (series / f"{name}.jsonl").exists():
+        raise FileExistsError(f"{name}.jsonl existe : un échantillon de mesure ne se retire pas")
+    first = json.loads((series / f"{sample_name(consigne)}.tirage.json").read_text("utf-8"))
+    seen = set(first["elements"].values())
+    pool = sorted(
+        (kr for kr in retained(folder) if kr[1]["item_id"] not in seen),
+        key=lambda kr: kr[1]["item_id"],
+    )
+    if len(pool) < size:
+        raise ValueError(f"{len(pool)} textes retenus jamais vus, il en faut {size}")
+    chosen = random.Random(f"m3:confirmation:{seed}").sample(pool, size)
+    extra = {
+        "graine": seed,
+        "exclus": f"{sample_name(consigne)} ({len(seen)} éléments)",
+        "critere": f"au moins {CONFORMITY:.0%} de textes conformes (action, urgence, alerte)",
+        "limites": "un seul annotateur, qui connaît les écarts du premier échantillon",
+    }
+    return _write_sample(name, chosen, folder, series, extra, prefix="c")
+
+
+def _write_sample(
+    name: str,
+    chosen: list[tuple[str, dict]],
+    folder: Path,
+    series: Path,
+    extra: dict,
+    prefix: str = "m3",
+) -> Path:
+    """La série d'un tirage (cartes à l'aveugle) et son fichier de tirage."""
     path = series / f"{name}.jsonl"
-    if path.exists():
-        raise FileExistsError(f"{path.name} existe : un échantillon de mesure ne se retire pas")
-    chosen = draw(folder, seed)
     items: dict[str, dict[str, Item]] = {}
     tasks, behind = [], {}
     for n, (key, row) in enumerate(chosen, 1):
@@ -299,7 +352,7 @@ def build_sample(
             items[key] = {i.item_id: i for i in load.load_items(key, folder)}
         day = brief_day(datetime.fromisoformat(row["visible_from"])).date()
         vp = viewpoint(key, day)
-        task_id = f"m3-{n:03d}"  # numéro sans lien avec le profil du texte
+        task_id = f"{prefix}-{n:03d}"  # numéro sans lien avec le profil du texte
         tasks.append(
             {"task_id": task_id, "kind": "element", "context": vp.context}
             | {"card": card(items[key][row["item_id"]], vp)}
@@ -308,11 +361,11 @@ def build_sample(
     write_series(tasks, path)  # refuse toute étiquette (check_blind)
     manifest = _manifest(folder)
     draw_info = {
-        "consigne": consigne,
+        "consigne": manifest["consigne"],
         "textes_sha256": manifest["textes"]["sha256"],
         "ecrits": manifest["llm"]["ecrits"],
         "retenus": manifest["llm"]["retenus"],
-        "graine": seed,
+        **extra,
         "taille": len(tasks),
         "elements": behind,
     }
@@ -490,14 +543,20 @@ def _rate(judged: dict[str, dict], expected: dict[str, dict]) -> tuple[list[str]
     return done, ok, text
 
 
-def conformity(consigne: str = PROMPT_VERSION, series: Path = SERIES, llm: Path = LLM) -> str:
+def conformity(
+    consigne: str = PROMPT_VERSION,
+    series: Path = SERIES,
+    llm: Path = LLM,
+    name: str | None = None,
+) -> str:
     """Textes conformes au simulateur : d'abord sur la vérité humaine de la série (réponse de
     l'unique annotateur, réponse commune, ou arbitrage : `annoter.final_labels`), qui porte
     le critère ; puis par annotateur, sur ses propres cartes.
 
     Les étiquettes du simulateur ne sont lues qu'ici, dans le scénario, jamais écrites à
-    côté de la série."""
-    name = sample_name(consigne)
+    côté de la série. `name` : une autre série tirée du corpus (la confirmation)."""
+    first_sample = name is None or name == sample_name(consigne)
+    name = name or sample_name(consigne)
     behind = json.loads((series / f"{name}.tirage.json").read_text(encoding="utf-8"))["elements"]
     by_who = first_answers(name, series)
     if not by_who:
@@ -538,7 +597,9 @@ def conformity(consigne: str = PROMPT_VERSION, series: Path = SERIES, llm: Path 
         mine = {t: e for t, e in expected.items() if annotator in assigned[t]}
         done_mine, _, text = _rate(answers, mine)
         lines.append(f"{annotator} : {text} ; {len(mine) - len(done_mine)} restent")
-    return "\n".join(lines + _after_review(consigne, series, expected, truth, behind))
+    if first_sample:
+        lines += _after_review(consigne, series, expected, truth, behind)
+    return "\n".join(lines)
 
 
 def _after_review(
@@ -605,11 +666,28 @@ def _after_review(
 
 def main(argv: list[str]) -> int:
     sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
-    corpus = {"--diversite", "--echantillon", "--repartir", "--relecture", "--conformite"}
+    corpus = {
+        "--diversite",
+        "--echantillon",
+        "--repartir",
+        "--relecture",
+        "--conformite",
+        "--confirmation",
+        "--conformite-confirmation",
+    }
     if argv and argv[0] in corpus and len(argv) <= 2:
         consigne = argv[1] if len(argv) == 2 else PROMPT_VERSION
         if argv[0] == "--diversite":
             print(diversity_report(LLM / consigne))
+        elif argv[0] == "--confirmation":
+            path = build_confirmation(consigne)
+            print(f"Série écrite : {path} ({len(path.read_text('utf-8').splitlines())} cartes)")
+            print(
+                "Annoter : uv run python -m packages.analyse.scoring.ml.annoter "
+                f"--serie {confirmation_name(consigne)} --annotateur theo"
+            )
+        elif argv[0] == "--conformite-confirmation":
+            print(conformity(consigne, name=confirmation_name(consigne)))
         elif argv[0] == "--relecture":
             info = build_review(consigne)
             lots = {k: len(v) for k, v in info["lots"].items()}
@@ -651,7 +729,8 @@ def main(argv: list[str]) -> int:
     print(
         "usage : sonde_m3 --serie <dossier> | --comparer <dossier> | --diversite [consigne] "
         "| --echantillon [consigne] | --repartir [consigne] | --relecture [consigne] "
-        "| --conformite [consigne]"
+        "| --conformite [consigne] | --confirmation [consigne] "
+        "| --conformite-confirmation [consigne]"
     )
     return 2
 
