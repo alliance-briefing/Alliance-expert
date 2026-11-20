@@ -177,9 +177,69 @@ def test_la_conformite_compare_aux_etiquettes_du_scenario(corpora, tmp_path):
     store.record(first, False, labels)
     store.record(second, False, wrong)
     report = sonde_m3.conformity(CONSIGNE, tmp_path, llm)
-    assert report.startswith("theo : 1 conformes sur 2 annotés (50.0%")
+    assert report.startswith("Ensemble : 1 conformes sur 2 (50.0%")
+    assert "0 désaccord(s) à arbitrer ; 8 carte(s) pas encore jugée(s)" in report
     assert "critère 90% : non atteint" in report
     assert f"≠ {second} ({b}) alerte {wrong['alerte']} au lieu de {scenario[b]['alerte']}" in report
+    assert "\ntheo : 1 conformes sur 2 (50.0%" in report and "8 restent" in report
+
+
+def _answer(scenario: dict, item_id: str, **change) -> dict:
+    return {k: scenario[item_id][k] for k in sonde_m3.KEYS} | change
+
+
+def test_la_repartition_donne_la_moitie_du_reste_et_des_cartes_communes(corpora, tmp_path):
+    """L'échantillon ne change pas : seules les cartes sont attribuées (champ « pour »)."""
+    _, llm, _, scenario, _ = corpora
+    path = sonde_m3.build_sample(CONSIGNE, series=tmp_path, llm=llm)
+    name = path.stem
+    before = [{k: v for k, v in t.items()} for t in annoter.load_series(path)]
+    behind = json.loads((tmp_path / f"{name}.tirage.json").read_text("utf-8"))["elements"]
+    theo = annoter.AnswerStore(annoter.answers_path(name, "theo", tmp_path))
+    done = list(behind)[:4]
+    for task_id in done:
+        theo.record(task_id, False, _answer(scenario, behind[task_id]))
+    info = sonde_m3.share(CONSIGNE, common=2, series=tmp_path)
+    assert info == {
+        "graine": 0,
+        "deja_juges": {"theo": 4},
+        "cartes": {"theo": 7, "paul": 5},
+        "communes": 2,
+    }
+    after = annoter.load_series(path)
+    assert [{k: v for k, v in t.items() if k != "pour"} for t in after] == before
+    pour = {t["task_id"]: t["pour"] for t in after}
+    assert all("theo" in pour[t] for t in done)  # ses cartes jugées lui restent
+    assert sum(pour[t] == ["theo", "paul"] for t in done) == 2
+    paul_plan = annoter.order(after, "paul", name)
+    assert {t for t, _ in paul_plan} == {t for t, p in pour.items() if "paul" in p}
+    draw_info = json.loads((tmp_path / f"{name}.tirage.json").read_text("utf-8"))
+    assert draw_info["repartition"] == info and draw_info["elements"] == behind
+    with pytest.raises(ValueError, match="déjà répartie"):
+        sonde_m3.share(CONSIGNE, series=tmp_path)
+
+
+def test_a_deux_la_verite_est_la_reponse_commune_ou_l_arbitrage(corpora, tmp_path):
+    _, llm, _, scenario, _ = corpora
+    path = sonde_m3.build_sample(CONSIGNE, series=tmp_path, llm=llm)
+    name = path.stem
+    behind = json.loads((tmp_path / f"{name}.tirage.json").read_text("utf-8"))["elements"]
+    first, second = list(behind)[:2]
+    theo = annoter.AnswerStore(annoter.answers_path(name, "theo", tmp_path))
+    paul = annoter.AnswerStore(annoter.answers_path(name, "paul", tmp_path))
+    theo.record(first, False, _answer(scenario, behind[first]))
+    paul.record(first, False, _answer(scenario, behind[first]))  # d'accord : conforme
+    theo.record(second, False, _answer(scenario, behind[second]))
+    paul.record(second, False, _answer(scenario, behind[second], urgence="hors_grille"))
+    report = sonde_m3.conformity(CONSIGNE, tmp_path, llm)
+    assert report.startswith("Ensemble : 1 conformes sur 1 (100.0%")
+    assert "1 désaccord(s) à arbitrer" in report  # pas d'étiquette tant qu'on n'a pas tranché
+    arbitrage = annoter.AnswerStore(annoter.answers_path(name, annoter.ARBITRAGE, tmp_path))
+    arbitrage.record(second, False, _answer(scenario, behind[second]))
+    report = sonde_m3.conformity(CONSIGNE, tmp_path, llm)
+    assert report.startswith("Ensemble : 2 conformes sur 2 (100.0%")
+    assert "0 désaccord(s) à arbitrer" in report
+    assert "\npaul : 1 conformes sur 2 (50.0%" in report
 
 
 def test_l_intervalle_de_wilson():

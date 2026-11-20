@@ -393,5 +393,16 @@
   "m3-385": "mail:qualite-1-00359",
   "m3-386": "mail:drh-2-00264",
   "m3-387": "mail:chantier-2-00059"
+ },
+ "repartition": {
+  "graine": 0,
+  "deja_juges": {
+   "theo": 111
+  },
+  "cartes": {
+   "theo": 249,
+   "paul": 178
+  },
+  "communes": 40
  }
 }

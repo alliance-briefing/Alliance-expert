@@ -20,6 +20,7 @@ annotateur. Seules les premières présentations comptent (pas les répétitions
     uv run python -m packages.analyse.scoring.ml.sonde_m3 --diversite [consigne]
     uv run python -m packages.analyse.scoring.ml.sonde_m3 --echantillon [consigne]
     uv run python -m packages.analyse.scoring.ml.annoter --serie m3-mail-v8-echantillon --annotateur theo
+    uv run python -m packages.analyse.scoring.ml.sonde_m3 --repartir [consigne]   # à deux
     uv run python -m packages.analyse.scoring.ml.sonde_m3 --conformite [consigne]
 
 - diversité : « bien plus de modèles de phrases distincts qu'avec les gabarits » (mesure de
@@ -41,9 +42,12 @@ from pathlib import Path
 
 from contracts.models import Item
 from packages.analyse.scoring.ml.annoter import (
+    ANNOTATORS,
     SERIES,
     card,
+    final_labels,
     first_answers,
+    load_series,
     viewpoint,
     write_series,
 )
@@ -62,6 +66,7 @@ KEYS = ("action", "urgence", "alerte")
 CONFORMITY = 0.90  # part de textes conformes exigée sur l'échantillon (plan, M3)
 SHARE, CAP = 0.05, 400  # taille de l'échantillon : 5 % du corpus LLM attendu, 400 au plus
 TOP = 20  # modèles les plus fréquents dont on mesure la part
+COMMON = 40  # cartes jugées par deux annotateurs, pour l'accord (kappa)
 
 
 def series_name(folder: str) -> str:
@@ -313,6 +318,51 @@ def build_sample(
     return path
 
 
+def share(
+    consigne: str = PROMPT_VERSION,
+    first: str = "theo",
+    second: str = "paul",
+    common: int = COMMON,
+    series: Path = SERIES,
+    seed: int = 0,
+) -> dict:
+    """Répartit la série entre deux annotateurs sans changer l'échantillon (champ « pour »).
+
+    Les cartes que `first` a déjà jugées lui restent ; `common` d'entre elles, tirées au
+    hasard, vont aussi à `second`, sans ses réponses, pour mesurer l'accord (kappa). Les
+    cartes restantes sont coupées en deux au hasard. Chacun garde son ordre propre et ses
+    répétitions cachées (`annoter.order`). Une série répartie ne se répartit pas deux fois.
+    """
+    name = sample_name(consigne)
+    path = series / f"{name}.jsonl"
+    tasks = load_series(path)
+    if any("pour" in t for t in tasks):
+        raise ValueError(f"{path.name} est déjà répartie")
+    done = sorted(first_answers(name, series).get(first, {}))
+    rest = sorted(t["task_id"] for t in tasks if t["task_id"] not in set(done))
+    rng = random.Random(f"m3:repartition:{seed}")
+    both = set(rng.sample(done, min(common, len(done))))
+    rng.shuffle(rest)
+    to_second = set(rest[: len(rest) // 2])
+    for task in tasks:
+        tid = task["task_id"]
+        task["pour"] = [first, second] if tid in both else [second] if tid in to_second else [first]
+    write_series(tasks, path)
+    counts = Counter(who for t in tasks for who in t["pour"])
+    info = {
+        "graine": seed,
+        "deja_juges": {first: len(done)},
+        "cartes": {first: counts[first], second: counts[second]},
+        "communes": len(both),
+    }
+    draw_path = series / f"{name}.tirage.json"
+    draw_info = json.loads(draw_path.read_text(encoding="utf-8")) | {"repartition": info}
+    draw_path.write_text(
+        json.dumps(draw_info, ensure_ascii=False, indent=1) + "\n", encoding="utf-8", newline="\n"
+    )
+    return info
+
+
 def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
     """Intervalle de confiance à 95 % d'une proportion (Wilson : juste près de 0 et de 1)."""
     if n == 0:
@@ -323,10 +373,23 @@ def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
     return (center - margin) / (1 + z * z / n), (center + margin) / (1 + z * z / n)
 
 
+def _rate(judged: dict[str, dict], expected: dict[str, dict]) -> tuple[list[str], list[str], str]:
+    """Cartes jugées, cartes conformes, et « k conformes sur n (x %, IC 95 % a-b) »."""
+    done = [t for t in expected if t in judged]
+    ok = [t for t in done if all(judged[t][k] == expected[t][k] for k in KEYS)]
+    low, high = wilson(len(ok), len(done))
+    rate = len(ok) / len(done) if done else 0.0
+    text = f"{len(ok)} conformes sur {len(done)} ({rate:.1%}, IC 95 % {low:.1%}-{high:.1%})"
+    return done, ok, text
+
+
 def conformity(consigne: str = PROMPT_VERSION, series: Path = SERIES, llm: Path = LLM) -> str:
-    """Textes conformes au simulateur, par annotateur : taux, intervalle, détail par acte
-    et écarts. Les étiquettes ne sont lues qu'ici, dans le scénario, jamais écrites à côté
-    de la série."""
+    """Textes conformes au simulateur : d'abord sur la vérité humaine de la série (réponse de
+    l'unique annotateur, réponse commune, ou arbitrage : `annoter.final_labels`), qui porte
+    le critère ; puis par annotateur, sur ses propres cartes.
+
+    Les étiquettes du simulateur ne sont lues qu'ici, dans le scénario, jamais écrites à
+    côté de la série."""
     name = sample_name(consigne)
     behind = json.loads((series / f"{name}.tirage.json").read_text(encoding="utf-8"))["elements"]
     by_who = first_answers(name, series)
@@ -336,42 +399,54 @@ def conformity(consigne: str = PROMPT_VERSION, series: Path = SERIES, llm: Path 
     keys = {item_id.split(":")[1].rsplit("-", 1)[0] for item_id in behind.values()}
     rows = {r["item_id"]: r for key in keys for r in load.load_scenario(key, folder)}
     expected = {task: rows[item_id] for task, item_id in behind.items()}
-    lines = []
-    for annotator, answers in sorted(by_who.items()):
-        done = [t for t in expected if t in answers]
-        ok = [t for t in done if all(answers[t][k] == expected[t][k] for k in KEYS)]
-        low, high = wilson(len(ok), len(done))
-        rate = len(ok) / len(done) if done else 0.0
-        reached = rate >= CONFORMITY and len(done) == len(expected)
-        lines.append(
-            f"{annotator} : {len(ok)} conformes sur {len(done)} annotés ({rate:.1%}, "
-            f"IC 95 % {low:.1%}-{high:.1%}) ; {len(expected) - len(done)} restent ; "
+    tasks = load_series(series / f"{name}.jsonl")
+    truth = final_labels(name, series)
+    judged = {t for answers in by_who.values() for t in answers}
+    open_conflicts = [t for t in judged if t not in truth]  # désaccords pas encore arbitrés
+    done, ok, text = _rate(truth, expected)
+    reached = len(done) == len(expected) and len(ok) >= CONFORMITY * len(done)
+    lines = [
+        (
+            f"Ensemble : {text} ; {len(open_conflicts)} désaccord(s) à arbitrer ; "
+            f"{len(expected) - len(judged)} carte(s) pas encore jugée(s) ; "
             f"critère {CONFORMITY:.0%} : {'atteint' if reached else 'non atteint'}"
         )
-        for key in KEYS:
-            agree = sum(answers[t][key] == expected[t][key] for t in done)
-            lines.append(f"  {key:<8} {agree}/{len(done)}")
-        acts = Counter(expected[t]["action"] for t in done)
-        for act, total in acts.most_common():
-            good = sum(t in ok for t in done if expected[t]["action"] == act)
-            lines.append(f"  acte {act:<9} {good}/{total} conformes")
-        for t in done:
-            if t not in ok:
-                e = expected[t]
-                diff = ", ".join(
-                    f"{k} {answers[t][k]} au lieu de {e[k]}" for k in KEYS if answers[t][k] != e[k]
-                )
-                lines.append(f"  ≠ {t} ({behind[t]}) {diff}")
+    ]
+    for key in KEYS:
+        agree = sum(truth[t][key] == expected[t][key] for t in done)
+        lines.append(f"  {key:<8} {agree}/{len(done)}")
+    acts = Counter(expected[t]["action"] for t in done)
+    for act, total in acts.most_common():
+        good = sum(t in ok for t in done if expected[t]["action"] == act)
+        lines.append(f"  acte {act:<9} {good}/{total} conformes")
+    for t in done:
+        if t not in ok:
+            e = expected[t]
+            diff = ", ".join(
+                f"{k} {truth[t][k]} au lieu de {e[k]}" for k in KEYS if truth[t][k] != e[k]
+            )
+            lines.append(f"  ≠ {t} ({behind[t]}) {diff}")
+    assigned = {t["task_id"]: t.get("pour", ANNOTATORS) for t in tasks}
+    for annotator, answers in sorted(by_who.items()):
+        mine = {t: e for t, e in expected.items() if annotator in assigned[t]}
+        done_mine, _, text = _rate(answers, mine)
+        lines.append(f"{annotator} : {text} ; {len(mine) - len(done_mine)} restent")
     return "\n".join(lines)
 
 
 def main(argv: list[str]) -> int:
     sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
-    corpus = {"--diversite", "--echantillon", "--conformite"}
+    corpus = {"--diversite", "--echantillon", "--repartir", "--conformite"}
     if argv and argv[0] in corpus and len(argv) <= 2:
         consigne = argv[1] if len(argv) == 2 else PROMPT_VERSION
         if argv[0] == "--diversite":
             print(diversity_report(LLM / consigne))
+        elif argv[0] == "--repartir":
+            info = share(consigne)
+            print(
+                f"Série répartie : {info['cartes']} cartes, dont {info['communes']} communes "
+                f"(déjà jugées : {info['deja_juges']})."
+            )
         elif argv[0] == "--echantillon":
             path = build_sample(consigne)
             print(f"Série écrite : {path} ({len(path.read_text('utf-8').splitlines())} cartes)")
@@ -395,7 +470,7 @@ def main(argv: list[str]) -> int:
         return 0
     print(
         "usage : sonde_m3 --serie <dossier> | --comparer <dossier> | --diversite [consigne] "
-        "| --echantillon [consigne] | --conformite [consigne]"
+        "| --echantillon [consigne] | --repartir [consigne] | --conformite [consigne]"
     )
     return 2
 
