@@ -26,6 +26,11 @@ s'il passe les contrôles d'aujourd'hui, rejoués sur les morceaux enregistrés,
 rassemblé est octet pour octet celui du PC GPU ; sinon, celui des gabarits. Un fichier
 partiel suffit : les faits pas encore écrits gardent les gabarits (`absent`).
 
+Le corpus versionné est `textes.jsonl.gz` (compressé sans date, octet pour octet stable) ;
+l'assemblage et la comparaison le lisent quand `textes.jsonl` est absent :
+
+    uv run python -m packages.collect.trainset.llm_corpus --compresser
+
 Comparer deux consignes sur les mêmes faits (les N premiers du plan, ordre fixe) :
 
     uv run python -m packages.collect.trainset.llm_corpus --comparer mail-v7 mail-v8
@@ -33,6 +38,7 @@ Comparer deux consignes sur les mêmes faits (les N premiers du plan, ordre fixe
 
 from __future__ import annotations
 
+import gzip
 import hashlib
 import json
 import random
@@ -177,15 +183,41 @@ def run(
 # --- l'assemblage (sans GPU) -------------------------------------------------------------------
 
 
+def texts_bytes(path: Path) -> bytes:
+    """Le contenu de `textes.jsonl`, qu'il soit brut ou compressé (`.gz`, la version
+    versionnée) : l'empreinte du manifeste porte sur ce contenu, pas sur le fichier."""
+    data = path.read_bytes()
+    return gzip.decompress(data) if path.suffix == ".gz" else data
+
+
+def default_texts(out: Path) -> Path:
+    """`textes.jsonl` s'il est là (la génération en cours), sinon sa version compressée."""
+    raw = out / TEXTS
+    return raw if raw.exists() or not (out / f"{TEXTS}.gz").exists() else out / f"{TEXTS}.gz"
+
+
+def compress(out: Path | None = None) -> Path:
+    """`textes.jsonl.gz` : la version versionnée du corpus, octet pour octet la même à
+    chaque compression (pas de date dans l'en-tête gzip), vérifiée par relecture."""
+    out = out or folder()
+    raw = (out / TEXTS).read_bytes()
+    path = out / f"{TEXTS}.gz"
+    path.write_bytes(gzip.compress(raw, compresslevel=9, mtime=0))
+    if texts_bytes(path) != raw:
+        raise RuntimeError(f"{path.name} ne redonne pas {TEXTS}")
+    return path
+
+
 def read_texts(path: Path) -> tuple[dict[str, dict], int]:
-    """Les lignes de `textes.jsonl` par fait, et le nombre de lignes illisibles.
+    """Les lignes de `textes.jsonl` (ou `.jsonl.gz`) par fait, et le nombre de lignes
+    illisibles.
 
     Une ligne coupée par un arrêt brutal est ignorée (comme `done_ids`) : le fait sera
     réécrit à la relance. Un fait écrit deux fois est une erreur : on ne choisit pas.
     """
     rows: dict[str, dict] = {}
     unreadable = 0
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for line in texts_bytes(path).decode("utf-8").splitlines():
         if not line.strip():
             continue
         try:
@@ -321,7 +353,7 @@ def assemble_items(texts: Path | None = None, out: Path | None = None, seed: int
     """Écrit le corpus LLM en `Item` (`items/`, `scenario/`, `manifest.json`) et rend le
     manifeste. Tout est calculé avant d'écrire : un refus ne laisse pas un corpus à moitié."""
     out = out or folder()
-    texts = texts or out / TEXTS
+    texts = texts or default_texts(out)
     rows, unreadable = read_texts(texts)
     if not rows:
         raise ValueError(f"aucun texte lisible dans {texts}")
@@ -350,7 +382,7 @@ def assemble_items(texts: Path | None = None, out: Path | None = None, seed: int
         "modele": model,
         "empreinte": digest,
         "textes": {
-            "sha256": hashlib.sha256(texts.read_bytes()).hexdigest(),
+            "sha256": hashlib.sha256(texts_bytes(texts)).hexdigest(),
             "lignes": len(rows),
             "illisibles": unreadable,
         },
@@ -405,8 +437,8 @@ def compare(old: Path, new: Path, seed: int = 0) -> str:
     contrôles d'aujourd'hui (fiche d'aujourd'hui, morceaux du dernier essai), pour séparer ce
     que gagne la consigne de ce que gagnent les contrôles.
     """
-    rows_old, _ = read_texts(old / TEXTS)
-    rows_new, _ = read_texts(new / TEXTS)
+    rows_old, _ = read_texts(default_texts(old))
+    rows_new, _ = read_texts(default_texts(new))
     common = sorted(set(rows_old) & set(rows_new))
     if not common:
         return f"Aucun fait écrit à la fois dans {old.name} et {new.name}."
@@ -479,6 +511,11 @@ def main(argv: list[str]) -> int:
     args = list(argv)
     if "--assembler" in args:
         return _assemble_main(args)
+    if "--compresser" in args:
+        path = compress()
+        size = path.stat().st_size / 1e6
+        print(f"{path} ({size:.1f} Mo) : version versionnée, redonne {TEXTS} à l'identique.")
+        return 0
     if "--comparer" in args:
         i = args.index("--comparer")
         print(compare(OUT / args[i + 1], OUT / args[i + 2]))

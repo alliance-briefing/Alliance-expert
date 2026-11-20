@@ -790,6 +790,22 @@ def test_l_assemblage_est_deterministe(corpus, tmp_path):
     assert second["llm"] == first["llm"] and second["textes"]["illisibles"] == 1
 
 
+def test_le_corpus_compresse_redonne_le_meme_corpus(corpus, tmp_path):
+    """La version versionnée (.gz) : stable octet pour octet, et assemblée à l'identique
+    (mêmes empreintes, même empreinte des textes)."""
+    _, rows, first = corpus
+    work = tmp_path / "mail-v8"
+    path = _write_rows(work / "textes.jsonl", rows)
+    packed = llm_corpus.compress(work)
+    assert packed.read_bytes() == llm_corpus.compress(work).read_bytes()  # sans date
+    assert llm_corpus.texts_bytes(packed) == path.read_bytes()
+    path.unlink()  # la génération est finie : seul le .gz reste
+    assert llm_corpus.default_texts(work) == packed
+    again = llm_corpus.assemble_items(out=work)
+    assert again["personas"] == first["personas"] and again["llm"] == first["llm"]
+    assert again["textes"]["sha256"] == first["textes"]["sha256"]
+
+
 def _first_llm(rows: list[dict], **change) -> list[dict]:
     return [rows[0] | {"llm": rows[0]["llm"] | change}, *rows[1:]]
 
