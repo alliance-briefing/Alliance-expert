@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import json
+import shutil
 
 import pytest
 
 from contracts.models import Item
 from packages.analyse.scoring.ml import annoter, sonde_m3
-from packages.collect.trainset import build
+from packages.collect.trainset import build, load
 from packages.collect.trainset.build import DATA
 from packages.collect.trainset.metiers import METIERS
 from packages.collect.trainset.world import FEMALE, LAST, all_personas
@@ -240,6 +241,63 @@ def test_a_deux_la_verite_est_la_reponse_commune_ou_l_arbitrage(corpora, tmp_pat
     assert report.startswith("Ensemble : 2 conformes sur 2 (100.0%")
     assert "0 désaccord(s) à arbitrer" in report
     assert "\npaul : 1 conformes sur 2 (50.0%" in report
+
+
+def test_la_relecture_choisit_sur_des_criteres_visibles_et_reste_a_l_aveugle(corpora, tmp_path):
+    """Lots : texte changé par le corpus corrigé, copie, validation en question, carte notée
+    Rien par l'humain. Une carte retombée sur les gabarits sort de la mesure."""
+    _, llm0, _, scenario, _ = corpora
+    llm, series = tmp_path / "llm", tmp_path / "series"
+    shutil.copytree(llm0, llm)
+    path = sonde_m3.build_sample(CONSIGNE, series=series, llm=llm)
+    name = path.stem
+    behind = json.loads((series / f"{name}.tirage.json").read_text("utf-8"))["elements"]
+    ids = list(behind)
+    noted, changed, gone = (
+        next(t for t in ids if scenario[behind[t]]["action"] != "rien"),
+        *[t for t in ids if scenario[behind[t]]["action"] != "rien"][1:3],
+    )
+    theo = annoter.AnswerStore(annoter.answers_path(name, "theo", series))
+    for t in ids:
+        theo.record(t, False, _answer(scenario, behind[t]))
+    theo.record(noted, False, _answer(scenario, behind[noted], action="rien"))  # 1re passe : Rien
+    # Le corpus corrigé : un texte raccourci, un texte retombé sur les gabarits.
+    folder, key = llm / CONSIGNE, "logistique-1"
+    items = load.load_items(key, folder)
+    items = [
+        i.model_copy(update={"snippet": "Merci pour ton envoi, bien reçu."})
+        if i.item_id == behind[changed]
+        else i
+        for i in items
+    ]
+    rows = [
+        r | {"templates": ["mail.rien.directe#1"]} if r["item_id"] == behind[gone] else r
+        for r in load.load_scenario(key, folder)
+    ]
+    (folder / "items" / f"{key}.jsonl").write_text(
+        build._jsonl([i.model_dump(mode="json") for i in items]), encoding="utf-8"
+    )
+    (folder / "scenario" / f"{key}.jsonl").write_text(build._jsonl(rows), encoding="utf-8")
+    info = sonde_m3.build_review(CONSIGNE, series=series, llm=llm)
+    assert info["lots"]["texte_change"] == [changed] and info["hors_llm"] == [gone]
+    assert noted in info["lots"]["rien"] and info["cartes"] == len(info["sources"])
+    review = annoter.load_series(series / f"{name}-relecture.jsonl")  # check_blind
+    assert all(sonde_m3.GUIDE_REMINDER in t["context"] for t in review)
+    by_source = {info["sources"][t["task_id"]]: t for t in review}
+    assert by_source[changed]["card"]["text"] == "Merci pour ton envoi, bien reçu."
+    assert all(t["pour"] == ["theo"] for t in review)
+    with pytest.raises(FileExistsError):
+        sonde_m3.build_review(CONSIGNE, series=series, llm=llm)
+    # Après relecture : la nouvelle réponse remplace l'ancienne, on dit dans quel sens.
+    again = annoter.AnswerStore(annoter.answers_path(f"{name}-relecture", "theo", series))
+    for source in (noted, changed):
+        review_id = next(r for r, s in info["sources"].items() if s == source)
+        again.record(review_id, False, _answer(scenario, behind[source]))
+    report = sonde_m3.conformity(CONSIGNE, series, llm)
+    assert report.startswith(f"Ensemble : {len(ids) - 1} conformes sur {len(ids)}")  # brut gardé
+    after = report[report.index("Après relecture") :]
+    assert f"1 sorties du corpus LLM) : {len(ids) - 1} conformes sur {len(ids) - 1}" in after
+    assert "texte changé 1" in after and "vers le simulateur 1" in after
 
 
 def test_l_intervalle_de_wilson():

@@ -22,6 +22,7 @@ annotateur. Seules les premières présentations comptent (pas les répétitions
     uv run python -m packages.analyse.scoring.ml.annoter --serie m3-mail-v8-echantillon --annotateur theo
     uv run python -m packages.analyse.scoring.ml.sonde_m3 --repartir [consigne]   # à deux
     uv run python -m packages.analyse.scoring.ml.sonde_m3 --conformite [consigne]
+    uv run python -m packages.analyse.scoring.ml.sonde_m3 --relecture [consigne]  # selon le guide
 
 - diversité : « bien plus de modèles de phrases distincts qu'avec les gabarits » (mesure de
   l'ADR-0003), comparée sur les mêmes mails écrits des deux façons ;
@@ -55,7 +56,10 @@ from packages.analyse.scoring.ml.sample import _CALENDAR, template
 from packages.collect.trainset import load
 from packages.collect.trainset.build import DATA as TEMPLATES
 from packages.collect.trainset.llm_corpus import OUT as LLM
-from packages.collect.trainset.llm_writer import PROMPT_VERSION
+from packages.collect.trainset.llm_writer import (
+    PROMPT_VERSION,
+    _norm,  # minuscules, sans accents
+)
 from packages.collect.trainset.metiers import METIERS
 from packages.collect.trainset.sonde import OUT as SONDES
 from packages.collect.trainset.sonde import brief_day
@@ -363,6 +367,109 @@ def share(
     return info
 
 
+# --- relecture selon le guide ------------------------------------------------------------------
+
+# Les règles du guide (guide-annotation.md) sur lesquelles la première passe s'est écartée,
+# rappelées en tête de chaque carte, les mêmes pour toutes : un rappel propre à une carte
+# dirait pourquoi elle est revenue.
+GUIDE_REMINDER = (
+    "Rappels du guide : c'est l'acte demandé qui compte, pas la forme de la phrase. "
+    "S'informer : rien à faire, mais un contenu à lire lui est utile (dont la confirmation "
+    "qu'une chose est faite) ; Rien : rien du tout. Mail reçu en copie : quand la demande "
+    "s'adresse à quelqu'un d'autre, S'informer, et l'urgence reste celle du ton écrit."
+)
+_VALIDATE_QUESTION = re.compile(
+    r"\b(valides?|validez|signes?|signez|approuves?|approuvez)-(tu|vous)\b"
+    r"|\b(peux|pouvez|pourrais|pourriez)-(tu|vous) (le |la |les |l')?"
+    r"(valider|signer|approuver)\b"
+    r"|\b(peut|peuvent)-(il|elle|ils|elles) (etre )?(valide|signe|approuve)",
+)
+
+
+def review_name(consigne: str) -> str:
+    return f"{sample_name(consigne)}-relecture"
+
+
+def build_review(
+    consigne: str = PROMPT_VERSION,
+    annotator: str = "theo",
+    series: Path = SERIES,
+    llm: Path = LLM,
+    seed: int = 0,
+) -> dict:
+    """La série de relecture : les cartes de l'échantillon choisies sur des critères visibles
+    sans le simulateur, rejugées à l'aveugle (ni étiquette, ni ancienne réponse).
+
+    - texte changé : le corpus corrigé ne montre plus le même texte (nouvelle carte) ;
+    - copie : la carte montre « Copie : vous » ;
+    - validation en question : « Valides-tu… ? », « Pouvez-vous signer… ? » ;
+    - noté Rien : la vérité humaine de la première passe est Rien (la réponse humaine, jamais
+      celle du simulateur).
+
+    Les cartes dont le texte est retombé sur les gabarits sortent de la mesure (ce ne sont
+    plus des textes du LLM). Toutes les cartes revues, conformes ou non à la première passe,
+    sont mélangées : on ne peut pas savoir lesquelles étaient des écarts.
+    """
+    name = sample_name(consigne)
+    path = series / f"{review_name(consigne)}.jsonl"
+    if path.exists():
+        raise FileExistsError(f"{path.name} existe : une relecture ne se retire pas")
+    folder = llm / consigne
+    draw_info = json.loads((series / f"{name}.tirage.json").read_text(encoding="utf-8"))
+    behind = draw_info["elements"]
+    tasks = {t["task_id"]: t for t in load_series(series / f"{name}.jsonl")}
+    truth = final_labels(name, series)
+    keys = {item_id.split(":")[1].rsplit("-", 1)[0] for item_id in behind.values()}
+    items = {i.item_id: i for key in keys for i in load.load_items(key, folder)}
+    mark = [f"llm:{_manifest(folder)['consigne']}"]
+    rows = {r["item_id"]: r for key in keys for r in load.load_scenario(key, folder)}
+    lots: dict[str, list[str]] = {k: [] for k in ("texte_change", "copie", "validation", "rien")}
+    out_of_llm, cards = [], {}
+    for task_id, item_id in behind.items():
+        old = tasks[task_id]["card"]
+        if rows[item_id]["templates"] != mark:
+            out_of_llm.append(task_id)
+            continue
+        new = items[item_id]
+        if (new.snippet or "") != old["text"]:
+            lots["texte_change"].append(task_id)
+            day = brief_day(datetime.fromisoformat(rows[item_id]["visible_from"])).date()
+            cards[task_id] = card(new, viewpoint(rows[item_id]["persona"], day))
+            continue
+        if ["Copie", "vous"] in old["fields"]:
+            lots["copie"].append(task_id)
+        if "?" in old["text"] and _VALIDATE_QUESTION.search(_norm(old["text"])):
+            lots["validation"].append(task_id)
+        if truth.get(task_id, {}).get("action") == "rien":
+            lots["rien"].append(task_id)
+        if any(task_id in lot for lot in lots.values()):
+            cards[task_id] = old
+    order_ = sorted(cards)
+    random.Random(f"m3:relecture:{seed}").shuffle(order_)
+    review, sources = [], {}
+    for n, task_id in enumerate(order_, 1):
+        review_id = f"r-{n:03d}"
+        context = f"{tasks[task_id]['context']} {GUIDE_REMINDER}"
+        review.append(
+            {"task_id": review_id, "kind": "element", "context": context}
+            | {"card": cards[task_id], "pour": [annotator]}
+        )
+        sources[review_id] = task_id
+    write_series(review, path)
+    info = {
+        "graine": seed,
+        "annotateur": annotator,
+        "cartes": len(review),
+        "lots": {k: sorted(v) for k, v in lots.items()},
+        "hors_llm": sorted(out_of_llm),
+        "sources": sources,
+    }
+    (series / f"{review_name(consigne)}.tirage.json").write_text(
+        json.dumps(info, ensure_ascii=False, indent=1) + "\n", encoding="utf-8", newline="\n"
+    )
+    return info
+
+
 def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
     """Intervalle de confiance à 95 % d'une proportion (Wilson : juste près de 0 et de 1)."""
     if n == 0:
@@ -431,16 +538,89 @@ def conformity(consigne: str = PROMPT_VERSION, series: Path = SERIES, llm: Path 
         mine = {t: e for t, e in expected.items() if annotator in assigned[t]}
         done_mine, _, text = _rate(answers, mine)
         lines.append(f"{annotator} : {text} ; {len(mine) - len(done_mine)} restent")
-    return "\n".join(lines)
+    return "\n".join(lines + _after_review(consigne, series, expected, truth, behind))
+
+
+def _after_review(
+    consigne: str,
+    series: Path,
+    expected: dict[str, dict],
+    truth: dict[str, dict],
+    behind: dict[str, str],
+) -> list[str]:
+    """La mesure après relecture : la réponse de la relecture remplace celle de la première
+    passe sur les cartes revues ; les cartes sorties du corpus LLM ne comptent plus. On dit
+    aussi dans quel sens la relecture a bougé les réponses (vers le simulateur ou non)."""
+    path = series / f"{review_name(consigne)}.tirage.json"
+    if not path.exists():
+        return []
+    info = json.loads(path.read_text(encoding="utf-8"))
+    answers = first_answers(review_name(consigne), series).get(info["annotateur"], {})
+    reviewed = {info["sources"][r]: a for r, a in answers.items() if r in info["sources"]}
+    changed = set(info["lots"]["texte_change"])
+    kept = {t: e for t, e in expected.items() if t not in set(info["hors_llm"])}
+    corrected = {}
+    for t in kept:
+        if t in reviewed:
+            corrected[t] = reviewed[t]
+        elif t not in changed and t in truth:  # un texte changé doit être rejugé
+            corrected[t] = truth[t]
+    done, ok, text = _rate(corrected, kept)
+    reached = len(done) == len(kept) and len(ok) >= CONFORMITY * len(done)
+    lines = [
+        (
+            f"Après relecture selon le guide ({len(info['sources'])} cartes revues, "
+            f"{len(info['hors_llm'])} sorties du corpus LLM) : {text} ; "
+            f"{len(info['sources']) - len(reviewed)} carte(s) à relire ; "
+            f"critère {CONFORMITY:.0%} : {'atteint' if reached else 'non atteint'}"
+        )
+    ]
+
+    def conform(answer: dict | None, t: str) -> bool:
+        return answer is not None and all(answer[k] == expected[t][k] for k in KEYS)
+
+    moves = Counter()
+    for t, answer in reviewed.items():
+        if t in changed:
+            moves["texte changé"] += 1
+            continue
+        before, after = conform(truth.get(t), t), conform(answer, t)
+        moves[
+            "vers le simulateur"
+            if after and not before
+            else "loin du simulateur"
+            if before and not after
+            else "sans effet"
+        ] += 1
+    lines.append("  relecture : " + ", ".join(f"{k} {n}" for k, n in sorted(moves.items())))
+    for t in done:
+        if t not in ok:
+            e = expected[t]
+            diff = ", ".join(
+                f"{k} {corrected[t][k]} au lieu de {e[k]}" for k in KEYS if corrected[t][k] != e[k]
+            )
+            lines.append(f"  ≠ {t} ({behind[t]}) {diff}")
+    return lines
 
 
 def main(argv: list[str]) -> int:
     sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
-    corpus = {"--diversite", "--echantillon", "--repartir", "--conformite"}
+    corpus = {"--diversite", "--echantillon", "--repartir", "--relecture", "--conformite"}
     if argv and argv[0] in corpus and len(argv) <= 2:
         consigne = argv[1] if len(argv) == 2 else PROMPT_VERSION
         if argv[0] == "--diversite":
             print(diversity_report(LLM / consigne))
+        elif argv[0] == "--relecture":
+            info = build_review(consigne)
+            lots = {k: len(v) for k, v in info["lots"].items()}
+            print(
+                f"Série de relecture : {info['cartes']} cartes (lots, avec recouvrements : "
+                f"{lots}) ; {len(info['hors_llm'])} sorties du corpus LLM."
+            )
+            print(
+                "Annoter : uv run python -m packages.analyse.scoring.ml.annoter "
+                f"--serie {review_name(consigne)} --annotateur {info['annotateur']}"
+            )
         elif argv[0] == "--repartir":
             info = share(consigne)
             print(
@@ -470,7 +650,8 @@ def main(argv: list[str]) -> int:
         return 0
     print(
         "usage : sonde_m3 --serie <dossier> | --comparer <dossier> | --diversite [consigne] "
-        "| --echantillon [consigne] | --repartir [consigne] | --conformite [consigne]"
+        "| --echantillon [consigne] | --repartir [consigne] | --relecture [consigne] "
+        "| --conformite [consigne]"
     )
     return 2
 
