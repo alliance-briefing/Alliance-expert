@@ -16,6 +16,7 @@ import hashlib
 import json
 import sys
 from collections import Counter
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
@@ -62,12 +63,20 @@ def scenario_row(
     }
 
 
-def build_persona(persona: Persona, seed: int = 0) -> tuple[list[Item], list[dict]]:
-    """Les Item collectés et **toutes** les lignes du scénario (collectées ou non)."""
-    writer = Writer(persona, seed)
+def build_persona(
+    persona: Persona,
+    seed: int = 0,
+    write: Callable[[Fact], tuple[Item | None, list[str]]] | None = None,
+) -> tuple[list[Item], list[dict]]:
+    """Les Item collectés et **toutes** les lignes du scénario (collectées ou non).
+
+    `write` remplace l'écrivain par gabarits, fait par fait (corpus LLM de M3) : le monde,
+    l'ordre des faits et les étiquettes ne changent pas.
+    """
+    write = write or Writer(persona, seed).write
     items, rows = [], []
     for fact in Sim(persona, seed).run():
-        item, templates = writer.write(fact)
+        item, templates = write(fact)
         if item is not None:
             items.append(item)
         rows.append(scenario_row(fact, persona, templates, collected=item is not None))

@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import json
+import random
+import re
 from collections import Counter
 from datetime import date
+from pathlib import Path
 
 import pytest
 
-from packages.collect.trainset import llm_corpus, sonde
+from contracts.models import Item
+from packages.collect.trainset import build, llm_corpus, load, sonde
 from packages.collect.trainset import llm_writer as L
 from packages.collect.trainset.facts import Fact
 from packages.collect.trainset.world import all_personas, at
@@ -331,6 +335,98 @@ def test_un_contexte_qui_repete_la_demande_est_retire(persona):
     assert "contexte" not in kept and "contexte : répète la demande" in dropped
 
 
+# --- v8 : leçons du corpus v7 (919 textes) -----------------------------------------------------
+
+
+def test_un_mail_sans_demande_voit_d_abord_un_exemple_sans_demande(persona):
+    """v7 : la demande restait vide pour 60 % des « S'informer », qui ne voyaient que des
+    exemples de mails qui demandent quelque chose."""
+    by_id = {e["id"]: e for e in L.EXAMPLES}
+    for act, other in (("informer", "rien"), ("rien", "informer")):
+        sh = L.LLMWriter(persona, client=FakeOllama([])).sheet(_mail(persona, act))
+        assert by_id[sh.examples[0]]["act"] == other
+        assert L.NO_REQUEST_PIECE[act] in sh.text
+    sh = L.LLMWriter(persona, client=FakeOllama([])).sheet(_mail(persona, "faire"))
+    assert L.NO_REQUEST_PIECE["informer"] not in sh.text
+
+
+def test_la_reecriture_rappelle_toujours_le_tu_ou_le_vous():
+    """v7 : 29 rejets sur 113 n'avaient plus que du vous dans un mail tutoyé."""
+    assert "jamais vous" in L.repair(["demande : vide"], tu=True)
+    assert "jamais tu" in L.repair(["demande : vide"], tu=False)
+
+
+@pytest.mark.parametrize(
+    ("act", "tone", "kind", "text", "ok"),
+    [
+        # Un remerciement n'est pas une demande ; « merci de m'envoyer » en est une.
+        ("rien", "normal", "demande", "Merci de m'avoir envoyé la confirmation.", True),
+        ("rien", "normal", "demande", "Merci de m'envoyer la confirmation.", False),
+        # Les mots de l'acte Faire et Répondre vus dans le corpus v7.
+        ("faire", "normal", "demande", "Merci de contacter le client à ce sujet.", True),
+        ("faire", "normal", "demande", "Mets à jour le tableau de suivi.", True),
+        ("repondre", "normal", "demande", "Peux-tu me faire savoir si le planning tient.", True),
+        # Une formule du même ton dans la demande est permise ; d'un autre ton, non.
+        ("decider", "urgent", "demande", "Merci de le valider dès que possible.", True),
+        ("decider", "normal", "demande", "Merci de le valider dès que possible.", False),
+        ("decider", "sans_urgence", "demande", "Merci de le valider quand tu as un moment.", True),
+        ("decider", "urgent", "demande", "Merci de le valider quand tu as un moment.", False),
+        # Un objet sans mots-outils reste du français.
+        ("decider", "normal", "objet", "Budget formation : choix attendu entre versions", True),
+    ],
+)
+def test_les_controles_corriges_en_v8(persona, act, tone, kind, text, ok):
+    fact = _mail(persona, act, tone=tone)
+    sh = L.LLMWriter(persona, client=FakeOllama([])).sheet(fact)
+    reasons = L.check_piece(kind, text, fact, sh)
+    assert (reasons == []) == ok, reasons
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Merci de le valider dans les meilleurs délais.",
+        "Merci de le valider dans les plus brefs délais.",
+        "Merci de le valider dès que cela sera possible.",
+        "Merci de le valider dès que vous le pourrez.",
+    ],
+)
+def test_les_formules_d_urgence_lues_dans_l_echantillon(persona, text):
+    """Échantillon M3 relu à l'aveugle : lues urgentes dans des mails neutres."""
+    fact = _mail(persona, "decider")
+    sh = L.LLMWriter(persona, client=FakeOllama([])).sheet(fact)
+    assert any("ton changé" in r for r in L.check_piece("demande", text, fact, sh))
+
+
+def test_l_intitule_a_ecrire_recopie_sans_deux_points_est_refuse(persona):
+    fact = _mail(persona, "relire", tone="sans_urgence")
+    sh = L.LLMWriter(persona, client=FakeOllama([])).sheet(fact)
+    text = f"À écrire {sh.tone_mark[0]}."
+    assert "intitulé de la fiche recopié" in L.check_piece("ton", text, fact, sh)
+
+
+def test_un_remerciement_perd_son_contexte_et_sa_conclusion(persona):
+    """Échantillon M3 : le contexte d'un mail « Rien » y ajoutait un fait (lu S'informer)."""
+    fact = _mail(persona, "rien")
+    sh = L.LLMWriter(persona, client=FakeOllama([])).sheet(fact)
+    pieces = {
+        "objet": "Bien reçu",
+        "contexte": "J'ai passé la commande auprès du fournisseur ce matin.",
+        "demande": f"Merci pour {fact.obj.phrase}, c'est bien noté.",
+        "ton": "",
+        "conclusion": "Je te tiens au courant des prochaines étapes.",
+    }
+    kept, reasons, dropped = L.judge(fact, sh, pieces)
+    assert reasons == [] and set(kept) == {"objet", "demande"}
+    assert [d.split(" : ")[0] for d in dropped] == ["contexte", "conclusion"]
+
+
+def test_une_urgence_niee_se_lit_calme():
+    """v7 : « ce n'est pas une demande urgente » était lu comme urgent."""
+    text = L._norm("Ce n'est pas une demande urgente.")
+    assert L._CALM.search(text) and not L._URGENT.search(L._CALM.sub(" ", text))
+
+
 def test_la_reecriture_guidee_renvoie_les_morceaux_refuses_et_les_mots_fautifs(persona):
     """v6 : au lieu d'un nouveau tirage, le modèle corrige ses propres morceaux."""
     fact = _deadline_fact(persona)
@@ -457,3 +553,306 @@ def test_le_corpus_reprend_la_ou_il_s_est_arrete(tmp_path):
     assert ids == {f.item_id for _, f in llm_corpus.plan()[:5]}
     rows = (tmp_path / "seances.jsonl").read_text("utf-8").splitlines()
     assert len(rows) == 2 and json.loads(rows[0])["consigne"] == L.PROMPT_VERSION
+
+
+# --- l'assemblage du corpus (sans GPU) ---------------------------------------------------------
+
+_ACT_OF = (  # l'acte d'une fiche, retrouvé dans sa ligne « Demande »
+    ("decider", r"valide|signe|approuve|donne son accord|choisisse"),
+    ("faire", r"envoie|transmette|appelle|mette à jour|dépose"),
+    ("repondre", r"donne son avis|dise si|confirme|donne ses disponibilités|propose une date"),
+    ("relire", r"relise|vérifie"),
+    ("preparer", r"vienne à la réunion|présente|prépare ses remarques"),
+)
+_VERB = {
+    "decider": "valider {o}",
+    "faire": "mettre à jour {o}",
+    "repondre": "donner un avis sur {o}",
+    "relire": "relire {o}",
+    "preparer": "préparer {o} pour la réunion",
+}
+
+
+class FromSheet(FakeOllama):
+    """Écrit des morceaux sobres à partir de la fiche seule, comme un LLM docile : assez pour
+    fabriquer un `textes.jsonl` dont la plupart des textes passent les contrôles."""
+
+    def __init__(self) -> None:
+        super().__init__([])
+
+    def chat(self, conversation: list[dict], seed: int) -> dict:
+        self.seeds.append(seed)
+        sheet = [m["content"] for m in conversation if m["role"] == "user"][L.N_EXAMPLES]
+
+        def line(label: str) -> str:
+            found = re.search(rf"^{label} : (.*)$", sheet, flags=re.MULTILINE)
+            return found.group(1) if found else ""
+
+        tu = line("Adresse").startswith("tutoiement")
+        o = line("Sujet")
+        mark = re.search(r"« (.*) »", line("À écrire dans la demande"))
+        when = f" d'ici {mark.group(1)}" if mark else ""
+        tone = re.search(r"« (.*) »", line("À écrire dans le ton"))
+        act = next((a for a, verbs in _ACT_OF if re.search(verbs, line("Demande"))), None)
+        if "Information donnée" in sheet:
+            demande = f"{'Je te' if tu else 'Je vous'} confirme que le point sur {o} est fait."
+        elif act is None:
+            demande = f"Merci pour {o}, bien reçu de mon côté."
+        else:
+            verb = _VERB[act].format(o=o)
+            form = line("Forme")
+            if form.startswith("question"):
+                demande = f"{'Peux-tu' if tu else 'Pouvez-vous'} {verb}{when} ?"
+            elif form.startswith("directe"):
+                demande = f"Merci de {verb}{when}."
+            else:
+                demande = f"Il reste à {verb}{when}."
+        return {
+            "objet": "Point sur " + re.sub(r"^(le |la |les |l')", "", o),
+            "contexte": "",
+            "demande": demande,
+            "ton": f"Pour être clair : {tone.group(1)}." if tone else "",
+            "conclusion": "",
+        }
+
+
+N_TEXTS = 40
+
+
+def _copy(rows: list[dict]) -> list[dict]:
+    return json.loads(json.dumps(rows))
+
+
+@pytest.fixture(scope="module")
+def plan_facts():
+    return {f.item_id: (p, f) for p, f in llm_corpus.plan()}
+
+
+def _as_generated(row: dict, plan_facts: dict, **pieces: str) -> dict:
+    """La ligne qu'aurait écrite le PC GPU avec ces morceaux, tous gardés : le mail et
+    l'extrait enregistrés sont rassemblés à partir d'eux."""
+    p, f = plan_facts[row["item_id"]]
+    sh = L.LLMWriter(p, client=FakeOllama([])).sheet(f)
+    row["llm"]["pieces"] |= pieces
+    kept = {
+        k: v
+        for k, v in row["llm"]["pieces"].items()
+        if v and not (k == "ton" and f.tone == "normal")
+    }
+    objet, corps = L.assemble(sh, kept)
+    row["llm"] |= {"objet": objet, "corps": corps}
+    row["extrait"] = L.extract(corps)
+    return row
+
+
+def _write_rows(path: Path, rows: list[dict]) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    text = "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows)
+    path.write_text(text, encoding="utf-8", newline="\n")
+    return path
+
+
+def _assembled(out: Path, row: dict) -> tuple[Item, list[str]]:
+    """L'Item assemblé d'un fait et ses marques d'écrivain (scénario)."""
+    item = next(i for i in load.load_items(row["persona"], out) if i.item_id == row["item_id"])
+    scenario = load.load_scenario(row["persona"], out)
+    marks = next(r["templates"] for r in scenario if r["item_id"] == row["item_id"])
+    return item, marks
+
+
+@pytest.fixture(scope="module")
+def corpus(tmp_path_factory):
+    """Un `textes.jsonl` factice (les 40 premiers faits du plan) et son assemblage."""
+    out = tmp_path_factory.mktemp("mail-v7")
+    llm_corpus.run(out=out, limit=N_TEXTS, client=FromSheet(), log=lambda _: None)
+    rows = [json.loads(x) for x in (out / "textes.jsonl").read_text("utf-8").splitlines()]
+    return out, rows, llm_corpus.assemble_items(out=out)
+
+
+@pytest.fixture(scope="module")
+def templates():
+    """Le corpus des gabarits, par persona : la référence de l'assemblage."""
+    return {p.key: build.build_persona(p) for p in all_personas()}
+
+
+def test_l_assemblage_ecrit_tout_le_corpus_en_item_valides(corpus, templates):
+    """100 % des lignes sont des Item du contrat A : mêmes éléments, même ordre, mêmes
+    étiquettes que le corpus des gabarits ; seuls le texte et la marque d'écrivain changent."""
+    out, _, manifest = corpus
+    assert set(load.personas(data=out)) == set(templates)
+    for key, (items, scenario) in templates.items():
+        assembled = load.load_items(key, out)  # valide chaque ligne (contrat A)
+        assert [i.item_id for i in assembled] == [i.item_id for i in items]
+        same = [{k: v for k, v in r.items() if k != "templates"} for r in scenario]
+        got = [
+            {k: v for k, v in r.items() if k != "templates"} for r in load.load_scenario(key, out)
+        ]
+        assert got == same
+    c = manifest["llm"]
+    assert c["ecrits"] == N_TEXTS and c["a_reecrire"] == len(llm_corpus.plan())
+    assert c["retenus"] + c["rejetes"] + c["recontroles"] == N_TEXTS
+    assert not c["complet"] and c["absents"] == c["a_reecrire"] - N_TEXTS
+    by_split = manifest["llm_par_split"]
+    assert by_split["train"]["ecrits"] + by_split["tgen"]["ecrits"] == N_TEXTS
+
+
+def test_un_texte_retenu_donne_l_objet_et_l_extrait_du_llm(corpus):
+    out, rows, manifest = corpus
+    kept = [r for r in rows if r["llm"]["ok"]]
+    assert len(kept) >= N_TEXTS // 2  # le faux client est docile
+    assert manifest["llm"]["retenus"] == len(kept) and manifest["llm"]["recontroles"] == 0
+    for row in kept:
+        item, marks = _assembled(out, row)
+        assert item.snippet == row["extrait"] and item.content_text is None
+        assert item.title.endswith(row["llm"]["objet"])  # « Re: » ajouté pour une relance
+        assert marks == [f"llm:{L.PROMPT_VERSION}"]
+
+
+def test_un_texte_absent_garde_exactement_les_gabarits(corpus, templates):
+    out, rows, _ = corpus
+    written = {r["item_id"] for r in rows}
+    key = next(iter(templates))
+    items, _ = templates[key]
+    by_id = {i.item_id: i for i in load.load_items(key, out)}
+    marks = {r["item_id"]: r["templates"] for r in load.load_scenario(key, out)}
+    absent = [i for i in items if f"llm:{L.PROMPT_VERSION}:absent" in marks[i.item_id]]
+    assert absent and not {i.item_id for i in absent} & written
+    assert all(by_id[i.item_id] == i for i in absent)
+
+
+def test_un_texte_rejete_ou_refuse_au_recontrole_garde_les_gabarits(
+    corpus, templates, plan_facts, tmp_path
+):
+    """Rejeté au moment de l'écrire, ou accepté alors mais refusé par les contrôles
+    d'aujourd'hui (morceau fautif, mail rassemblé différent) : texte des gabarits."""
+    _, rows, _ = corpus
+    rows = _copy(rows)
+    rejected, faulty, altered = [r for r in rows if r["llm"]["ok"]][:3]
+    rejected["llm"]["ok"] = False
+    _as_generated(faulty, plan_facts, demande="C'est urgent.")
+    altered["llm"]["corps"] += "\nPS : un mot ajouté après coup."
+    out = tmp_path / "mail-v7"
+    manifest = llm_corpus.assemble_items(_write_rows(out / "textes.jsonl", rows), out)
+    assert manifest["llm"]["recontroles"] == 2
+    detail = {d["item_id"]: d["raisons"] for d in manifest["recontroles_detail"]}
+    assert detail[altered["item_id"]] == ["mail rassemblé différent de celui enregistré"]
+    assert all(r.startswith("demande : ") for r in detail[faulty["item_id"]])
+    for row, status in ((rejected, "rejete"), (faulty, "recontrole"), (altered, "recontrole")):
+        items, _ = templates[row["persona"]]
+        item, marks = _assembled(out, row)
+        assert item == next(i for i in items if i.item_id == row["item_id"])
+        assert marks[-1] == f"llm:{L.PROMPT_VERSION}:{status}"
+
+
+def test_une_regle_nouvelle_raccourcit_le_mail_sans_le_rejeter(corpus, plan_facts, tmp_path):
+    """Un mail « Rien » écrit avec un contexte (accepté sur le PC GPU) : l'assemblage
+    d'aujourd'hui retire le contexte, garde le texte du LLM et le compte comme raccourci."""
+    _, rows, _ = corpus
+    rows = _copy(rows)
+    thanks = next(r for r in rows if r["llm"]["ok"] and plan_facts[r["item_id"]][1].act == "rien")
+    added = "Le dossier avance bien de mon côté et toute l'équipe a fait le point cette semaine."
+    _as_generated(thanks, plan_facts, contexte=added)
+    assert "avance bien" in thanks["llm"]["corps"]
+    out = tmp_path / "mail-v8"
+    manifest = llm_corpus.assemble_items(_write_rows(out / "textes.jsonl", rows), out)
+    assert manifest["llm"]["raccourcis"] == 1 and manifest["llm"]["recontroles"] == 0
+    item, marks = _assembled(out, thanks)
+    assert marks == [f"llm:{L.PROMPT_VERSION}"] and "avance bien" not in item.snippet
+    assert thanks["llm"]["pieces"]["demande"] in item.snippet
+
+
+def test_le_mail_enregistre_doit_s_expliquer_par_ses_morceaux(corpus, plan_facts):
+    """La preuve que les deux PC concordent : une combinaison des morceaux rendus redonne
+    exactement le mail enregistré."""
+    _, rows, _ = corpus
+    row = _copy([next(r for r in rows if r["llm"]["ok"])])[0]
+    p, f = plan_facts[row["item_id"]]
+    sh = L.LLMWriter(p, client=FakeOllama([])).sheet(f)
+    d = llm_corpus._draft_of(row)
+    assert llm_corpus.generation_kept(sh, d) is not None
+    other = L.Draft(**(row["llm"] | {"corps": d.corps.replace(d.pieces["demande"], "Autre.")}))
+    assert llm_corpus.generation_kept(sh, other) is None
+
+
+def test_l_assemblage_est_deterministe(corpus, tmp_path):
+    """Mêmes textes, mêmes octets, quel que soit l'ordre des lignes ; une ligne coupée par
+    un arrêt brutal (au milieu du fichier après une relance) est ignorée."""
+    _, rows, first = corpus
+    shuffled = list(rows)
+    random.Random(1).shuffle(shuffled)
+    out = tmp_path / "mail-v7"
+    path = _write_rows(out / "textes.jsonl", shuffled)
+    text = path.read_text("utf-8")
+    cut = text.index("\n", len(text) // 2) + 1
+    path.write_text(text[:cut] + '{"item_id": "mail:coupé\n' + text[cut:], "utf-8")
+    second = llm_corpus.assemble_items(path, out)
+    assert second["personas"] == first["personas"]  # empreintes des items et du scénario
+    assert second["llm"] == first["llm"] and second["textes"]["illisibles"] == 1
+
+
+def test_le_corpus_compresse_redonne_le_meme_corpus(corpus, tmp_path):
+    """La version versionnée (.gz) : stable octet pour octet, et assemblée à l'identique
+    (mêmes empreintes, même empreinte des textes)."""
+    _, rows, first = corpus
+    work = tmp_path / "mail-v8"
+    path = _write_rows(work / "textes.jsonl", rows)
+    packed = llm_corpus.compress(work)
+    assert packed.read_bytes() == llm_corpus.compress(work).read_bytes()  # sans date
+    assert llm_corpus.texts_bytes(packed) == path.read_bytes()
+    path.unlink()  # la génération est finie : seul le .gz reste
+    assert llm_corpus.default_texts(work) == packed
+    again = llm_corpus.assemble_items(out=work)
+    assert again["personas"] == first["personas"] and again["llm"] == first["llm"]
+    assert again["textes"]["sha256"] == first["textes"]["sha256"]
+
+
+def _first_llm(rows: list[dict], **change) -> list[dict]:
+    return [rows[0] | {"llm": rows[0]["llm"] | change}, *rows[1:]]
+
+
+@pytest.mark.parametrize(
+    ("change", "message"),
+    [
+        (lambda rows: [*rows, rows[0]], "deux fois"),
+        (lambda rows: _first_llm(rows, prompt_version="mail-v6"), "consignes"),
+        (lambda rows: _first_llm(rows, digest="sha256-autre"), "plusieurs modèles"),
+        (lambda rows: [rows[0] | {"llm": {"ok": True}}, *rows[1:]], "illisible"),
+        (lambda rows: [], "aucun texte"),
+    ],
+)
+def test_l_assemblage_refuse_un_corpus_douteux(corpus, tmp_path, change, message):
+    _, rows, _ = corpus
+    path = _write_rows(tmp_path / "textes.jsonl", change(_copy(rows)))
+    with pytest.raises(ValueError, match=message):
+        llm_corpus.assemble_items(path, tmp_path)
+    assert not (tmp_path / "manifest.json").exists()  # rien d'écrit à moitié
+
+
+def test_l_assemblage_refuse_un_fait_inconnu_du_simulateur(corpus, tmp_path):
+    _, rows, _ = corpus
+    stranger = _copy(rows[:1])[0] | {"item_id": "mail:inconnu-1"}
+    path = _write_rows(tmp_path / "textes.jsonl", [*rows, stranger])
+    with pytest.raises(ValueError, match="inconnu du simulateur"):
+        llm_corpus.assemble_items(path, tmp_path)
+    assert not (tmp_path / "items").exists()
+
+
+def test_la_comparaison_de_deux_consignes_est_appariee(corpus, tmp_path):
+    """Seuls les faits écrits par les deux consignes sont comparés ; l'ancienne est aussi
+    rejugée avec les contrôles d'aujourd'hui."""
+    out, rows, _ = corpus
+    _write_rows(tmp_path / "ancienne" / "textes.jsonl", rows[:25])
+    result = llm_corpus.compare(tmp_path / "ancienne", out)
+    assert result.startswith("25 faits écrits par les deux consignes")
+    assert "ancienne rejugée" in result and "Par acte" in result
+    empty = tmp_path / "vide"
+    _write_rows(empty / "textes.jsonl", [])
+    assert llm_corpus.compare(empty, out).startswith("Aucun fait")
+
+
+def test_le_client_hors_ligne_n_appelle_jamais_le_llm(corpus):
+    client = L.Offline(L.MODEL, "sha256-test")
+    with pytest.raises(RuntimeError, match="hors ligne"):
+        client.chat([], seed=0)
+    _, _, manifest = corpus  # l'assemblage a tourné avec ce client : aucun appel
+    assert manifest["modele"] == L.MODEL and manifest["empreinte"] == "sha256-test"

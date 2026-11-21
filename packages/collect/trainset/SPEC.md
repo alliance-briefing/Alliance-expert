@@ -14,8 +14,9 @@ Monde (métier, personas, organigramme)        world.py, metiers.py
 ```
 
 Le simulateur décide des faits, de l'horloge, des liens entre sources et du comportement
-du manager. L'écrivain n'expose que ce qu'un vrai connecteur porterait. Un écrivain LLM
-(M3) pourra remplacer `writer.py` fait par fait (chaque fait a sa propre graine).
+du manager. L'écrivain n'expose que ce qu'un vrai connecteur porterait. L'écrivain LLM (M3,
+section plus bas) remplace le texte de `writer.py` fait par fait (chaque fait a sa propre
+graine), sans toucher aux faits ni aux étiquettes.
 
 ## Règles non négociables
 
@@ -98,8 +99,85 @@ uv run python -m packages.collect.trainset --verifier   # compare au manifeste v
 Le lot 2 lit le corpus par `load.py` (`personas`, `load_items`, `load_scenario`,
 `labels_at`) et ne génère rien lui-même.
 
-## Limites connues (v0.2)
+## Écrivain LLM (M3) : le texte des mails, pas les faits
+
+Le LLM **écrit**, il ne **simule** pas : faits, horloge, liens et étiquettes viennent toujours
+du simulateur. Hors produit : il ne sert qu'à produire le corpus d'entraînement, sur un PC à
+carte graphique (Ollama, Gemma 2 9B), en local ; le brief n'utilise aucun LLM génératif.
+
+**Ce qui est réécrit** (`llm_writer.rewritable`) : les mails rédigés par gabarits, soit 8 152
+mails des 40 personas. Automates, pièges, messages fixes et réponses du manager gardent leurs
+gabarits : leur forme fait partie du fait.
+
+**Consigne** (`llm_writer.py`, versionnée : `PROMPT_VERSION`, aujourd'hui `mail-v8`) :
+- une **fiche** en mots simples, tirée par fait : expéditeur et relation, destinataire (ou
+  copie), tu ou vous, sujet, contexte de l'affaire, demande avec la personne qui agit, forme,
+  échéance, ton, style ; jamais le nom de l'étiquette ;
+- deux **exemples écrits à la main** (`llm_exemples.py`), d'autres actes que le fait ; un mail
+  sans demande voit d'abord l'exemple sans demande (v8) ;
+- le modèle rend des **morceaux** (objet, contexte, demande, ton, conclusion) en JSON ; le code
+  assemble salutation, ordre, second acte et signature (v7) ;
+- température 0,8, graine par fait et par essai, 3 essais au plus, réécriture guidée par les
+  raisons du refus.
+
+**Contrôles** (règles, jamais un LLM) : par morceau puis sur le mail entier, dans l'extrait de
+500 caractères que verra le modèle : acte demandé présent, aucun acte plus engageant ajouté,
+échéance et ton écrits, aucun ton non demandé, forme respectée, rôle non inversé, tu ou vous
+tenu, rien d'inventé (noms, organisations, chiffres, dates, liens), français, pas d'intitulé de
+la fiche recopié. Un morceau facultatif qui échoue est retiré ; un mail « Rien » perd toujours
+contexte et conclusion (ils y ajoutaient un fait). Un texte refusé garde le texte des gabarits.
+
+**Production et assemblage** (`llm_corpus.py`) :
+- génération sur plusieurs nuits, dans un ordre mélangé à graine fixe (une partie écrite est
+  un échantillon au hasard du tout), reprise après arrêt → `data/llm/<consigne>/textes.jsonl`
+  (une ligne par fait : morceaux, mail, extrait, essais, raisons, modèle et empreinte) ;
+- assemblage **sans GPU** (`--assembler`, client hors ligne qui refuse tout appel) : rejoue le
+  simulateur et écrit `items/`, `scenario/`, `manifest.json` dans la forme de `data/`, lisible
+  par `load.py` avec `data=<dossier>` ;
+- **recontrôle** : le mail enregistré doit s'expliquer par la fiche et l'assemblage d'ici
+  (preuve que les deux PC concordent) ; les contrôles d'aujourd'hui sont rejoués sur les
+  morceaux : un morceau requis refusé fait retomber sur les gabarits, un facultatif retiré
+  raccourcit le mail. Statuts : `retenu`, `rejete`, `recontrole`, `absent` (marqués dans le
+  scénario) ;
+- versionné : `textes.jsonl.gz` (`--compresser`, stable octet pour octet) et le manifeste ;
+  `items/` et `scenario/` se régénèrent.
+
+**Acceptation** (plan, M3), outils côté lot 2 (`packages/analyse/scoring/ml/sonde_m3.py`) :
+
+Corpus final (`mail-v8`, 21/11/2026) : 8 152 mails rédigés, 7 655 textes du LLM retenus,
+422 rejetés à la rédaction et 75 au recontrôle (texte des gabarits), 1 047 mails « Rien »
+raccourcis. Les échantillons humains ont été tirés sur les 4 114 premiers textes, identiques
+octet pour octet aux 4 114 premières lignes du fichier final.
+
+| Critère | Mesure | Résultat |
+|---|---|---|
+| ≥ 8 000 éléments rédigés | manifeste de l'assemblage | 8 152 rédigés, 7 655 retenus |
+| ≥ 95 % passent les contrôles | manifeste de l'assemblage | **93,9 %** (train 93,9 %, T-gen 93,6 %) : non atteint, après durcissement des contrôles d'après l'échantillon (95,0 % avant) |
+| bien plus de modèles de phrases qu'avec les gabarits (ADR-0003) | `--diversite`, mêmes 7 655 mails, objets, noms, nombres, dates masqués | **×9,9** (14 267 contre 1 444) ; 79 % de phrases uniques contre 17 % ; objets : 2 640 modèles contre 19 |
+| ≥ 90 % conformes sur 5 % relus à l'aveugle | `--echantillon`, `--conformite` | 83,7 % brut (387 cartes, 2 annotateurs, kappa action 0,92) ; 95,8 % après correction et relecture (optimiste) |
+| confirmation sur des textes jamais vus | `--confirmation` (150 cartes, critère écrit avant) | **93,3 %** (IC 95 % 88,2-96,3 %), atteint |
+
+Historique des consignes : v2 sonde 14/20 → v7 16/20 (sonde) et 87,7 % de contrôles sur 919
+textes → v8 92,7 % sur les mêmes 150 faits (81 % du premier coup, 8 s par texte).
+
+Commandes (PC à carte graphique, puis portable) :
+
+```bash
+uv run python -m packages.collect.trainset.llm_corpus                   # générer (reprend)
+uv run python -m packages.collect.trainset.llm_corpus --comparer mail-v7 mail-v8
+uv run python -m packages.collect.trainset.llm_corpus --assembler       # sans GPU
+uv run python -m packages.collect.trainset.llm_corpus --compresser
+```
+
+## Limites connues (v0.2, M3)
 
 - Pas de mail d'invitation lié à l'événement (`correlation_id` partagé) : seulement l'événement.
-- Les gabarits restent répétitifs : c'est le rôle de l'écrivain LLM (M3) d'y remédier.
 - La priorité entre éléments n'est pas étiquetée ici : elle vient des jugements par paires.
+- Écrivain LLM : seuls les mails sont réécrits ; réunions, tâches et fichiers gardent leurs
+  gabarits.
+- Fiche du simulateur : « que X dise si {o} lui convient » ou « donne son avis » sur une
+  commande, un devis ou un budget se lit Décider (9 écarts sur 537 textes relus) ; les
+  formulations « appelle » et « choisisse entre » passent moins souvent les contrôles.
+- Mails en copie : la règle du guide « copie → S'informer » (19/11) n'est pas encore validée ;
+  l'annotateur lit Rien quand le texte ne dit pas que le manager est en copie pour suivre.
+- Mesures humaines de M3 à un seul annotateur pour la relecture et la confirmation.

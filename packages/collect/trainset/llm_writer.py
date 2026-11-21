@@ -52,7 +52,11 @@ MODEL = "gemma2:9b"
 # contexte, demande, ton, conclusion), contrôlés un par un ; le code assemble la salutation,
 # l'ordre, la signature (v6 : 11/20, Gemma raccourcit ou dérive dès qu'on corrige le style,
 # et le style embrouillait l'annotation).
-PROMPT_VERSION = "mail-v7"
+# v8 : mails sans demande. Corpus v7 (919 premiers textes) : 87,7 % passent ; la demande est
+# vide au 1er essai pour 60 % des « S'informer » et 40 % des « Rien » (aucun exemple sans
+# demande n'était montré), et la réécriture glissait alors au vous. Un exemple sans demande
+# est désormais montré, la fiche dit ce que porte le morceau, la réécriture rappelle tu ou vous.
+PROMPT_VERSION = "mail-v8"
 TEMPERATURE = 0.8
 TOP_P = 0.9
 MAX_TRIES = 3
@@ -66,8 +70,8 @@ SYSTEM = """Tu écris les morceaux d'un e-mail professionnel réaliste, en fran�
 Remplis chaque morceau :
 - objet : l'objet du mail, court (3 à 10 mots).
 - contexte : 1 ou 2 phrases (15 à 35 mots) qui situent le dossier : ce qui s'est passé, où on en est. Aucune demande, aucune question, aucune échéance, aucune formule d'urgence ou de calme.
-- demande : 1 ou 2 phrases (10 à 35 mots) qui portent la demande de la fiche, reformulée avec tes propres mots, dans la forme indiquée, avec l'échéance s'il y en a une. Pour une information, la phrase qui la donne ; pour un remerciement, la phrase de remerciement. Rien d'autre : ni urgence, ni calme, ni autre demande.
-- ton : si le ton de la fiche est urgent ou calme, une courte phrase qui le dit, avec la formule « À écrire » qui lui est destinée ; si le ton est neutre, une chaîne vide.
+- demande : 1 ou 2 phrases (10 à 35 mots) qui portent la demande de la fiche, reformulée avec tes propres mots, dans la forme indiquée, avec l'échéance s'il y en a une. Pour une information, la phrase qui la donne ; pour un remerciement, la phrase de remerciement. Jamais vide. Rien d'autre : ni urgence, ni calme, ni autre demande, ni « n'hésite pas », ni offre d'aide.
+- ton : si le ton de la fiche est urgent ou calme, une courte phrase qui le dit, avec la formule « À écrire » qui lui est destinée (la formule seule, sans les mots « À écrire ») ; si le ton est neutre, une chaîne vide.
 - conclusion : une courte phrase neutre (5 à 20 mots) sur un aspect pratique du dossier, sans demande, sans question, sans formule de délai ; ou une chaîne vide.
 
 Règles :
@@ -191,6 +195,13 @@ MUST_CALM = {
     False: ("rien d'urgent", "rien ne presse", "quand vous aurez un moment", "aucune urgence"),
 }
 MUST_URGENT = ("urgent", "au plus vite", "ça bloque", "c'est pressé", "en priorité")
+# v8 : ce que porte le morceau « demande » d'un mail qui ne demande rien (S'informer, Rien).
+NO_REQUEST_PIECE = {
+    "informer": "Morceau demande : la phrase qui donne cette information (jamais vide), sans "
+    "rien demander ni proposer d'aide.",
+    "rien": "Morceau demande : la phrase de remerciement ou d'accusé de réception (jamais "
+    "vide), sans rien demander ni proposer d'aide.",
+}
 
 
 def rewritable(fact: Fact) -> bool:
@@ -276,11 +287,13 @@ def sheet(persona: Persona, fact: Fact, rng: random.Random) -> Sheet:
             f"Information donnée : {o} est {rng.choice(P.STATUTS)}. "
             f"{target.first} n'a rien à faire ni à répondre."
         )
+        lines.append(NO_REQUEST_PIECE["informer"])
     else:
         lines.append(
             f"Rien n'est demandé : {a.first} remercie ou accuse réception concernant {o}, "
             "sans nouvelle information."
         )
+        lines.append(NO_REQUEST_PIECE["rien"])
     # v7 : le second acte éventuel est ajouté par le code (banque des gabarits), pas par le LLM.
     if fact.deadline:
         day = fact.deadline.date()
@@ -333,6 +346,11 @@ def sheet(persona: Persona, fact: Fact, rng: random.Random) -> Sheet:
     pool = [e for e in EXAMPLES if e["act"] != fact.act]
     rng.shuffle(pool)
     pool.sort(key=lambda e: ("tutoiement" in e["fiche"]) != tu)
+    # v8 : un mail sans demande voit d'abord l'exemple de l'autre acte sans demande (sinon,
+    # tous ses exemples demandent quelque chose et le morceau « demande » restait vide). Tri
+    # stable, sans nouveau tirage : les autres choix de la fiche ne changent pas.
+    if fact.act in NO_REQUEST_PIECE:
+        pool.sort(key=lambda e: e["act"] not in NO_REQUEST_PIECE)
     examples = [e["id"] for e in pool[:N_EXAMPLES]]
     return Sheet(
         "\n".join(lines),
@@ -412,11 +430,15 @@ _FRENCH = set(
 _URGENT = re.compile(
     r"\burgen|au plus vite|des que possible|des que (tu peux|vous pouvez)|rapidement"
     r"|priorit|sans tarder|\bpresse\b|immediatement|\basap\b|ca bloque|bloquant"
+    # Échantillon M3 (v8, relu à l'aveugle) : lues comme urgentes dans des mails neutres.
+    r"|brefs? delais|meilleurs delais|des que (cela|ce) sera possible"
+    r"|des que (tu|vous) (le |la |les )?(pourras|pourrez)"
 )
 # Le calme écrit, sous toutes ses formes : la sonde v2 a laissé passer « dès que tu as un
 # moment » et « quand tu es libre », que le guide range dans Sans urgence.
 _CALM = re.compile(
-    r"rien d'urgent|pas (d')?urgen\w*|aucune urgence|sans urgence|pas presse\w*|rien ne presse"
+    # Corpus v7 : « ce n'est pas une demande urgente » était lu comme urgent.
+    r"rien d'urgent|pas (d'|une |un )?((demande|sujet|dossier|chose) )?urgen\w*|aucune urgence|sans urgence|pas presse\w*|rien ne presse"
     r"|(quand|des que|lorsque) (tu as|vous avez|vous aurez|tu auras) (un moment|le temps|un instant)"
     r"|quand (tu es|tu seras|vous etes|vous serez) (libre|dispo)|quand (tu peux|vous pouvez)"
     r"|a l'occasion|a ta convenance|a votre convenance|ca peut attendre|prends ton temps"
@@ -428,18 +450,21 @@ _CALM = re.compile(
 )
 # Familles de mots qui portent chaque acte (texte normalisé). L'acte d'un texte qui n'en
 # contient aucune a sans doute changé : le LLM a reformulé la demande en une autre.
+# Corpus v7 : « contacter X », « mets à jour », « faire parvenir » (Faire) et « faire savoir »
+# (Répondre) étaient rejetés alors que l'acte est le même : ajoutés.
 _ACT_WORDS = {
     "decider": r"valid|sign|approuv|accord|feu vert|\bvisa\b|tranch|arbitr|decision|decid|engag"
     r"|choisi|choix",
-    "faire": r"envo|transm|appel|mettre a jour|mise a jour|depos|complet|faire suivre|relanc"
-    r"|saisi|imprim|reserv|organis|inscri",
+    "faire": r"envo|transm|appel|\bmet\w* a jour|mise a jour|depos|complet|faire suivre|relanc"
+    r"|saisi|imprim|reserv|organis|inscri|contact|parvenir",
     "repondre": r"avis|\bdire\b|dis-moi|dites-moi|confirm|dispo|\bdate\b|repon|retour|pens"
-    r"|prefer|convien|propos|\?",
+    r"|prefer|convien|propos|faire savoir|moi savoir|nous savoir|\?",
     "relire": r"reli|relecture|verifi|\boeil\b|corrig",
     "preparer": r"reunion|seance|comite|present|prepar",
 }
+# « merci de m'avoir envoyé » remercie, il ne demande rien (corpus v7, mail « Rien » rejeté).
 _REQUEST = re.compile(
-    r"\?|merci de|peux-tu|pouvez-vous|pourrais|pourriez|tu peux|vous pouvez|j'ai besoin"
+    r"\?|merci de(?! (m'|t'|l'|nous |vous )?avoir\b)|peux-tu|pouvez-vous|pourrais|pourriez|tu peux|vous pouvez|j'ai besoin"
     r"|il faut que|n'hesite|dis-moi|dites-moi|tiens-moi|tenez-moi|fais-moi|faites-moi"
 )
 # Une demande de retour fait passer Préparer, Relire, S'informer et Rien à Répondre (plus
@@ -638,6 +663,16 @@ def check(fact: Fact, sh: Sheet, objet: str, corps: str) -> list[str]:
 # --- les morceaux (v7) -------------------------------------------------------------------------
 
 
+# Échantillon M3 (v8, relu à l'aveugle) : environ 20 mails « Rien » sur 68 lus « S'informer »,
+# le contexte ou la conclusion y ajoutant un fait (« j'ai passé la commande », « je te tiens au
+# courant »). Un remerciement n'a ni l'un ni l'autre : ils sont toujours retirés, comme un
+# morceau facultatif qui échoue. Aucune règle ne sait dire « pas d'information nouvelle ».
+NO_INFO_DROP = {
+    "contexte": "un remerciement n'apporte pas de contexte (retiré d'office)",
+    "conclusion": "un remerciement n'apporte pas de conclusion (retirée d'office)",
+}
+
+
 def required(kind: str, fact: Fact) -> bool:
     """Un morceau sans lequel le mail ne dit pas le fait : refusé, il faut réécrire. Les autres
     (contexte, conclusion) sont simplement retirés s'ils échouent."""
@@ -657,7 +692,10 @@ def check_piece(kind: str, text: str, fact: Fact, sh: Sheet) -> list[str]:
     if _FOREIGN.search(text):
         reasons.append("caractères d'une autre langue")
     tokens = re.findall(r"[a-z]+", low)
-    if len(tokens) >= 6 and sum(t in _FRENCH for t in tokens) / len(tokens) < 0.15:
+    # Un objet est un groupe nominal sans mots-outils (« Bon de commande Voirie Plus : choix
+    # attendu ») : la part de mots courants n'y dit rien de la langue (corpus v7).
+    french = sum(t in _FRENCH for t in tokens) / len(tokens) if tokens else 1
+    if kind != "objet" and len(tokens) >= 6 and french < 0.15:
         reasons.append("pas en français")
     reasons += _invented(text, sh)
     if _PLACEHOLDER.search(text):
@@ -680,9 +718,15 @@ def check_piece(kind: str, text: str, fact: Fact, sh: Sheet) -> list[str]:
             reasons.append(f"manque « {sh.tone_mark[0]} »")
         if "?" in text:
             reasons.append("question dans la phrase de ton")
-    elif urgent and not (kind == "objet" and fact.tone == "urgent"):
+        # Échantillon M3 : « À écrire quand tu as un moment », recopié sans les deux-points.
+        if "a ecrire" in low and "intitulé de la fiche recopié" not in reasons:
+            reasons.append("intitulé de la fiche recopié")
+    # Une formule du même ton dans la demande (« signe-le dès que possible » dans un mail
+    # urgent) ne change pas l'étiquette : permise depuis la v8 (corpus v7 : 18 rejets, dont
+    # une majorité de ce cas). Le contrôle du mail entier garde la cohérence du ton.
+    elif urgent and not (kind in ("objet", "demande") and fact.tone == "urgent"):
         reasons.append(f"ton changé ({_quote(_URGENT, _CALM.sub(' ', low))} hors du ton)")
-    elif calm:
+    elif calm and not (kind == "demande" and fact.tone == "sans_urgence"):
         reasons.append(f"ton changé ({_quote(_CALM, low)} hors du ton)")
     if kind in ("contexte", "conclusion"):
         for pattern in (_REQUEST, _FEEDBACK, _DECIDE_ASK):
@@ -776,6 +820,21 @@ class Ollama:
         return json.loads(self._call("/api/chat", body)["message"]["content"])
 
 
+class Offline:
+    """Client hors ligne, pour assembler le corpus sans GPU (`llm_corpus --assembler`) : il
+    rend l'identité du modèle enregistrée avec les textes et refuse tout appel. Aucun texte
+    n'est rédigé ailleurs que sur le PC qui a le LLM."""
+
+    def __init__(self, model: str, digest: str) -> None:
+        self.model, self.digest = model, digest
+
+    def identity(self) -> dict:
+        return {"model": self.model, "digest": self.digest, "ollama": None}
+
+    def chat(self, conversation: list[dict], seed: int) -> dict:
+        raise RuntimeError("client hors ligne : aucun appel au LLM pendant l'assemblage")
+
+
 # --- l'écrivain --------------------------------------------------------------------------------
 
 
@@ -799,15 +858,19 @@ class Draft:
     dropped: list[str] = field(default_factory=list)  # morceaux facultatifs retirés, et pourquoi
 
 
-def repair(reasons: list[str]) -> str:
+def repair(reasons: list[str], tu: bool = True) -> str:
     """Le message de réécriture guidée : les raisons du refus, telles que les contrôles les
-    donnent (avec les mots fautifs), et la consigne de ne corriger que ces points."""
+    donnent (avec les mots fautifs), et la consigne de ne corriger que ces points.
+
+    v8 : il rappelle toujours le tu ou le vous (corpus v7 : 29 rejets sur 113 n'avaient plus
+    que du « vous » dans un mail tutoyé, glissé pendant la réécriture)."""
     listed = "\n".join(f"- {r}" for r in reasons)
     tone = any("ton changé" in r for r in reasons)
     return (
         f"Ces morceaux sont refusés :\n{listed}\n"
         "Réécris-les en corrigeant seulement ces points, sans raccourcir les autres morceaux."
         + (" Hors du morceau « ton », aucune formule de délai ni de calme." if tone else "")
+        + f" Dans tous les morceaux : {ADDRESS[tu]}."
         + " Réponds uniquement en JSON avec les cinq clés."
     )
 
@@ -823,6 +886,10 @@ def judge(fact: Fact, sh: Sheet, pieces: dict[str, str]) -> tuple[dict, list[str
         text = pieces.get(kind, "").strip()
         if kind == "ton" and fact.tone == "normal":
             continue  # ton neutre : rien à écrire, un ton rendu quand même est ignoré
+        if kind in NO_INFO_DROP and fact.act == "rien":
+            if text:
+                dropped.append(f"{kind} : {NO_INFO_DROP[kind]}")
+            continue
         if not text:
             if required(kind, fact):
                 reasons.append(f"{kind} : vide")
@@ -854,7 +921,9 @@ def llm_seed(seed: int, item_id: str, attempt: int) -> int:
 class LLMWriter:
     """Remplace le texte des gabarits par celui du LLM, fait par fait, étiquettes inchangées."""
 
-    def __init__(self, persona: Persona, seed: int = 0, client: Ollama | None = None) -> None:
+    def __init__(
+        self, persona: Persona, seed: int = 0, client: Ollama | Offline | None = None
+    ) -> None:
         self.p = persona
         self.seed = seed
         self.client = client or Ollama()
@@ -891,7 +960,7 @@ class LLMWriter:
             if readable:
                 conversation = first + [
                     {"role": "assistant", "content": json.dumps(pieces, ensure_ascii=False)},
-                    {"role": "user", "content": repair(reasons)},
+                    {"role": "user", "content": repair(reasons, fact.meta.get("tu", True))},
                 ]
         # Refusé : le mail montre quand même tous les morceaux rendus (la sonde mesure le LLM).
         objet, corps = assemble(sh, kept if not rejects[-1] else pieces)
@@ -922,12 +991,21 @@ class LLMWriter:
         fields = item.model_dump() | {"title": title, "snippet": extract(d.corps)}
         return Item.model_validate(fields)
 
+    def choose(self, fact: Fact, d: Draft | None) -> tuple[Item | None, list[str]]:
+        """L'Item retenu : le texte du LLM s'il a passé les contrôles, sinon celui des gabarits.
+
+        Une seule règle pour la rédaction sur le PC GPU (`write`) et pour l'assemblage hors
+        ligne à partir de `textes.jsonl` (`llm_corpus.assemble_items`).
+        """
+        item, used = self.templates.write(fact)
+        if item is None or d is None or not rewritable(fact):
+            return item, used
+        if not d.ok:
+            return item, used + [f"llm:{d.prompt_version}:rejete"]
+        return self.item(fact, d), [f"llm:{d.prompt_version}"]
+
     def write(self, fact: Fact) -> tuple[Item | None, list[str], Draft | None]:
         """L'Item (texte du LLM s'il passe les contrôles, sinon celui des gabarits)."""
-        item, used = self.templates.write(fact)
-        if item is None or not rewritable(fact):
-            return item, used, None
-        d = self.draft(fact)
-        if not d.ok:
-            return item, used + [f"llm:{PROMPT_VERSION}:rejete"], d
-        return self.item(fact, d), [f"llm:{PROMPT_VERSION}"], d
+        d = self.draft(fact) if rewritable(fact) else None  # un mail est toujours collecté
+        item, used = self.choose(fact, d)
+        return item, used, d

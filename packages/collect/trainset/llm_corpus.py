@@ -15,31 +15,59 @@ T-gen), dans un ordre mélangé à graine fixe : à tout moment, la partie déj�
   arrêt propre ; relancer suffit.
 - `--limite N` : s'arrête après N textes (mesure de vitesse). `--modele` : un autre modèle.
 
-L'assemblage en `Item` du contrat A (texte du LLM s'il passe les contrôles, sinon celui des
-gabarits) se fait ensuite, sans GPU, à partir de ce fichier.
+L'assemblage, sans GPU ni appel au LLM (client hors ligne) :
+
+    uv run python -m packages.collect.trainset.llm_corpus --assembler [--textes <fichier>]
+
+rejoue le simulateur et écrit, à côté de `textes.jsonl`, le corpus complet des 40 personas
+dans la même forme que `data/` (`items/`, `scenario/`, `manifest.json`), lisible par
+`load.py` avec `data=<dossier>`. Pour chaque mail réécrit, le texte du LLM n'est retenu que
+s'il passe les contrôles d'aujourd'hui, rejoués sur les morceaux enregistrés, et si le mail
+rassemblé est octet pour octet celui du PC GPU ; sinon, celui des gabarits. Un fichier
+partiel suffit : les faits pas encore écrits gardent les gabarits (`absent`).
+
+Le corpus versionné est `textes.jsonl.gz` (compressé sans date, octet pour octet stable) ;
+l'assemblage et la comparaison le lisent quand `textes.jsonl` est absent :
+
+    uv run python -m packages.collect.trainset.llm_corpus --compresser
+
+Comparer deux consignes sur les mêmes faits (les N premiers du plan, ordre fixe) :
+
+    uv run python -m packages.collect.trainset.llm_corpus --comparer mail-v7 mail-v8
 """
 
 from __future__ import annotations
 
+import gzip
+import hashlib
 import json
 import random
+import re
 import sys
 import time
 import urllib.error
+from collections import Counter
 from collections.abc import Callable
-from dataclasses import asdict
+from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime
+from itertools import combinations
 from pathlib import Path
 
+from contracts.models import Item
 from packages.collect.trainset import llm_writer as L
+from packages.collect.trainset.build import _jsonl, _sha, build_persona, distribution
 from packages.collect.trainset.cases import Sim
 from packages.collect.trainset.facts import Fact
 from packages.collect.trainset.world import Persona, all_personas
 
 OUT = Path(__file__).with_name("data") / "llm"
+TEXTS = "textes.jsonl"
 PROGRESS_EVERY = 10
 NETWORK_RETRIES = 3
 NETWORK_PAUSE = 30.0  # secondes entre deux tentatives quand Ollama ne répond pas
+# Ce qui arrive à un mail réécrit à l'assemblage : texte du LLM retenu, rejeté par les
+# contrôles au moment de l'écrire, refusé par les contrôles d'aujourd'hui, pas encore écrit.
+STATUSES = ("retenu", "rejete", "recontrole", "absent")
 
 
 def folder() -> Path:
@@ -99,7 +127,7 @@ def run(
     """Écrit les faits restants (au plus `limit`) et rend le bilan de la séance."""
     out = out or folder()
     out.mkdir(parents=True, exist_ok=True)
-    path = out / "textes.jsonl"
+    path = out / TEXTS
     client = client or L.Ollama()
     todo = plan(seed)
     done = done_ids(path)
@@ -152,9 +180,346 @@ def run(
     return session | {"ecrits": total_done, "total": len(todo)}
 
 
+# --- l'assemblage (sans GPU) -------------------------------------------------------------------
+
+
+def texts_bytes(path: Path) -> bytes:
+    """Le contenu de `textes.jsonl`, qu'il soit brut ou compressé (`.gz`, la version
+    versionnée) : l'empreinte du manifeste porte sur ce contenu, pas sur le fichier."""
+    data = path.read_bytes()
+    return gzip.decompress(data) if path.suffix == ".gz" else data
+
+
+def default_texts(out: Path) -> Path:
+    """`textes.jsonl` s'il est là (la génération en cours), sinon sa version compressée."""
+    raw = out / TEXTS
+    return raw if raw.exists() or not (out / f"{TEXTS}.gz").exists() else out / f"{TEXTS}.gz"
+
+
+def compress(out: Path | None = None) -> Path:
+    """`textes.jsonl.gz` : la version versionnée du corpus, octet pour octet la même à
+    chaque compression (pas de date dans l'en-tête gzip), vérifiée par relecture."""
+    out = out or folder()
+    raw = (out / TEXTS).read_bytes()
+    path = out / f"{TEXTS}.gz"
+    path.write_bytes(gzip.compress(raw, compresslevel=9, mtime=0))
+    if texts_bytes(path) != raw:
+        raise RuntimeError(f"{path.name} ne redonne pas {TEXTS}")
+    return path
+
+
+def read_texts(path: Path) -> tuple[dict[str, dict], int]:
+    """Les lignes de `textes.jsonl` (ou `.jsonl.gz`) par fait, et le nombre de lignes
+    illisibles.
+
+    Une ligne coupée par un arrêt brutal est ignorée (comme `done_ids`) : le fait sera
+    réécrit à la relance. Un fait écrit deux fois est une erreur : on ne choisit pas.
+    """
+    rows: dict[str, dict] = {}
+    unreadable = 0
+    for line in texts_bytes(path).decode("utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+            item_id = row["item_id"]
+        except (json.JSONDecodeError, KeyError, TypeError):
+            unreadable += 1
+            continue
+        if item_id in rows:
+            raise ValueError(f"fait écrit deux fois dans {path.name} : {item_id}")
+        rows[item_id] = row
+    return rows, unreadable
+
+
+def _draft_of(row: dict) -> L.Draft:
+    try:
+        return L.Draft(**row["llm"])
+    except (KeyError, TypeError) as exc:  # champs ajoutés ou retirés depuis la rédaction
+        raise ValueError(f"brouillon illisible pour {row['item_id']} : {exc}") from exc
+
+
+def _identity(rows: dict[str, dict]) -> tuple[str, str]:
+    """Le modèle et son empreinte : une seule consigne et un seul modèle par corpus."""
+    drafts = [_draft_of(r) for r in rows.values()]
+    versions = {d.prompt_version for d in drafts}
+    if versions != {L.PROMPT_VERSION}:
+        raise ValueError(
+            f"consignes {sorted(versions)} : ce code assemble la consigne {L.PROMPT_VERSION} "
+            "(la fiche et les contrôles en font partie)"
+        )
+    models = {(d.model, d.digest) for d in drafts}
+    if len(models) != 1:
+        raise ValueError(f"plusieurs modèles dans le même corpus : {sorted(models)}")
+    return models.pop()
+
+
+def generation_kept(sh: L.Sheet, d: L.Draft) -> set[str] | None:
+    """Les morceaux que le PC GPU a gardés : la combinaison des morceaux rendus qui redonne
+    exactement le mail enregistré (au plus 8 essais : contexte, ton, conclusion facultatifs).
+    None : aucune, la fiche ou l'assemblage diffèrent entre les deux PC."""
+    present = [k for k in L.PIECES if d.pieces.get(k)]
+    optional = [k for k in present if k in ("contexte", "ton", "conclusion")]
+    base = [k for k in present if k not in optional]
+    for n in range(len(optional) + 1):
+        for extra in combinations(optional, n):
+            kept = {k: d.pieces[k] for k in (*base, *extra)}
+            if L.assemble(sh, kept) == (d.objet, d.corps):
+                return set(kept)
+    return None
+
+
+def recheck(
+    writer: L.LLMWriter, fact: Fact, d: L.Draft, extrait: str | None = None
+) -> tuple[list[str], L.Draft]:
+    """Les raisons de ne plus retenir un texte accepté au moment de l'écrire, et le
+    brouillon à utiliser.
+
+    Le mail enregistré doit d'abord s'expliquer par la fiche et l'assemblage d'ici : la preuve
+    que les deux PC concordent. Puis les contrôles d'aujourd'hui sont rejoués sur les morceaux
+    enregistrés : un morceau requis refusé fait retomber sur les gabarits ; un morceau
+    facultatif retiré par une règle nouvelle raccourcit le mail. Une règle d'aujourd'hui peut
+    retirer un morceau, jamais en rajouter un que le PC GPU avait retiré.
+    """
+    sh = writer.sheet(fact)
+    stored = generation_kept(sh, d)
+    if stored is None:
+        return ["mail rassemblé différent de celui enregistré"], d
+    if extrait is not None and L.extract(d.corps) != extrait:
+        return ["extrait différent de celui enregistré"], d
+    kept, reasons, _ = L.judge(fact, sh, d.pieces)
+    if reasons:
+        return reasons, d
+    objet, corps = L.assemble(sh, {k: v for k, v in kept.items() if k in stored})
+    return [], replace(d, objet=objet, corps=corps)
+
+
+@dataclass
+class Tally:
+    """Le compte de l'assemblage : statut de chaque mail réécrit, faits rencontrés."""
+
+    statuses: Counter = field(default_factory=Counter)  # (persona, statut) → nombre
+    seen: set[str] = field(default_factory=set)
+    rechecked: list[dict] = field(default_factory=list)
+    shortened: list[str] = field(default_factory=list)  # retenus, raccourcis par une règle nouvelle
+
+
+def _choose(
+    writer: L.LLMWriter, rows: dict[str, dict], tally: Tally, fact: Fact
+) -> tuple[Item | None, list[str]]:
+    """L'Item d'un fait : texte du LLM retenu, sinon gabarits, avec le statut en marque."""
+    if not L.rewritable(fact):
+        return writer.choose(fact, None)
+    row = rows.get(fact.item_id)
+    d = None
+    if row is None:
+        status = "absent"
+    else:
+        tally.seen.add(fact.item_id)
+        if row.get("persona") != writer.p.key:
+            raise ValueError(f"{fact.item_id} : persona {row.get('persona')} ≠ {writer.p.key}")
+        d = _draft_of(row)
+        reasons: list[str] = []
+        if d.ok:
+            reasons, used = recheck(writer, fact, d, row.get("extrait"))
+            if not reasons and used.corps != d.corps:
+                tally.shortened.append(fact.item_id)
+            d = used
+        if reasons:
+            tally.rechecked.append({"item_id": fact.item_id, "raisons": reasons})
+        status = "rejete" if not d.ok else "recontrole" if reasons else "retenu"
+    tally.statuses[writer.p.key, status] += 1
+    if status in ("retenu", "rejete"):
+        return writer.choose(fact, d)
+    item, used = writer.choose(fact, None)
+    return item, used + [f"llm:{L.PROMPT_VERSION}:{status}"]
+
+
+def _counts(statuses: Counter, keys: set[str] | None = None) -> dict:
+    c = Counter()
+    for (key, status), n in statuses.items():
+        if keys is None or key in keys:
+            c[status] += n
+    written = c["retenu"] + c["rejete"] + c["recontrole"]
+    return {
+        "a_reecrire": written + c["absent"],
+        "ecrits": written,
+        **{f"{s}s": c[s] for s in STATUSES},
+        "taux_controles": round(c["retenu"] / written, 4) if written else None,
+    }
+
+
+def assemble_items(texts: Path | None = None, out: Path | None = None, seed: int = 0) -> dict:
+    """Écrit le corpus LLM en `Item` (`items/`, `scenario/`, `manifest.json`) et rend le
+    manifeste. Tout est calculé avant d'écrire : un refus ne laisse pas un corpus à moitié."""
+    out = out or folder()
+    texts = texts or default_texts(out)
+    rows, unreadable = read_texts(texts)
+    if not rows:
+        raise ValueError(f"aucun texte lisible dans {texts}")
+    model, digest = _identity(rows)
+    client = L.Offline(model, digest)
+    tally = Tally()
+    rendered: dict[str, tuple[Persona, str, str, list[dict]]] = {}
+    for persona in all_personas(seed):
+        writer = L.LLMWriter(persona, seed, client)
+
+        def write(fact: Fact, writer: L.LLMWriter = writer) -> tuple[Item | None, list[str]]:
+            return _choose(writer, rows, tally, fact)
+
+        items, scenario = build_persona(persona, seed, write)
+        items_text = _jsonl([i.model_dump(mode="json") for i in items])
+        rendered[persona.key] = (persona, items_text, _jsonl(scenario), scenario)
+    unknown = sorted(set(rows) - tally.seen)
+    if unknown:
+        raise ValueError(
+            f"{len(unknown)} texte(s) d'un fait inconnu du simulateur (le monde a changé ?) : "
+            + ", ".join(unknown[:5])
+        )
+    manifest: dict = {
+        "seed": seed,
+        "consigne": L.PROMPT_VERSION,
+        "modele": model,
+        "empreinte": digest,
+        "textes": {
+            "sha256": hashlib.sha256(texts_bytes(texts)).hexdigest(),
+            "lignes": len(rows),
+            "illisibles": unreadable,
+        },
+    }
+    splits: dict[str, set[str]] = {}
+    for key, (persona, *_) in rendered.items():
+        splits.setdefault(persona.split, set()).add(key)
+    llm = _counts(tally.statuses)
+    manifest["llm"] = llm | {"complet": llm["absents"] == 0, "raccourcis": len(tally.shortened)}
+    manifest["llm_par_split"] = {s: _counts(tally.statuses, k) for s, k in sorted(splits.items())}
+    manifest["recontroles_detail"] = tally.rechecked
+    manifest["personas"] = {
+        key: {
+            "split": persona.split,
+            "elements": len(scenario),
+            "llm_retenus": tally.statuses[key, "retenu"],
+            "items_sha256": _sha(items_text),
+            "scenario_sha256": _sha(scenario_text),
+        }
+        for key, (persona, items_text, scenario_text, scenario) in rendered.items()
+    }
+    manifest["distribution"] = {
+        split: distribution([r for k in keys for r in rendered[k][3]])
+        for split, keys in sorted(splits.items())
+    }
+    for sub in ("items", "scenario"):
+        (out / sub).mkdir(parents=True, exist_ok=True)
+    for key, (_, items_text, scenario_text, _) in rendered.items():
+        for sub, text in (("items", items_text), ("scenario", scenario_text)):
+            (out / sub / f"{key}.jsonl").write_text(text, encoding="utf-8", newline="\n")
+    (out / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=1, sort_keys=True) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    return manifest
+
+
+# --- comparer deux consignes -------------------------------------------------------------------
+
+
+def _reason_kind(reason: str) -> str:
+    """« demande : ton changé (« au plus vite » hors du ton) » → « demande : ton changé »."""
+    return re.sub(r"\s*\(.*$", "", re.sub(r"« [^»]*»", "«…»", reason)).strip()
+
+
+def compare(old: Path, new: Path, seed: int = 0) -> str:
+    """Deux consignes sur les mêmes faits : contrôles passés, essais, temps, par acte.
+
+    L'ordre du plan est fixe : les N premiers textes de chaque consigne portent sur les mêmes
+    faits, la comparaison est appariée. L'ancienne consigne est aussi rejugée avec les
+    contrôles d'aujourd'hui (fiche d'aujourd'hui, morceaux du dernier essai), pour séparer ce
+    que gagne la consigne de ce que gagnent les contrôles.
+    """
+    rows_old, _ = read_texts(default_texts(old))
+    rows_new, _ = read_texts(default_texts(new))
+    common = sorted(set(rows_old) & set(rows_new))
+    if not common:
+        return f"Aucun fait écrit à la fois dans {old.name} et {new.name}."
+    facts = {f.item_id: (p, f) for p, f in plan(seed)}
+    client = L.Offline(L.MODEL, "")
+    writers: dict[str, L.LLMWriter] = {}
+
+    def rejudged(row: dict) -> bool:
+        p, f = facts[row["item_id"]]
+        w = writers.setdefault(p.key, L.LLMWriter(p, seed, client))
+        return not L.judge(f, w.sheet(f), row["llm"]["pieces"])[1]
+
+    old_drafts = [_draft_of(rows_old[i]) for i in common]
+    new_drafts = [_draft_of(rows_new[i]) for i in common]
+    variants = [
+        (f"{old.name}", [d.ok for d in old_drafts], old_drafts),
+        (f"{old.name} rejugée", [rejudged(rows_old[i]) for i in common], None),
+        (f"{new.name}", [d.ok for d in new_drafts], new_drafts),
+    ]
+    n = len(common)
+    lines = [f"{n} faits écrits par les deux consignes (comparaison appariée)."]
+    for label, oks, drafts in variants:
+        line = f"{label:<22} {sum(oks):5d}/{n} passent ({sum(oks) / n:.1%})"
+        if drafts:
+            first = sum(d.ok and d.tries == 1 for d in drafts) / n
+            calls = sum(d.tries for d in drafts) / n
+            seconds = sum(d.seconds for d in drafts) / n
+            line += f" · {first:.0%} du 1er coup · {calls:.2f} appels · {seconds:.1f} s par texte"
+        lines.append(line)
+    acts = Counter(facts[i][1].act for i in common)
+    lines.append("Par acte : " + " | ".join(label for label, _, _ in variants))
+    for act, total in acts.most_common():
+        rates = []
+        for _, oks, _ in variants:
+            ok = sum(o for o, i in zip(oks, common, strict=True) if facts[i][1].act == act)
+            rates.append(f"{ok / total:.0%}")
+        lines.append(f"  {act:<9} ({total:4d})  " + " | ".join(rates))
+    reasons = Counter(
+        kind for d in new_drafts if not d.ok for kind in {_reason_kind(r) for r in d.rejects[-1]}
+    )
+    lines.append(f"Raisons des rejets de {new.name} (dernier essai) :")
+    lines += [f"  {count:4d}  {kind}" for kind, count in reasons.most_common(8)]
+    return "\n".join(lines)
+
+
+def _assemble_main(args: list[str]) -> int:
+    texts = Path(args[args.index("--textes") + 1]) if "--textes" in args else None
+    try:
+        m = assemble_items(texts)
+    except (ValueError, FileNotFoundError) as exc:
+        print(f"Assemblage refusé : {exc}")
+        return 1
+    c = m["llm"]
+    print(
+        f"{c['ecrits']}/{c['a_reecrire']} mails écrits par {m['modele']} ({m['consigne']}) ; "
+        f"retenus {c['retenus']}, rejetés {c['rejetes']}, refusés au recontrôle "
+        f"{c['recontroles']}, pas encore écrits {c['absents']} (gabarits) ; "
+        f"{m['textes']['illisibles']} ligne(s) illisible(s)."
+    )
+    if c["taux_controles"] is not None:
+        print(
+            f"Passent les contrôles : {c['taux_controles']:.1%} des textes écrits (objectif 95 %)."
+        )
+    print(f"→ {folder()}")
+    return 0
+
+
 def main(argv: list[str]) -> int:
     sys.stdout.reconfigure(encoding="utf-8", line_buffering=True)  # type: ignore[attr-defined]
     args = list(argv)
+    if "--assembler" in args:
+        return _assemble_main(args)
+    if "--compresser" in args:
+        path = compress()
+        size = path.stat().st_size / 1e6
+        print(f"{path} ({size:.1f} Mo) : version versionnée, redonne {TEXTS} à l'identique.")
+        return 0
+    if "--comparer" in args:
+        i = args.index("--comparer")
+        print(compare(OUT / args[i + 1], OUT / args[i + 2]))
+        return 0
     limit = None
     if "--limite" in args:
         i = args.index("--limite")

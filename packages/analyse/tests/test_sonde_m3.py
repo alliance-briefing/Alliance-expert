@@ -3,10 +3,16 @@
 from __future__ import annotations
 
 import json
+import shutil
+
+import pytest
 
 from contracts.models import Item
 from packages.analyse.scoring.ml import annoter, sonde_m3
+from packages.collect.trainset import build, load
 from packages.collect.trainset.build import DATA
+from packages.collect.trainset.metiers import METIERS
+from packages.collect.trainset.world import FEMALE, LAST, all_personas
 
 
 def _sample_mail() -> Item:
@@ -64,3 +70,285 @@ def test_la_comparaison_compte_les_textes_conformes(tmp_path):
 def test_sans_reponse_la_comparaison_le_dit(tmp_path):
     sondes, series = _sonde(tmp_path, LABELS)
     assert sonde_m3.compare("essai", sondes, series).startswith("Aucune réponse")
+
+
+# --- acceptation du corpus LLM : diversité, échantillon, conformité ----------------------------
+
+CONSIGNE = "mail-test"
+
+
+def _write(folder, key: str, items: list[Item], scenario: list[dict], manifest: dict) -> None:
+    for sub, rows in (
+        ("items", [i.model_dump(mode="json") for i in items]),
+        ("scenario", scenario),
+    ):
+        (folder / sub).mkdir(parents=True, exist_ok=True)
+        (folder / sub / f"{key}.jsonl").write_text(build._jsonl(rows), encoding="utf-8")
+    (folder / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+
+@pytest.fixture(scope="module")
+def corpora(tmp_path_factory):
+    """Une persona écrite deux fois : gabarits, et un faux corpus LLM où un mail réécrit sur
+    deux a un texte propre (retenu), les autres gardant les gabarits."""
+    root = tmp_path_factory.mktemp("m3")
+    persona = next(p for p in all_personas() if p.key == "logistique-1")
+    items, scenario = build.build_persona(persona)
+    mails = [
+        r
+        for r in scenario
+        if r["source"] == "mail" and any(t.startswith("mail.") for t in r["templates"])
+    ]
+    chosen = {r["item_id"] for r in mails[::2]}
+    llm_items = []
+    for n, item in enumerate(items):
+        if item.item_id in chosen:
+            word = chr(97 + n % 26) + chr(97 + n // 26 % 26)  # des lettres : pas masquées
+            text = f"Voici la version {word} du texte rédigé pour toi. Bonne journée, Julie"
+            item = item.model_copy(update={"snippet": text})
+        llm_items.append(item)
+    llm_scenario = [
+        r | {"templates": [f"llm:{CONSIGNE}"]} if r["item_id"] in chosen else r for r in scenario
+    ]
+    personas = {"personas": {persona.key: {"split": persona.split}}}
+    gab, llm = root / "gabarits", root / "llm"
+    _write(gab, persona.key, items, scenario, personas)
+    counts = {"a_reecrire": len(mails), "taux_controles": 1.0, "ecrits": len(mails)}
+    manifest = personas | {
+        "consigne": CONSIGNE,
+        "llm": counts | {"retenus": len(chosen)},
+        "textes": {"sha256": "abc"},
+    }
+    _write(llm / CONSIGNE, persona.key, llm_items, llm_scenario, manifest)
+    return gab, llm, chosen, {r["item_id"]: r for r in scenario}, len(mails)
+
+
+def test_le_masque_garde_la_forme_de_la_phrase():
+    metier = METIERS[0]
+    obj, org = metier.objects[0].phrase, metier.suppliers[0]
+    text = (
+        f"Merci de valider {obj} d'ici vendredi 6 novembre. {FEMALE[0]} {LAST[0]} a appelé {org} "
+        "ce matin. Merci ! Un petit point sur le planning avec toute l'équipe. Le texte est coup…"
+    )
+    assert sonde_m3.sentence_models(text) == [
+        "merci de valider <objet> d'ici # # #.",
+        "<nom> <nom> a appelé <org> ce matin.",
+        "un petit point sur le planning avec toute l'équipe.",  # « petit » n'est pas un nom ici
+    ]  # « Merci ! » (formule) et la phrase coupée par l'extrait sont écartées
+
+
+def test_la_diversite_compare_les_memes_mails(corpora):
+    gab, llm, chosen, _, _ = corpora
+    d = sonde_m3.diversity(llm / CONSIGNE, gab)
+    assert d["mails"] == len(chosen)
+    assert d["llm"]["modeles_phrases"] == len(chosen)  # une phrase propre par mail
+    assert d["gabarits"]["modeles_phrases"] < d["llm"]["modeles_phrases"]
+    assert d["rapport_modeles"] > 1 and d["llm"]["part_distincte"] == 1.0
+    report = sonde_m3.diversity_report(llm / CONSIGNE, gab)
+    assert f"{len(chosen)} mails écrits des deux façons" in report
+
+
+def test_l_echantillon_est_tire_au_hasard_parmi_les_textes_retenus(corpora, tmp_path):
+    _, llm, chosen, _, to_rewrite = corpora
+    path = sonde_m3.build_sample(CONSIGNE, series=tmp_path, llm=llm)
+    assert path.name == f"m3-{CONSIGNE}-echantillon.jsonl"
+    tasks = annoter.load_series(path)  # refuse toute étiquette (check_blind)
+    size = min(sonde_m3.CAP, round(sonde_m3.SHARE * to_rewrite))
+    assert len(tasks) == size and all(t["kind"] == "element" for t in tasks)
+    info = json.loads((tmp_path / f"m3-{CONSIGNE}-echantillon.tirage.json").read_text("utf-8"))
+    annoter.check_blind(info)  # le tirage ne dit pas non plus les réponses
+    assert set(info["elements"].values()) <= chosen and len(set(info["elements"].values())) == size
+    assert [t["card"]["item_id"] for t in tasks] == list(info["elements"].values())
+    same = [r["item_id"] for _, r in sonde_m3.draw(llm / CONSIGNE)]
+    assert same == list(info["elements"].values())  # graine fixe : même tirage
+    with pytest.raises(FileExistsError):  # un échantillon de mesure ne se retire pas
+        sonde_m3.build_sample(CONSIGNE, series=tmp_path, llm=llm)
+
+
+def test_la_conformite_compare_aux_etiquettes_du_scenario(corpora, tmp_path):
+    _, llm, _, scenario, _ = corpora
+    sonde_m3.build_sample(CONSIGNE, series=tmp_path, llm=llm)
+    name = f"m3-{CONSIGNE}-echantillon"
+    assert sonde_m3.conformity(CONSIGNE, tmp_path, llm).startswith("Aucune réponse")
+    behind = json.loads((tmp_path / f"{name}.tirage.json").read_text("utf-8"))["elements"]
+    (first, a), (second, b) = list(behind.items())[:2]
+    labels = {k: scenario[a][k] for k in sonde_m3.KEYS}
+    wrong = {k: scenario[b][k] for k in sonde_m3.KEYS} | {"alerte": not scenario[b]["alerte"]}
+    store = annoter.AnswerStore(annoter.answers_path(name, "theo", tmp_path))
+    store.record(first, False, labels)
+    store.record(second, False, wrong)
+    report = sonde_m3.conformity(CONSIGNE, tmp_path, llm)
+    assert report.startswith("Ensemble : 1 conformes sur 2 (50.0%")
+    assert "0 désaccord(s) à arbitrer ; 8 carte(s) pas encore jugée(s)" in report
+    assert "critère 90% : non atteint" in report
+    assert f"≠ {second} ({b}) alerte {wrong['alerte']} au lieu de {scenario[b]['alerte']}" in report
+    assert "\ntheo : 1 conformes sur 2 (50.0%" in report and "8 restent" in report
+
+
+def _answer(scenario: dict, item_id: str, **change) -> dict:
+    return {k: scenario[item_id][k] for k in sonde_m3.KEYS} | change
+
+
+def test_la_repartition_donne_la_moitie_du_reste_et_des_cartes_communes(corpora, tmp_path):
+    """L'échantillon ne change pas : seules les cartes sont attribuées (champ « pour »)."""
+    _, llm, _, scenario, _ = corpora
+    path = sonde_m3.build_sample(CONSIGNE, series=tmp_path, llm=llm)
+    name = path.stem
+    before = [{k: v for k, v in t.items()} for t in annoter.load_series(path)]
+    behind = json.loads((tmp_path / f"{name}.tirage.json").read_text("utf-8"))["elements"]
+    theo = annoter.AnswerStore(annoter.answers_path(name, "theo", tmp_path))
+    done = list(behind)[:4]
+    for task_id in done:
+        theo.record(task_id, False, _answer(scenario, behind[task_id]))
+    info = sonde_m3.share(CONSIGNE, common=2, series=tmp_path)
+    assert info == {
+        "graine": 0,
+        "deja_juges": {"theo": 4},
+        "cartes": {"theo": 7, "paul": 5},
+        "communes": 2,
+    }
+    after = annoter.load_series(path)
+    assert [{k: v for k, v in t.items() if k != "pour"} for t in after] == before
+    pour = {t["task_id"]: t["pour"] for t in after}
+    assert all("theo" in pour[t] for t in done)  # ses cartes jugées lui restent
+    assert sum(pour[t] == ["theo", "paul"] for t in done) == 2
+    paul_plan = annoter.order(after, "paul", name)
+    assert {t for t, _ in paul_plan} == {t for t, p in pour.items() if "paul" in p}
+    draw_info = json.loads((tmp_path / f"{name}.tirage.json").read_text("utf-8"))
+    assert draw_info["repartition"] == info and draw_info["elements"] == behind
+    with pytest.raises(ValueError, match="déjà répartie"):
+        sonde_m3.share(CONSIGNE, series=tmp_path)
+
+
+def test_a_deux_la_verite_est_la_reponse_commune_ou_l_arbitrage(corpora, tmp_path):
+    _, llm, _, scenario, _ = corpora
+    path = sonde_m3.build_sample(CONSIGNE, series=tmp_path, llm=llm)
+    name = path.stem
+    behind = json.loads((tmp_path / f"{name}.tirage.json").read_text("utf-8"))["elements"]
+    first, second = list(behind)[:2]
+    theo = annoter.AnswerStore(annoter.answers_path(name, "theo", tmp_path))
+    paul = annoter.AnswerStore(annoter.answers_path(name, "paul", tmp_path))
+    theo.record(first, False, _answer(scenario, behind[first]))
+    paul.record(first, False, _answer(scenario, behind[first]))  # d'accord : conforme
+    theo.record(second, False, _answer(scenario, behind[second]))
+    paul.record(second, False, _answer(scenario, behind[second], urgence="hors_grille"))
+    report = sonde_m3.conformity(CONSIGNE, tmp_path, llm)
+    assert report.startswith("Ensemble : 1 conformes sur 1 (100.0%")
+    assert "1 désaccord(s) à arbitrer" in report  # pas d'étiquette tant qu'on n'a pas tranché
+    arbitrage = annoter.AnswerStore(annoter.answers_path(name, annoter.ARBITRAGE, tmp_path))
+    arbitrage.record(second, False, _answer(scenario, behind[second]))
+    report = sonde_m3.conformity(CONSIGNE, tmp_path, llm)
+    assert report.startswith("Ensemble : 2 conformes sur 2 (100.0%")
+    assert "0 désaccord(s) à arbitrer" in report
+    assert "\npaul : 1 conformes sur 2 (50.0%" in report
+
+
+def test_la_relecture_choisit_sur_des_criteres_visibles_et_reste_a_l_aveugle(corpora, tmp_path):
+    """Lots : texte changé par le corpus corrigé, copie, validation en question, carte notée
+    Rien par l'humain. Une carte retombée sur les gabarits sort de la mesure."""
+    _, llm0, _, scenario, _ = corpora
+    llm, series = tmp_path / "llm", tmp_path / "series"
+    shutil.copytree(llm0, llm)
+    path = sonde_m3.build_sample(CONSIGNE, series=series, llm=llm)
+    name = path.stem
+    behind = json.loads((series / f"{name}.tirage.json").read_text("utf-8"))["elements"]
+    ids = list(behind)
+    noted, changed, gone = (
+        next(t for t in ids if scenario[behind[t]]["action"] != "rien"),
+        *[t for t in ids if scenario[behind[t]]["action"] != "rien"][1:3],
+    )
+    theo = annoter.AnswerStore(annoter.answers_path(name, "theo", series))
+    for t in ids:
+        theo.record(t, False, _answer(scenario, behind[t]))
+    theo.record(noted, False, _answer(scenario, behind[noted], action="rien"))  # 1re passe : Rien
+    # Le corpus corrigé : un texte raccourci, un texte retombé sur les gabarits.
+    folder, key = llm / CONSIGNE, "logistique-1"
+    items = load.load_items(key, folder)
+    items = [
+        i.model_copy(update={"snippet": "Merci pour ton envoi, bien reçu."})
+        if i.item_id == behind[changed]
+        else i
+        for i in items
+    ]
+    rows = [
+        r | {"templates": ["mail.rien.directe#1"]} if r["item_id"] == behind[gone] else r
+        for r in load.load_scenario(key, folder)
+    ]
+    (folder / "items" / f"{key}.jsonl").write_text(
+        build._jsonl([i.model_dump(mode="json") for i in items]), encoding="utf-8"
+    )
+    (folder / "scenario" / f"{key}.jsonl").write_text(build._jsonl(rows), encoding="utf-8")
+    info = sonde_m3.build_review(CONSIGNE, series=series, llm=llm)
+    assert info["lots"]["texte_change"] == [changed] and info["hors_llm"] == [gone]
+    assert noted in info["lots"]["rien"] and info["cartes"] == len(info["sources"])
+    review = annoter.load_series(series / f"{name}-relecture.jsonl")  # check_blind
+    assert all(sonde_m3.GUIDE_REMINDER in t["context"] for t in review)
+    by_source = {info["sources"][t["task_id"]]: t for t in review}
+    assert by_source[changed]["card"]["text"] == "Merci pour ton envoi, bien reçu."
+    assert all(t["pour"] == ["theo"] for t in review)
+    with pytest.raises(FileExistsError):
+        sonde_m3.build_review(CONSIGNE, series=series, llm=llm)
+    # Après relecture : la nouvelle réponse remplace l'ancienne, on dit dans quel sens.
+    again = annoter.AnswerStore(annoter.answers_path(f"{name}-relecture", "theo", series))
+    for source in (noted, changed):
+        review_id = next(r for r, s in info["sources"].items() if s == source)
+        again.record(review_id, False, _answer(scenario, behind[source]))
+    report = sonde_m3.conformity(CONSIGNE, series, llm)
+    assert report.startswith(f"Ensemble : {len(ids) - 1} conformes sur {len(ids)}")  # brut gardé
+    after = report[report.index("Après relecture") :]
+    assert f"1 sorties du corpus LLM) : {len(ids) - 1} conformes sur {len(ids) - 1}" in after
+    assert "texte changé 1" in after and "vers le simulateur 1" in after
+
+
+def test_la_confirmation_tire_des_textes_jamais_vus(corpora, tmp_path):
+    """Corpus corrigé, textes retenus que le premier échantillon n'a pas montrés ; critère
+    et limites écrits dans le tirage, avant toute annotation."""
+    _, llm, chosen, _, _ = corpora
+    sonde_m3.build_sample(CONSIGNE, series=tmp_path, llm=llm)
+    first = json.loads((tmp_path / f"m3-{CONSIGNE}-echantillon.tirage.json").read_text("utf-8"))
+    path = sonde_m3.build_confirmation(CONSIGNE, size=20, series=tmp_path, llm=llm)
+    assert path.name == f"m3-{CONSIGNE}-confirmation.jsonl"
+    tasks = annoter.load_series(path)  # à l'aveugle (check_blind)
+    info = json.loads((tmp_path / f"m3-{CONSIGNE}-confirmation.tirage.json").read_text("utf-8"))
+    annoter.check_blind(info)
+    ids = list(info["elements"].values())
+    assert len(tasks) == 20 and len(set(ids)) == 20 and set(ids) <= chosen
+    assert not set(ids) & set(first["elements"].values())  # jamais vus
+    assert tasks[0]["task_id"] == "c-001" and "90%" in info["critere"] and info["limites"]
+    with pytest.raises(FileExistsError):
+        sonde_m3.build_confirmation(CONSIGNE, size=20, series=tmp_path, llm=llm)
+    other = tmp_path / "autre"
+    shutil.copytree(tmp_path, other, ignore=shutil.ignore_patterns("*confirmation*"))
+    sonde_m3.build_confirmation(CONSIGNE, size=20, series=other, llm=llm)
+    again = json.loads((other / f"m3-{CONSIGNE}-confirmation.tirage.json").read_text("utf-8"))
+    assert list(again["elements"].values()) == ids  # graine fixe : même tirage
+    for done in other.glob("*confirmation*"):
+        done.unlink()
+    with pytest.raises(ValueError, match="jamais vus"):
+        sonde_m3.build_confirmation(CONSIGNE, size=10_000, series=other, llm=llm)
+
+
+def test_la_conformite_de_la_confirmation(corpora, tmp_path):
+    _, llm, _, scenario, _ = corpora
+    sonde_m3.build_sample(CONSIGNE, series=tmp_path, llm=llm)
+    sonde_m3.build_confirmation(CONSIGNE, size=20, series=tmp_path, llm=llm)
+    name = f"m3-{CONSIGNE}-confirmation"
+    behind = json.loads((tmp_path / f"{name}.tirage.json").read_text("utf-8"))["elements"]
+    store = annoter.AnswerStore(annoter.answers_path(name, "theo", tmp_path))
+    for t, item_id in behind.items():
+        store.record(t, False, _answer(scenario, item_id))
+    report = sonde_m3.conformity(CONSIGNE, tmp_path, llm, name=name)
+    assert report.startswith("Ensemble : 20 conformes sur 20 (100.0%")
+    assert "critère 90% : atteint" in report and "Après relecture" not in report
+
+
+def test_l_intervalle_de_wilson():
+    low, high = sonde_m3.wilson(90, 100)
+    assert 0.82 < low < 0.9 < high < 0.95
+    assert sonde_m3.wilson(0, 0) == (0.0, 1.0)
+    assert sonde_m3.wilson(10, 10)[1] == pytest.approx(1.0)
+
+
+def test_sans_corpus_assemble_l_outil_dit_quoi_faire(tmp_path):
+    with pytest.raises(FileNotFoundError, match="--assembler"):
+        sonde_m3.retained(tmp_path)
