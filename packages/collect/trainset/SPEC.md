@@ -144,10 +144,16 @@ contexte et conclusion (ils y ajoutaient un fait). Un texte refusé garde le tex
 
 **Acceptation** (plan, M3), outils côté lot 2 (`packages/analyse/scoring/ml/sonde_m3.py`) :
 
+Corpus final (`mail-v8`, 21/11/2026) : 8 152 mails rédigés, 7 655 textes du LLM retenus,
+422 rejetés à la rédaction et 75 au recontrôle (texte des gabarits), 1 047 mails « Rien »
+raccourcis. Les échantillons humains ont été tirés sur les 4 114 premiers textes, identiques
+octet pour octet aux 4 114 premières lignes du fichier final.
+
 | Critère | Mesure | Résultat |
 |---|---|---|
-| ≥ 95 % passent les contrôles | manifeste de l'assemblage | 94,0 % (4 114 premiers textes, après correction) |
-| bien plus de modèles de phrases qu'avec les gabarits (ADR-0003) | `--diversite`, mêmes mails, objets, noms, nombres, dates masqués | ×7,5 (8 409 contre 1 116) ; 83 % de phrases uniques contre 25 % |
+| ≥ 8 000 éléments rédigés | manifeste de l'assemblage | 8 152 rédigés, 7 655 retenus |
+| ≥ 95 % passent les contrôles | manifeste de l'assemblage | **93,9 %** (train 93,9 %, T-gen 93,6 %) : non atteint, après durcissement des contrôles d'après l'échantillon (95,0 % avant) |
+| bien plus de modèles de phrases qu'avec les gabarits (ADR-0003) | `--diversite`, mêmes 7 655 mails, objets, noms, nombres, dates masqués | **×9,9** (14 267 contre 1 444) ; 79 % de phrases uniques contre 17 % ; objets : 2 640 modèles contre 19 |
 | ≥ 90 % conformes sur 5 % relus à l'aveugle | `--echantillon`, `--conformite` | 83,7 % brut (387 cartes, 2 annotateurs, kappa action 0,92) ; 95,8 % après correction et relecture (optimiste) |
 | confirmation sur des textes jamais vus | `--confirmation` (150 cartes, critère écrit avant) | **93,3 %** (IC 95 % 88,2-96,3 %), atteint |
 

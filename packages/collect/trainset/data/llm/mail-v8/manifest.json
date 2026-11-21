@@ -1,0 +1,902 @@
+{
+ "consigne": "mail-v8",
+ "distribution": {
+  "tgen": {
+   "actions_par_source": {
+    "calendar": {
+     "preparer": 61,
+     "repondre": 36,
+     "rien": 19
+    },
+    "file": {
+     "decider": 58,
+     "informer": 78,
+     "preparer": 31,
+     "relire": 34,
+     "rien": 32
+    },
+    "mail": {
+     "decider": 184,
+     "faire": 87,
+     "informer": 506,
+     "preparer": 28,
+     "relire": 51,
+     "repondre": 132,
+     "rien": 539
+    },
+    "task": {
+     "decider": 40,
+     "faire": 54,
+     "preparer": 6,
+     "relire": 4,
+     "repondre": 9
+    }
+   },
+   "affaires": {
+    "delegation_cc": 46,
+    "demande_client": 178,
+    "demande_info": 146,
+    "fond": 733,
+    "incident": 122,
+    "invitation": 36,
+    "piege": 21,
+    "relecture": 130,
+    "reunion_preparee": 209,
+    "signature": 36,
+    "tache_perso": 45,
+    "validation": 287
+   },
+   "alertes": 48,
+   "elements": 1989,
+   "non_collectes": {
+    "task": 50
+   },
+   "pieges": {
+    "contradiction": 14,
+    "doublon": 3,
+    "hameconnage": 3,
+    "injection": 4
+   },
+   "urgence": {
+    "normal": 1788,
+    "sans_urgence": 46,
+    "urgent": 155
+   }
+  },
+  "train": {
+   "actions_par_source": {
+    "calendar": {
+     "preparer": 498,
+     "repondre": 428,
+     "rien": 183
+    },
+    "file": {
+     "decider": 513,
+     "informer": 644,
+     "preparer": 285,
+     "relire": 329,
+     "rien": 263
+    },
+    "mail": {
+     "decider": 1217,
+     "faire": 748,
+     "informer": 4194,
+     "preparer": 173,
+     "relire": 527,
+     "repondre": 1106,
+     "rien": 4858
+    },
+    "task": {
+     "decider": 295,
+     "faire": 431,
+     "preparer": 71,
+     "relire": 44,
+     "repondre": 80
+    }
+   },
+   "affaires": {
+    "delegation_cc": 446,
+    "demande_client": 1555,
+    "demande_info": 1164,
+    "fond": 6311,
+    "incident": 835,
+    "invitation": 428,
+    "piege": 228,
+    "relecture": 1205,
+    "reunion_preparee": 1638,
+    "signature": 248,
+    "tache_perso": 434,
+    "validation": 2395
+   },
+   "alertes": 435,
+   "elements": 16887,
+   "non_collectes": {
+    "task": 484
+   },
+   "pieges": {
+    "contradiction": 74,
+    "doublon": 56,
+    "hameconnage": 33,
+    "injection": 121
+   },
+   "urgence": {
+    "normal": 15479,
+    "sans_urgence": 520,
+    "urgent": 888
+   }
+  }
+ },
+ "empreinte": "ff02c3702f322b9e075e9568332d96c0a7028002f1a5a056e0a6784320a4db0b",
+ "llm": {
+  "a_reecrire": 8152,
+  "absents": 0,
+  "complet": true,
+  "ecrits": 8152,
+  "raccourcis": 1047,
+  "recontroles": 75,
+  "rejetes": 422,
+  "retenus": 7655,
+  "taux_controles": 0.939
+ },
+ "llm_par_split": {
+  "tgen": {
+   "a_reecrire": 862,
+   "absents": 0,
+   "ecrits": 862,
+   "recontroles": 8,
+   "rejetes": 47,
+   "retenus": 807,
+   "taux_controles": 0.9362
+  },
+  "train": {
+   "a_reecrire": 7290,
+   "absents": 0,
+   "ecrits": 7290,
+   "recontroles": 67,
+   "rejetes": 375,
+   "retenus": 6848,
+   "taux_controles": 0.9394
+  }
+ },
+ "modele": "gemma2:9b",
+ "personas": {
+  "achats-1": {
+   "elements": 511,
+   "items_sha256": "cef4f6b18ac8c817ac395747b6a88a4e2f596ac6fab25f8f54a210baba2e30ca",
+   "llm_retenus": 208,
+   "scenario_sha256": "7d17a7e5e3e46ffc98d0fa52f1750497f206d6bc5052c743c837bd7df52f3f49",
+   "split": "tgen"
+  },
+  "agence-1": {
+   "elements": 432,
+   "items_sha256": "073439c7458ecae4c29e2d318cd9edcb826e3a44728189e6d929dde688156737",
+   "llm_retenus": 156,
+   "scenario_sha256": "ee32440f741fecffb48de71024c739b82d384e6833d79eedff6851f7a9395eaf",
+   "split": "train"
+  },
+  "agence-2": {
+   "elements": 383,
+   "items_sha256": "08fd427f0e053ff3030504b621d76439be61a70c1747b64700f3f5e2325d9389",
+   "llm_retenus": 165,
+   "scenario_sha256": "4525893b711690660b1c442a34d2cebe45e80126016bd49333d3b13acc5b6cfc",
+   "split": "train"
+  },
+  "agence-3": {
+   "elements": 558,
+   "items_sha256": "ecccedd7233947ee2b079ee287fca62a0034454bbb1f6c81227ae7571ba2db02",
+   "llm_retenus": 202,
+   "scenario_sha256": "de720c558357a32de191d1ab1fede9445ed835f2864dd2668fb8fdf9577da905",
+   "split": "train"
+  },
+  "chantier-1": {
+   "elements": 513,
+   "items_sha256": "448ad6056350b882b9714b7b3171af6989e71dc941853eb59dcbc2e2e0974bb3",
+   "llm_retenus": 190,
+   "scenario_sha256": "71349bc0c8a83e4b7ba716b12df464180800b685b17d0dea00a1430ecbc8f5e7",
+   "split": "train"
+  },
+  "chantier-2": {
+   "elements": 456,
+   "items_sha256": "e770e56f53dd88eddfaed1efbdb8e54e3a7fe3e5eafcce8ca877cd73d75b197c",
+   "llm_retenus": 187,
+   "scenario_sha256": "d07e050a0858dfac9a6be2a0cd26b99afa07668f1ee0f204c7e45a71e526b360",
+   "split": "train"
+  },
+  "chantier-3": {
+   "elements": 526,
+   "items_sha256": "9839a3054efe26ae71fd30f7ec0d16478d46526c364d0e3b9a4dbbc951e1506b",
+   "llm_retenus": 189,
+   "scenario_sha256": "b7084f4db88f419194009af46e537f076fa28beb3c629a8ac0d97c884b7c6eb9",
+   "split": "train"
+  },
+  "collectivite-1": {
+   "elements": 476,
+   "items_sha256": "c7a6094328973079549fbe04940656aa8ac29a3e74a32a83d27f44c3b45fe01b",
+   "llm_retenus": 188,
+   "scenario_sha256": "9d19f2313d5b5f4dbb572ca1d665704d404701dd31f31f71e31666e00006fdfc",
+   "split": "train"
+  },
+  "collectivite-2": {
+   "elements": 449,
+   "items_sha256": "b087d37f05b8e490ef62ac61886ea11b7938f68f9822b333d5c1b076c3f22cc8",
+   "llm_retenus": 175,
+   "scenario_sha256": "a114910b95d7edccf2a9e14e0bff3051f10306658eb9dd5653fb07b7e96bc046",
+   "split": "train"
+  },
+  "collectivite-3": {
+   "elements": 485,
+   "items_sha256": "cfbfbd4135a65698c1d248ccada7c1c1f7a6b862dc0148dd03f2e71f4e99f8d2",
+   "llm_retenus": 205,
+   "scenario_sha256": "7521b3f206546df82ff098b99dea7b97ac4b9740773df0d664807c1e93bc7c27",
+   "split": "train"
+  },
+  "commercial-1": {
+   "elements": 603,
+   "items_sha256": "82164364333a9b000a4d1b036da13546683683b7e824c881b95c8fe6940aba09",
+   "llm_retenus": 236,
+   "scenario_sha256": "12004fa4c1637bca3120e3426e5a174b833473d1313c703db9f620396a0fe6a6",
+   "split": "train"
+  },
+  "commercial-2": {
+   "elements": 483,
+   "items_sha256": "8cb6ecc13b0a54c38755f5d92625e6a79b85a5db882f3cb4d247f42b619a3d32",
+   "llm_retenus": 187,
+   "scenario_sha256": "3fcb40a02b0f260e9f185baf73e94bbc32f12acb14221cc82dc556e88c1638c7",
+   "split": "train"
+  },
+  "commercial-3": {
+   "elements": 436,
+   "items_sha256": "51a97aaf0a1492fca70316eae4340206aef62dbc5fa5291686790c33cfbb12b9",
+   "llm_retenus": 158,
+   "scenario_sha256": "77dd9b030eda65a436c9da78b612222041e15cf318022fcec30ba41dc4b10e87",
+   "split": "train"
+  },
+  "daf-1": {
+   "elements": 389,
+   "items_sha256": "1c400e879f2a4490488da6f19c3d45ca3c9a15fa9f064b3afff57dfc15dc6a50",
+   "llm_retenus": 141,
+   "scenario_sha256": "8e8ece4c54bd8e8237c0fe04d446cfddcfdeb61d30cc4c4ff6040f6c599ebdec",
+   "split": "train"
+  },
+  "daf-2": {
+   "elements": 441,
+   "items_sha256": "4f876876fb5a92fd88b750d48a69375f148a44583e8a63f806eec3601ea4f679",
+   "llm_retenus": 167,
+   "scenario_sha256": "0bf489988f900e4b2a78404f47d0b9a4b11790e3aae609a13ed8544b3a72e812",
+   "split": "train"
+  },
+  "daf-3": {
+   "elements": 520,
+   "items_sha256": "4cd887d8bea6e43b04305750d6f4bd21feb7cabc9a16c1c708c1171f97931b89",
+   "llm_retenus": 199,
+   "scenario_sha256": "f26669d5f34a9980ddc4d5e278159be9ecf6e03c9c457e9fe99d3cac4026c9fd",
+   "split": "train"
+  },
+  "drh-1": {
+   "elements": 523,
+   "items_sha256": "9ddba87092eb2a3f43ea9ab62f4e3954d6d235e840a64561c119ed0d5053fa4c",
+   "llm_retenus": 210,
+   "scenario_sha256": "aa4d5d9ec8ca3032f1b208fb383fc0d44f31a4b427bb7923e294866f5a0dc210",
+   "split": "train"
+  },
+  "drh-2": {
+   "elements": 400,
+   "items_sha256": "01bb82bcc027d5a129c90cb51d5ecc1eebbc0f49fb98bbb24604a3841389ba39",
+   "llm_retenus": 160,
+   "scenario_sha256": "9d171854cf56cbef8ca79a469846afe15bfd6f5ed8956c86910700e951f2f741",
+   "split": "train"
+  },
+  "drh-3": {
+   "elements": 462,
+   "items_sha256": "22e4e48249be5e9f4cff1daffebe35ba21249a8435b1878341bf78e6adaf54c2",
+   "llm_retenus": 181,
+   "scenario_sha256": "a696b39dfe1e7dd5c848d89a2d3900c96e64c4c01d62d136611bcf7d05951b71",
+   "split": "train"
+  },
+  "ecole-1": {
+   "elements": 545,
+   "items_sha256": "9b797213929cb931009e1007c8a9c8941bcecf66f1ccfb55e07a8d274710e279",
+   "llm_retenus": 216,
+   "scenario_sha256": "4051d1c2be00a9fbfdab0abc6a07db5a3278770d642b069a06b5f98792567274",
+   "split": "train"
+  },
+  "ecole-2": {
+   "elements": 504,
+   "items_sha256": "02835561ec64782638abb9c80d4cfe17f72c195cbcbfe8ba0961afde40a212c7",
+   "llm_retenus": 201,
+   "scenario_sha256": "982e2483beb8edbf6936f0aad942e33c23a47121d4a9d26eb46c4eee40bbd837",
+   "split": "train"
+  },
+  "ecole-3": {
+   "elements": 441,
+   "items_sha256": "9073e07403bde6855bb4f77e5b3b939b0afa93ad1a0c4f6e5e69a38f5c70c57f",
+   "llm_retenus": 185,
+   "scenario_sha256": "a25f35880527852eb746f9f2d6121caa97fe04231c11ceb0a53693b4a9379c69",
+   "split": "train"
+  },
+  "hotel-1": {
+   "elements": 538,
+   "items_sha256": "9fc9e2e99bf5a21e44a1d83395aabaf46610cd0da7a48235588bfee301def37d",
+   "llm_retenus": 210,
+   "scenario_sha256": "87a356711b68066032a86aa4999f3e336046974fb34deffd020b8872a7d827d6",
+   "split": "tgen"
+  },
+  "laboratoire-1": {
+   "elements": 460,
+   "items_sha256": "7e91a6c8325b3d58c58fe9823d92cb75effb1324a350a89e7395b90c78e8d45d",
+   "llm_retenus": 184,
+   "scenario_sha256": "448f8179aa315d90643a2b18c95c3859dea74dedf8a2c3d7d99eda3446c8db73",
+   "split": "tgen"
+  },
+  "logistique-1": {
+   "elements": 473,
+   "items_sha256": "16b1aacee0cda7788b0615fae6d9169dfe6deb497d5feb0c05bbe093fd862895",
+   "llm_retenus": 193,
+   "scenario_sha256": "cf39e3e1a7451d33227e59242e24ee30ee189c3008a767e5f7ee10c5a19f4efa",
+   "split": "train"
+  },
+  "logistique-2": {
+   "elements": 627,
+   "items_sha256": "672fe759ecca6f815f6c0d252d2262116a572e45e4728f3b6dc2dfdad337b8e0",
+   "llm_retenus": 250,
+   "scenario_sha256": "c9a0c331f8fd40b612b91d9bfaa4d0184e6856ac5132cee90a3b91594f22c89c",
+   "split": "train"
+  },
+  "logistique-3": {
+   "elements": 469,
+   "items_sha256": "a3994b129642c58a5b6d2e4c49bc1d671f57192f09984bb7cc87534a7a39e574",
+   "llm_retenus": 189,
+   "scenario_sha256": "2a65cf82ee720a4c732516e5089b5f72072a0a3a1dd60d8b32d8cf13e3e51ce6",
+   "split": "train"
+  },
+  "operations-1": {
+   "elements": 445,
+   "items_sha256": "b14fef36b24894df48e5eaeb5264335e5142ec13435407b5e1ca9ef92c9ad1af",
+   "llm_retenus": 187,
+   "scenario_sha256": "f6539f61427e876ca2233acc955d0d4cc82df17f1b88a0354c27768814d1ff9a",
+   "split": "train"
+  },
+  "operations-2": {
+   "elements": 487,
+   "items_sha256": "4709e9783bbe5da2775bf9843b03e7fc16c65a6f5014161a1dad31eabf58ac63",
+   "llm_retenus": 195,
+   "scenario_sha256": "b328e49825a751de1fe9ae20e8831dd8da14c9d493f1beb1a08ab6538bd4d14b",
+   "split": "train"
+  },
+  "operations-3": {
+   "elements": 446,
+   "items_sha256": "df12f82900be11754464fafdd82a6d3c0d0f5edc1f5e83d656f3f9bed90c7be2",
+   "llm_retenus": 196,
+   "scenario_sha256": "3f1e7193b57e75b88eb2c5a31bdeafbd8bf0c09b9b84e5bf00d4a2147e831af3",
+   "split": "train"
+  },
+  "projet_si-1": {
+   "elements": 444,
+   "items_sha256": "1db7d38559cbfc0c67ebb9132e575bb64cee8c000455b4122520b0dea45d7aad",
+   "llm_retenus": 181,
+   "scenario_sha256": "df9a7e561026bc13e094ccff8e77e6a1f739afce711d14f25a15f3023a3edba4",
+   "split": "train"
+  },
+  "projet_si-2": {
+   "elements": 573,
+   "items_sha256": "b255f9f69c322202d442fa62e76b8ea8ff5c628b9d5961b5b8cbe5d1d925c6cc",
+   "llm_retenus": 229,
+   "scenario_sha256": "370f6ee55ba8b25a0fd5b289b490b01ad10979ea4e8ee22dbb9ea98f7dbff251",
+   "split": "train"
+  },
+  "projet_si-3": {
+   "elements": 493,
+   "items_sha256": "29598133414605939f2a4af0d38ba46273e804d1476c2dc182e81481937938a8",
+   "llm_retenus": 191,
+   "scenario_sha256": "835caa8ada1fd27151477dc1bdcff87400dfdc4a26dc2b290f9834545204907c",
+   "split": "train"
+  },
+  "qualite-1": {
+   "elements": 486,
+   "items_sha256": "302ca248af6eeb48ee600600f7398d83e2856594d14b6a0a98a3ef1514eac486",
+   "llm_retenus": 197,
+   "scenario_sha256": "5920c9a0de1000879a35aad9b07279e185f32f479dfb37a349107331fa17f2ef",
+   "split": "train"
+  },
+  "qualite-2": {
+   "elements": 496,
+   "items_sha256": "e4bfa2eab7a0ac3235a3614ad2f3a28811df91d5146bfe545e4a85131021dec8",
+   "llm_retenus": 194,
+   "scenario_sha256": "d8a969d8e604198db9c815476c29782f026d78bbe0ab78f26979e6fff6838900",
+   "split": "train"
+  },
+  "qualite-3": {
+   "elements": 484,
+   "items_sha256": "389497758ada474c2a71c66f1c099d780bf37c915c2c947dfd1fb31c93ac038b",
+   "llm_retenus": 175,
+   "scenario_sha256": "57bf92ef93e41dfceb97cc6eec8e91853a82758b3a482465c641944486240c87",
+   "split": "train"
+  },
+  "sante-1": {
+   "elements": 515,
+   "items_sha256": "e350463cf1ef61b66fc8f4e1d8ed1f9721427dbf2b66fe11c360503529486995",
+   "llm_retenus": 213,
+   "scenario_sha256": "b3dfdc735a860a339c31e32b7b35b583f629c05570b034293a8a923795e2b883",
+   "split": "train"
+  },
+  "sante-2": {
+   "elements": 475,
+   "items_sha256": "8dfd4a8c7a16c2ef440ae8bc633802c420172b6f81adda497a4b68f01c2fdd92",
+   "llm_retenus": 185,
+   "scenario_sha256": "621ad3fac4595c8e96db1c6e2d0bd0bdbd83ba333faaa38848d653579cdb512e",
+   "split": "train"
+  },
+  "sante-3": {
+   "elements": 433,
+   "items_sha256": "c25ae23578abb7940a670d27541dce0290c4ec5bc4a8c0f3557927d19fb124de",
+   "llm_retenus": 175,
+   "scenario_sha256": "2a5a3a8680592a4a952c01f760f2dddb9dd7bb5b2dfc09bc3d3a9b16efb854f7",
+   "split": "train"
+  },
+  "service_client-1": {
+   "elements": 530,
+   "items_sha256": "069bce91c7fcc90bcc398e362365daf3d409b78cb19845ac31e255cff326edd8",
+   "llm_retenus": 205,
+   "scenario_sha256": "13a7736b6afaf6e2a160257155783846c595dcf13305d60828f5a6954bd0cef5",
+   "split": "tgen"
+  }
+ },
+ "recontroles_detail": [
+  {
+   "item_id": "mail:operations-2-00037",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:operations-3-00055",
+   "raisons": [
+    "demande : ton changé (« des que tu pourras » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:operations-3-00174",
+   "raisons": [
+    "demande : ton changé (« meilleurs delais » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:operations-3-00340",
+   "raisons": [
+    "demande : ton changé (« des que vous le pourrez » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:agence-1-00065",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:agence-1-00161",
+   "raisons": [
+    "demande : ton changé (« brefs delais » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:agence-1-00337",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:agence-3-00057",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:projet_si-2-00327",
+   "raisons": [
+    "objet absent de l'extrait lu (planning de mise en production)"
+   ]
+  },
+  {
+   "item_id": "mail:projet_si-3-00199",
+   "raisons": [
+    "objet absent de l'extrait lu (avenant au contrat CloudFrance)"
+   ]
+  },
+  {
+   "item_id": "mail:projet_si-3-00453",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:daf-1-00352",
+   "raisons": [
+    "demande : ton changé (« meilleurs delais » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:daf-2-00376",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:daf-3-00175",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:daf-3-00290",
+   "raisons": [
+    "demande : ton changé (« meilleurs delais » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:daf-3-00373",
+   "raisons": [
+    "demande : ton changé (« meilleurs delais » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:drh-1-00142",
+   "raisons": [
+    "demande : ton changé (« des que vous pourrez » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:drh-1-00163",
+   "raisons": [
+    "demande : ton changé (« meilleurs delais » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:drh-1-00261",
+   "raisons": [
+    "demande : ton changé (« brefs delais » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:drh-2-00046",
+   "raisons": [
+    "demande : ton changé (« des que tu le pourras » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:drh-2-00182",
+   "raisons": [
+    "demande : ton changé (« meilleurs delais » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:drh-2-00318",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:drh-3-00006",
+   "raisons": [
+    "demande : ton changé (« brefs delais » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:drh-3-00281",
+   "raisons": [
+    "demande : ton changé (« brefs delais » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:commercial-1-00103",
+   "raisons": [
+    "demande : ton changé (« des que vous le pourrez » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:commercial-1-00198",
+   "raisons": [
+    "demande : ton changé (« des que cela sera possible » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:commercial-3-00008",
+   "raisons": [
+    "demande : ton changé (« brefs delais » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:commercial-3-00022",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:commercial-3-00103",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:commercial-3-00302",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:commercial-3-00422",
+   "raisons": [
+    "demande : ton changé (« des que vous le pourrez » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:chantier-1-00016",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:chantier-1-00090",
+   "raisons": [
+    "demande : ton changé (« brefs delais » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:chantier-1-00118",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:chantier-2-00059",
+   "raisons": [
+    "demande : ton changé (« des que vous pourrez » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:chantier-2-00085",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:chantier-2-00203",
+   "raisons": [
+    "demande : ton changé (« brefs delais » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:chantier-3-00035",
+   "raisons": [
+    "demande : ton changé (« brefs delais » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:chantier-3-00196",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:sante-1-00432",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:sante-2-00005",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:sante-2-00071",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:sante-2-00236",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:sante-2-00351",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:sante-3-00130",
+   "raisons": [
+    "demande : ton changé (« brefs delais » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:sante-3-00232",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:sante-3-00269",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:logistique-1-00294",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:logistique-2-00528",
+   "raisons": [
+    "demande : ton changé (« des que vous le pourrez » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:logistique-2-00612",
+   "raisons": [
+    "demande : ton changé (« meilleurs delais » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:logistique-3-00006",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:logistique-3-00375",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:ecole-1-00283",
+   "raisons": [
+    "demande : ton changé (« des que vous pourrez » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:ecole-1-00418",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:ecole-2-00199",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:collectivite-2-00177",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:collectivite-2-00356",
+   "raisons": [
+    "pas en français"
+   ]
+  },
+  {
+   "item_id": "mail:collectivite-2-00422",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:collectivite-3-00108",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:collectivite-3-00265",
+   "raisons": [
+    "demande : ton changé (« meilleurs delais » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:collectivite-3-00390",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:qualite-1-00110",
+   "raisons": [
+    "demande : ton changé (« brefs delais » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:qualite-1-00151",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:qualite-1-00274",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:qualite-2-00183",
+   "raisons": [
+    "demande : ton changé (« des que cela sera possible » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:qualite-3-00072",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:qualite-3-00346",
+   "raisons": [
+    "demande : ton changé (« brefs delais » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:achats-1-00112",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:achats-1-00291",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:achats-1-00479",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:hotel-1-00327",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  },
+  {
+   "item_id": "mail:laboratoire-1-00011",
+   "raisons": [
+    "demande : ton changé (« brefs delais » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:laboratoire-1-00410",
+   "raisons": [
+    "demande : ton changé (« brefs delais » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:service_client-1-00107",
+   "raisons": [
+    "demande : ton changé (« des que tu le pourras » hors du ton)"
+   ]
+  },
+  {
+   "item_id": "mail:service_client-1-00422",
+   "raisons": [
+    "ton : intitulé de la fiche recopié"
+   ]
+  }
+ ],
+ "seed": 0,
+ "textes": {
+  "illisibles": 0,
+  "lignes": 8152,
+  "sha256": "dba2051b4f3a8e40977123e5949e5176e60f9810fcfa87537a66ecd504a43537"
+ }
+}
