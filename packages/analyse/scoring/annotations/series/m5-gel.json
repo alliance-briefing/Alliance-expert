@@ -1,0 +1,10 @@
+{
+ "series": {
+  "m5-tgen-elements.jsonl": "d9d41aee5c85e65064a8abe6e5d68915754ef1a844793376190152408b857145",
+  "m5-tgen-paires.jsonl": "6ff1f4d111e515c3c99004793b77ce39e3e08857dd8b46e23ab2c9db452a9861",
+  "m5-tgen-affaires.jsonl": "04b3703aa151a7ed0807cb55f50a8ebbecf68c3f111b6cfbef7189259b72ea62",
+  "m5-tdemo-paires.jsonl": "901957e81b04a340e69a4d97b91048709ca4a2bff3ce777da9273b85e28ba184",
+  "m5-tirage.json": "34ff0519ea00d7131c6770da996a6fb9f72e94acbd503d6d069ee69538cd0ecc"
+ },
+ "reponses": {}
+}

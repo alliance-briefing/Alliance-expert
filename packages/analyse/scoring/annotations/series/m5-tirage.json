@@ -1,0 +1,1458 @@
+{
+ "graine": 0,
+ "corpus": {
+  "consigne": "mail-v8",
+  "textes_sha256": "dba2051b4f3a8e40977123e5949e5176e60f9810fcfa87537a66ecd504a43537"
+ },
+ "annotateur": "theo",
+ "decision": "21/11 (David) : un seul annotateur, sans kappa ; priorité au modèle",
+ "tgen": {
+  "personas": [
+   "achats-1",
+   "hotel-1",
+   "laboratoire-1",
+   "service_client-1"
+  ],
+  "briefs": 60,
+  "exclus_m3": 537,
+  "elements": {
+   "t-e001": "mail:laboratoire-1-00430",
+   "t-e002": "mail:service_client-1-00061",
+   "t-e003": "task:service_client-1-00028",
+   "t-e004": "calendar:service_client-1-00163",
+   "t-e005": "task:service_client-1-00377",
+   "t-e006": "mail:laboratoire-1-00069",
+   "t-e007": "mail:service_client-1-00403",
+   "t-e008": "file:service_client-1-00336",
+   "t-e009": "task:hotel-1-00066",
+   "t-e010": "calendar:service_client-1-00359",
+   "t-e011": "mail:service_client-1-00472",
+   "t-e012": "calendar:hotel-1-00150",
+   "t-e013": "mail:laboratoire-1-00058",
+   "t-e014": "mail:hotel-1-00497",
+   "t-e015": "task:service_client-1-00025",
+   "t-e016": "calendar:hotel-1-00108",
+   "t-e017": "file:laboratoire-1-00193",
+   "t-e018": "file:service_client-1-00395",
+   "t-e019": "mail:service_client-1-00068",
+   "t-e020": "mail:laboratoire-1-00294",
+   "t-e021": "file:hotel-1-00029",
+   "t-e022": "file:service_client-1-00256",
+   "t-e023": "mail:achats-1-00058",
+   "t-e024": "mail:hotel-1-00194",
+   "t-e025": "mail:laboratoire-1-00408",
+   "t-e026": "calendar:achats-1-00004",
+   "t-e027": "task:laboratoire-1-00035",
+   "t-e028": "task:service_client-1-00306",
+   "t-e029": "file:achats-1-00195",
+   "t-e030": "calendar:achats-1-00023",
+   "t-e031": "mail:achats-1-00116",
+   "t-e032": "task:hotel-1-00179",
+   "t-e033": "mail:service_client-1-00383",
+   "t-e034": "mail:achats-1-00174",
+   "t-e035": "mail:laboratoire-1-00358",
+   "t-e036": "file:achats-1-00363",
+   "t-e037": "mail:laboratoire-1-00067",
+   "t-e038": "mail:achats-1-00292",
+   "t-e039": "calendar:laboratoire-1-00191",
+   "t-e040": "mail:laboratoire-1-00012",
+   "t-e041": "mail:laboratoire-1-00167",
+   "t-e042": "file:achats-1-00045",
+   "t-e043": "task:service_client-1-00082",
+   "t-e044": "task:hotel-1-00411",
+   "t-e045": "mail:laboratoire-1-00144",
+   "t-e046": "file:achats-1-00199",
+   "t-e047": "mail:laboratoire-1-00289",
+   "t-e048": "calendar:laboratoire-1-00134",
+   "t-e049": "file:laboratoire-1-00034",
+   "t-e050": "task:service_client-1-00329",
+   "t-e051": "mail:laboratoire-1-00386",
+   "t-e052": "mail:hotel-1-00067",
+   "t-e053": "calendar:achats-1-00071",
+   "t-e054": "file:laboratoire-1-00174",
+   "t-e055": "task:hotel-1-00019",
+   "t-e056": "mail:service_client-1-00185",
+   "t-e057": "mail:hotel-1-00005",
+   "t-e058": "task:laboratoire-1-00112",
+   "t-e059": "mail:service_client-1-00176",
+   "t-e060": "mail:hotel-1-00207",
+   "t-e061": "calendar:hotel-1-00093",
+   "t-e062": "mail:hotel-1-00068",
+   "t-e063": "task:laboratoire-1-00105",
+   "t-e064": "calendar:achats-1-00346",
+   "t-e065": "task:hotel-1-00495",
+   "t-e066": "calendar:service_client-1-00166",
+   "t-e067": "mail:service_client-1-00340",
+   "t-e068": "file:achats-1-00338",
+   "t-e069": "calendar:laboratoire-1-00309",
+   "t-e070": "calendar:laboratoire-1-00242",
+   "t-e071": "mail:hotel-1-00126",
+   "t-e072": "file:laboratoire-1-00197",
+   "t-e073": "task:achats-1-00163",
+   "t-e074": "file:hotel-1-00221",
+   "t-e075": "mail:hotel-1-00219",
+   "t-e076": "mail:hotel-1-00021",
+   "t-e077": "file:hotel-1-00303",
+   "t-e078": "calendar:hotel-1-00135",
+   "t-e079": "mail:service_client-1-00368",
+   "t-e080": "mail:hotel-1-00305",
+   "t-e081": "task:hotel-1-00463",
+   "t-e082": "mail:achats-1-00359",
+   "t-e083": "mail:achats-1-00043",
+   "t-e084": "file:service_client-1-00148",
+   "t-e085": "mail:service_client-1-00048",
+   "t-e086": "mail:service_client-1-00060",
+   "t-e087": "mail:achats-1-00013",
+   "t-e088": "mail:laboratoire-1-00337",
+   "t-e089": "calendar:service_client-1-00038",
+   "t-e090": "task:laboratoire-1-00101",
+   "t-e091": "mail:achats-1-00143",
+   "t-e092": "mail:service_client-1-00144",
+   "t-e093": "file:hotel-1-00330",
+   "t-e094": "mail:achats-1-00311",
+   "t-e095": "mail:achats-1-00448",
+   "t-e096": "mail:achats-1-00231",
+   "t-e097": "file:achats-1-00016",
+   "t-e098": "mail:service_client-1-00182",
+   "t-e099": "mail:service_client-1-00283",
+   "t-e100": "mail:service_client-1-00292",
+   "t-e101": "file:hotel-1-00362",
+   "t-e102": "mail:laboratoire-1-00075",
+   "t-e103": "mail:achats-1-00162",
+   "t-e104": "file:laboratoire-1-00330",
+   "t-e105": "file:laboratoire-1-00277",
+   "t-e106": "task:laboratoire-1-00007",
+   "t-e107": "mail:laboratoire-1-00253",
+   "t-e108": "file:service_client-1-00454",
+   "t-e109": "task:service_client-1-00391",
+   "t-e110": "mail:service_client-1-00414",
+   "t-e111": "mail:achats-1-00299",
+   "t-e112": "calendar:laboratoire-1-00403",
+   "t-e113": "file:achats-1-00034",
+   "t-e114": "task:laboratoire-1-00114",
+   "t-e115": "mail:laboratoire-1-00357",
+   "t-e116": "mail:service_client-1-00272",
+   "t-e117": "mail:hotel-1-00383",
+   "t-e118": "mail:service_client-1-00091",
+   "t-e119": "mail:hotel-1-00252",
+   "t-e120": "mail:hotel-1-00501",
+   "t-e121": "mail:service_client-1-00219",
+   "t-e122": "mail:hotel-1-00006",
+   "t-e123": "mail:achats-1-00486",
+   "t-e124": "mail:hotel-1-00106",
+   "t-e125": "task:achats-1-00197",
+   "t-e126": "mail:laboratoire-1-00433",
+   "t-e127": "calendar:achats-1-00341",
+   "t-e128": "file:laboratoire-1-00428",
+   "t-e129": "mail:achats-1-00395",
+   "t-e130": "calendar:hotel-1-00471",
+   "t-e131": "calendar:service_client-1-00019",
+   "t-e132": "calendar:service_client-1-00001",
+   "t-e133": "mail:hotel-1-00483",
+   "t-e134": "mail:laboratoire-1-00060",
+   "t-e135": "mail:achats-1-00070",
+   "t-e136": "mail:hotel-1-00229",
+   "t-e137": "mail:service_client-1-00030",
+   "t-e138": "mail:hotel-1-00200",
+   "t-e139": "mail:laboratoire-1-00427",
+   "t-e140": "mail:achats-1-00170",
+   "t-e141": "calendar:achats-1-00153",
+   "t-e142": "task:service_client-1-00074",
+   "t-e143": "task:hotel-1-00071",
+   "t-e144": "task:service_client-1-00108",
+   "t-e145": "file:achats-1-00275",
+   "t-e146": "mail:laboratoire-1-00362",
+   "t-e147": "calendar:achats-1-00336",
+   "t-e148": "task:hotel-1-00319",
+   "t-e149": "calendar:achats-1-00019",
+   "t-e150": "calendar:achats-1-00121"
+  },
+  "paires": {
+   "t-p001": [
+    "task:hotel-1-00137",
+    "task:hotel-1-00096"
+   ],
+   "t-p002": [
+    "mail:laboratoire-1-00280",
+    "task:laboratoire-1-00178"
+   ],
+   "t-p003": [
+    "task:laboratoire-1-00332",
+    "mail:laboratoire-1-00442"
+   ],
+   "t-p004": [
+    "calendar:hotel-1-00031",
+    "task:hotel-1-00096"
+   ],
+   "t-p005": [
+    "task:service_client-1-00159",
+    "file:service_client-1-00266"
+   ],
+   "t-p006": [
+    "task:service_client-1-00155",
+    "mail:service_client-1-00326"
+   ],
+   "t-p007": [
+    "mail:achats-1-00193",
+    "task:achats-1-00197"
+   ],
+   "t-p008": [
+    "mail:achats-1-00483",
+    "file:achats-1-00472"
+   ],
+   "t-p009": [
+    "file:hotel-1-00102",
+    "mail:hotel-1-00014"
+   ],
+   "t-p010": [
+    "task:service_client-1-00028",
+    "mail:service_client-1-00298"
+   ],
+   "t-p011": [
+    "mail:laboratoire-1-00108",
+    "calendar:laboratoire-1-00001"
+   ],
+   "t-p012": [
+    "task:laboratoire-1-00050",
+    "task:laboratoire-1-00016"
+   ],
+   "t-p013": [
+    "mail:achats-1-00095",
+    "file:achats-1-00077"
+   ],
+   "t-p014": [
+    "mail:laboratoire-1-00412",
+    "task:laboratoire-1-00178"
+   ],
+   "t-p015": [
+    "mail:hotel-1-00334",
+    "mail:hotel-1-00305"
+   ],
+   "t-p016": [
+    "mail:achats-1-00167",
+    "task:achats-1-00039"
+   ],
+   "t-p017": [
+    "mail:achats-1-00165",
+    "mail:achats-1-00112"
+   ],
+   "t-p018": [
+    "task:service_client-1-00178",
+    "mail:service_client-1-00209"
+   ],
+   "t-p019": [
+    "mail:achats-1-00025",
+    "mail:achats-1-00036"
+   ],
+   "t-p020": [
+    "task:hotel-1-00179",
+    "mail:hotel-1-00182"
+   ],
+   "t-p021": [
+    "mail:service_client-1-00046",
+    "mail:service_client-1-00047"
+   ],
+   "t-p022": [
+    "task:laboratoire-1-00212",
+    "task:laboratoire-1-00101"
+   ],
+   "t-p023": [
+    "mail:achats-1-00043",
+    "mail:achats-1-00062"
+   ],
+   "t-p024": [
+    "file:hotel-1-00276",
+    "mail:hotel-1-00396"
+   ],
+   "t-p025": [
+    "file:hotel-1-00299",
+    "mail:hotel-1-00336"
+   ],
+   "t-p026": [
+    "task:laboratoire-1-00112",
+    "mail:laboratoire-1-00412"
+   ],
+   "t-p027": [
+    "task:hotel-1-00071",
+    "calendar:hotel-1-00060"
+   ],
+   "t-p028": [
+    "mail:hotel-1-00383",
+    "mail:hotel-1-00488"
+   ],
+   "t-p029": [
+    "mail:hotel-1-00164",
+    "mail:hotel-1-00128"
+   ],
+   "t-p030": [
+    "mail:hotel-1-00228",
+    "task:hotel-1-00096"
+   ],
+   "t-p031": [
+    "calendar:achats-1-00019",
+    "mail:achats-1-00042"
+   ],
+   "t-p032": [
+    "calendar:hotel-1-00315",
+    "mail:hotel-1-00387"
+   ],
+   "t-p033": [
+    "mail:laboratoire-1-00047",
+    "mail:laboratoire-1-00059"
+   ],
+   "t-p034": [
+    "task:hotel-1-00125",
+    "file:hotel-1-00221"
+   ],
+   "t-p035": [
+    "mail:hotel-1-00297",
+    "file:hotel-1-00285"
+   ],
+   "t-p036": [
+    "calendar:achats-1-00366",
+    "mail:achats-1-00421"
+   ],
+   "t-p037": [
+    "mail:hotel-1-00261",
+    "task:hotel-1-00096"
+   ],
+   "t-p038": [
+    "mail:laboratoire-1-00411",
+    "task:laboratoire-1-00013"
+   ],
+   "t-p039": [
+    "task:service_client-1-00074",
+    "task:service_client-1-00155"
+   ],
+   "t-p040": [
+    "mail:service_client-1-00289",
+    "task:service_client-1-00037"
+   ],
+   "t-p041": [
+    "mail:achats-1-00220",
+    "mail:achats-1-00162"
+   ],
+   "t-p042": [
+    "mail:achats-1-00050",
+    "mail:achats-1-00059"
+   ],
+   "t-p043": [
+    "task:laboratoire-1-00105",
+    "task:laboratoire-1-00079"
+   ],
+   "t-p044": [
+    "mail:service_client-1-00318",
+    "task:service_client-1-00108"
+   ],
+   "t-p045": [
+    "file:laboratoire-1-00006",
+    "task:laboratoire-1-00013"
+   ],
+   "t-p046": [
+    "task:hotel-1-00269",
+    "task:hotel-1-00253"
+   ],
+   "t-p047": [
+    "mail:laboratoire-1-00195",
+    "mail:laboratoire-1-00217"
+   ],
+   "t-p048": [
+    "task:hotel-1-00019",
+    "task:hotel-1-00096"
+   ],
+   "t-p049": [
+    "task:service_client-1-00100",
+    "mail:service_client-1-00328"
+   ],
+   "t-p050": [
+    "mail:service_client-1-00324",
+    "file:service_client-1-00081"
+   ],
+   "t-p051": [
+    "mail:laboratoire-1-00256",
+    "mail:laboratoire-1-00262"
+   ],
+   "t-p052": [
+    "mail:service_client-1-00455",
+    "mail:service_client-1-00472"
+   ],
+   "t-p053": [
+    "task:service_client-1-00028",
+    "task:service_client-1-00306"
+   ],
+   "t-p054": [
+    "mail:service_client-1-00027",
+    "mail:service_client-1-00031"
+   ],
+   "t-p055": [
+    "mail:service_client-1-00257",
+    "mail:service_client-1-00321"
+   ],
+   "t-p056": [
+    "calendar:achats-1-00295",
+    "mail:achats-1-00449"
+   ],
+   "t-p057": [
+    "calendar:laboratoire-1-00313",
+    "mail:laboratoire-1-00413"
+   ],
+   "t-p058": [
+    "task:laboratoire-1-00105",
+    "calendar:laboratoire-1-00397"
+   ],
+   "t-p059": [
+    "file:laboratoire-1-00102",
+    "mail:laboratoire-1-00111"
+   ],
+   "t-p060": [
+    "mail:service_client-1-00071",
+    "task:service_client-1-00108"
+   ],
+   "t-p061": [
+    "file:hotel-1-00255",
+    "mail:hotel-1-00239"
+   ],
+   "t-p062": [
+    "mail:hotel-1-00467",
+    "task:hotel-1-00156"
+   ],
+   "t-p063": [
+    "mail:laboratoire-1-00074",
+    "mail:laboratoire-1-00071"
+   ],
+   "t-p064": [
+    "mail:achats-1-00274",
+    "mail:achats-1-00291"
+   ],
+   "t-p065": [
+    "task:achats-1-00163",
+    "mail:achats-1-00284"
+   ],
+   "t-p066": [
+    "mail:laboratoire-1-00149",
+    "task:laboratoire-1-00016"
+   ],
+   "t-p067": [
+    "mail:service_client-1-00326",
+    "file:service_client-1-00191"
+   ],
+   "t-p068": [
+    "task:service_client-1-00028",
+    "file:service_client-1-00337"
+   ],
+   "t-p069": [
+    "mail:hotel-1-00292",
+    "file:hotel-1-00285"
+   ],
+   "t-p070": [
+    "mail:achats-1-00204",
+    "mail:achats-1-00120"
+   ],
+   "t-p071": [
+    "task:achats-1-00039",
+    "mail:achats-1-00031"
+   ],
+   "t-p072": [
+    "mail:achats-1-00088",
+    "mail:achats-1-00103"
+   ],
+   "t-p073": [
+    "task:laboratoire-1-00299",
+    "mail:laboratoire-1-00444"
+   ],
+   "t-p074": [
+    "mail:service_client-1-00506",
+    "task:service_client-1-00306"
+   ],
+   "t-p075": [
+    "mail:hotel-1-00052",
+    "mail:hotel-1-00009"
+   ],
+   "t-p076": [
+    "calendar:hotel-1-00002",
+    "task:hotel-1-00125"
+   ],
+   "t-p077": [
+    "mail:service_client-1-00432",
+    "mail:service_client-1-00345"
+   ],
+   "t-p078": [
+    "mail:laboratoire-1-00315",
+    "task:laboratoire-1-00178"
+   ],
+   "t-p079": [
+    "mail:service_client-1-00458",
+    "mail:service_client-1-00476"
+   ],
+   "t-p080": [
+    "mail:hotel-1-00114",
+    "mail:hotel-1-00048"
+   ],
+   "t-p081": [
+    "task:laboratoire-1-00016",
+    "mail:laboratoire-1-00098"
+   ],
+   "t-p082": [
+    "mail:laboratoire-1-00387",
+    "mail:laboratoire-1-00398"
+   ],
+   "t-p083": [
+    "task:laboratoire-1-00299",
+    "file:laboratoire-1-00396"
+   ],
+   "t-p084": [
+    "mail:achats-1-00367",
+    "task:achats-1-00228"
+   ],
+   "t-p085": [
+    "mail:service_client-1-00222",
+    "mail:service_client-1-00223"
+   ],
+   "t-p086": [
+    "task:achats-1-00117",
+    "task:achats-1-00039"
+   ],
+   "t-p087": [
+    "mail:laboratoire-1-00053",
+    "mail:laboratoire-1-00019"
+   ],
+   "t-p088": [
+    "calendar:hotel-1-00268",
+    "calendar:hotel-1-00424"
+   ],
+   "t-p089": [
+    "mail:service_client-1-00404",
+    "mail:service_client-1-00309"
+   ],
+   "t-p090": [
+    "task:hotel-1-00125",
+    "task:hotel-1-00324"
+   ],
+   "t-p091": [
+    "task:service_client-1-00028",
+    "mail:service_client-1-00173"
+   ],
+   "t-p092": [
+    "mail:laboratoire-1-00392",
+    "task:laboratoire-1-00136"
+   ],
+   "t-p093": [
+    "mail:service_client-1-00435",
+    "task:service_client-1-00329"
+   ],
+   "t-p094": [
+    "task:laboratoire-1-00050",
+    "calendar:laboratoire-1-00199"
+   ],
+   "t-p095": [
+    "mail:hotel-1-00006",
+    "mail:hotel-1-00005"
+   ],
+   "t-p096": [
+    "task:service_client-1-00025",
+    "file:service_client-1-00191"
+   ],
+   "t-p097": [
+    "calendar:hotel-1-00152",
+    "mail:hotel-1-00186"
+   ],
+   "t-p098": [
+    "mail:achats-1-00150",
+    "mail:achats-1-00171"
+   ],
+   "t-p099": [
+    "mail:service_client-1-00257",
+    "mail:service_client-1-00260"
+   ],
+   "t-p100": [
+    "mail:service_client-1-00308",
+    "task:service_client-1-00160"
+   ],
+   "t-p101": [
+    "mail:achats-1-00010",
+    "mail:achats-1-00022"
+   ],
+   "t-p102": [
+    "mail:laboratoire-1-00289",
+    "task:laboratoire-1-00145"
+   ],
+   "t-p103": [
+    "calendar:achats-1-00128",
+    "mail:achats-1-00305"
+   ],
+   "t-p104": [
+    "mail:achats-1-00189",
+    "task:achats-1-00197"
+   ],
+   "t-p105": [
+    "mail:service_client-1-00008",
+    "mail:service_client-1-00118"
+   ],
+   "t-p106": [
+    "mail:hotel-1-00203",
+    "file:hotel-1-00188"
+   ],
+   "t-p107": [
+    "mail:hotel-1-00371",
+    "mail:hotel-1-00448"
+   ],
+   "t-p108": [
+    "task:achats-1-00039",
+    "mail:achats-1-00056"
+   ],
+   "t-p109": [
+    "task:hotel-1-00145",
+    "mail:hotel-1-00483"
+   ],
+   "t-p110": [
+    "file:hotel-1-00255",
+    "calendar:hotel-1-00135"
+   ],
+   "t-p111": [
+    "mail:laboratoire-1-00082",
+    "mail:laboratoire-1-00039"
+   ],
+   "t-p112": [
+    "mail:hotel-1-00278",
+    "mail:hotel-1-00267"
+   ],
+   "t-p113": [
+    "mail:achats-1-00307",
+    "mail:achats-1-00302"
+   ],
+   "t-p114": [
+    "task:hotel-1-00300",
+    "task:hotel-1-00071"
+   ],
+   "t-p115": [
+    "file:service_client-1-00192",
+    "calendar:service_client-1-00393"
+   ],
+   "t-p116": [
+    "file:service_client-1-00081",
+    "mail:service_client-1-00305"
+   ],
+   "t-p117": [
+    "file:achats-1-00224",
+    "task:achats-1-00163"
+   ],
+   "t-p118": [
+    "task:hotel-1-00030",
+    "task:hotel-1-00300"
+   ],
+   "t-p119": [
+    "task:hotel-1-00145",
+    "mail:hotel-1-00228"
+   ],
+   "t-p120": [
+    "mail:achats-1-00011",
+    "mail:achats-1-00022"
+   ],
+   "t-p121": [
+    "mail:service_client-1-00122",
+    "mail:service_client-1-00095"
+   ],
+   "t-p122": [
+    "calendar:achats-1-00423",
+    "calendar:achats-1-00335"
+   ],
+   "t-p123": [
+    "mail:service_client-1-00172",
+    "mail:service_client-1-00078"
+   ],
+   "t-p124": [
+    "mail:laboratoire-1-00093",
+    "mail:laboratoire-1-00123"
+   ],
+   "t-p125": [
+    "task:achats-1-00197",
+    "mail:achats-1-00210"
+   ],
+   "t-p126": [
+    "calendar:hotel-1-00111",
+    "task:hotel-1-00066"
+   ],
+   "t-p127": [
+    "mail:service_client-1-00046",
+    "mail:service_client-1-00044"
+   ],
+   "t-p128": [
+    "mail:service_client-1-00247",
+    "mail:service_client-1-00229"
+   ],
+   "t-p129": [
+    "task:laboratoire-1-00013",
+    "mail:laboratoire-1-00187"
+   ],
+   "t-p130": [
+    "task:laboratoire-1-00114",
+    "file:laboratoire-1-00310"
+   ],
+   "t-p131": [
+    "mail:service_client-1-00477",
+    "mail:service_client-1-00480"
+   ],
+   "t-p132": [
+    "task:achats-1-00007",
+    "file:achats-1-00349"
+   ],
+   "t-p133": [
+    "task:service_client-1-00023",
+    "task:service_client-1-00377"
+   ],
+   "t-p134": [
+    "mail:hotel-1-00059",
+    "mail:hotel-1-00081"
+   ],
+   "t-p135": [
+    "mail:hotel-1-00447",
+    "mail:hotel-1-00446"
+   ],
+   "t-p136": [
+    "calendar:laboratoire-1-00158",
+    "mail:laboratoire-1-00315"
+   ],
+   "t-p137": [
+    "mail:hotel-1-00513",
+    "task:hotel-1-00234"
+   ],
+   "t-p138": [
+    "mail:achats-1-00052",
+    "mail:achats-1-00050"
+   ],
+   "t-p139": [
+    "task:laboratoire-1-00007",
+    "mail:laboratoire-1-00353"
+   ],
+   "t-p140": [
+    "task:laboratoire-1-00331",
+    "mail:laboratoire-1-00452"
+   ],
+   "t-p141": [
+    "mail:achats-1-00280",
+    "mail:achats-1-00319"
+   ],
+   "t-p142": [
+    "mail:achats-1-00139",
+    "mail:achats-1-00075"
+   ],
+   "t-p143": [
+    "mail:laboratoire-1-00293",
+    "mail:laboratoire-1-00273"
+   ],
+   "t-p144": [
+    "mail:laboratoire-1-00165",
+    "mail:laboratoire-1-00164"
+   ],
+   "t-p145": [
+    "mail:laboratoire-1-00426",
+    "calendar:laboratoire-1-00403"
+   ],
+   "t-p146": [
+    "mail:laboratoire-1-00319",
+    "task:laboratoire-1-00013"
+   ],
+   "t-p147": [
+    "mail:achats-1-00412",
+    "mail:achats-1-00411"
+   ],
+   "t-p148": [
+    "mail:laboratoire-1-00092",
+    "mail:laboratoire-1-00116"
+   ],
+   "t-p149": [
+    "mail:laboratoire-1-00012",
+    "mail:laboratoire-1-00030"
+   ],
+   "t-p150": [
+    "calendar:service_client-1-00002",
+    "mail:service_client-1-00270"
+   ]
+  },
+  "affaires": {
+   "t-a001": [
+    [
+     "file:service_client-1-00103",
+     "mail:service_client-1-00101",
+     "mail:service_client-1-00104",
+     "mail:service_client-1-00105"
+    ],
+    [
+     "file:service_client-1-00111",
+     "calendar:service_client-1-00109",
+     "mail:service_client-1-00110",
+     "file:service_client-1-00112"
+    ]
+   ],
+   "t-a002": [
+    [
+     "mail:laboratoire-1-00364"
+    ],
+    [
+     "file:laboratoire-1-00179",
+     "mail:laboratoire-1-00177",
+     "task:laboratoire-1-00178",
+     "mail:laboratoire-1-00180"
+    ]
+   ],
+   "t-a003": [
+    [
+     "mail:laboratoire-1-00379"
+    ],
+    [
+     "file:laboratoire-1-00271",
+     "mail:laboratoire-1-00269",
+     "task:laboratoire-1-00270",
+     "mail:laboratoire-1-00272"
+    ]
+   ],
+   "t-a004": [
+    [
+     "mail:laboratoire-1-00249",
+     "mail:laboratoire-1-00250"
+    ],
+    [
+     "file:laboratoire-1-00243",
+     "calendar:laboratoire-1-00242",
+     "file:laboratoire-1-00244"
+    ]
+   ],
+   "t-a005": [
+    [
+     "task:service_client-1-00074"
+    ],
+    [
+     "calendar:service_client-1-00019",
+     "mail:service_client-1-00020"
+    ]
+   ],
+   "t-a006": [
+    [
+     "calendar:service_client-1-00189",
+     "mail:service_client-1-00190"
+    ],
+    [
+     "mail:service_client-1-00186",
+     "mail:service_client-1-00188"
+    ]
+   ],
+   "t-a007": [
+    [
+     "task:service_client-1-00396"
+    ],
+    [
+     "mail:service_client-1-00390",
+     "task:service_client-1-00391",
+     "mail:service_client-1-00392"
+    ]
+   ],
+   "t-a008": [
+    [
+     "calendar:laboratoire-1-00154",
+     "mail:laboratoire-1-00155",
+     "file:laboratoire-1-00156",
+     "file:laboratoire-1-00157"
+    ],
+    [
+     "calendar:laboratoire-1-00158",
+     "file:laboratoire-1-00159"
+    ]
+   ],
+   "t-a009": [
+    [
+     "file:hotel-1-00146",
+     "mail:hotel-1-00144",
+     "task:hotel-1-00145",
+     "mail:hotel-1-00147"
+    ],
+    [
+     "calendar:hotel-1-00108"
+    ]
+   ],
+   "t-a010": [
+    [
+     "file:laboratoire-1-00014",
+     "mail:laboratoire-1-00012",
+     "task:laboratoire-1-00013",
+     "mail:laboratoire-1-00015"
+    ],
+    [
+     "file:laboratoire-1-00152",
+     "mail:laboratoire-1-00150",
+     "mail:laboratoire-1-00153"
+    ]
+   ],
+   "t-a011": [
+    [
+     "task:achats-1-00228"
+    ],
+    [
+     "mail:achats-1-00191"
+    ]
+   ],
+   "t-a012": [
+    [
+     "calendar:service_client-1-00297",
+     "mail:service_client-1-00298"
+    ],
+    [
+     "task:service_client-1-00396"
+    ]
+   ],
+   "t-a013": [
+    [
+     "mail:hotel-1-00069"
+    ],
+    [
+     "mail:hotel-1-00049"
+    ]
+   ],
+   "t-a014": [
+    [
+     "task:service_client-1-00160"
+    ],
+    [
+     "file:service_client-1-00157",
+     "mail:service_client-1-00156",
+     "mail:service_client-1-00158"
+    ]
+   ],
+   "t-a015": [
+    [
+     "mail:hotel-1-00369"
+    ],
+    [
+     "task:hotel-1-00185"
+    ]
+   ],
+   "t-a016": [
+    [
+     "mail:service_client-1-00270"
+    ],
+    [
+     "task:service_client-1-00276"
+    ]
+   ],
+   "t-a017": [
+    [
+     "calendar:achats-1-00004",
+     "mail:achats-1-00005"
+    ],
+    [
+     "mail:achats-1-00042",
+     "mail:achats-1-00043"
+    ]
+   ],
+   "t-a018": [
+    [
+     "mail:laboratoire-1-00049",
+     "task:laboratoire-1-00050",
+     "mail:laboratoire-1-00051"
+    ],
+    [
+     "file:laboratoire-1-00106",
+     "mail:laboratoire-1-00104",
+     "task:laboratoire-1-00105",
+     "mail:laboratoire-1-00107"
+    ]
+   ],
+   "t-a019": [
+    [
+     "calendar:laboratoire-1-00134",
+     "task:laboratoire-1-00136",
+     "file:laboratoire-1-00135"
+    ],
+    [
+     "task:laboratoire-1-00418"
+    ]
+   ],
+   "t-a020": [
+    [
+     "mail:service_client-1-00253",
+     "mail:service_client-1-00254",
+     "mail:service_client-1-00287",
+     "mail:service_client-1-00288"
+    ],
+    [
+     "task:service_client-1-00160"
+    ]
+   ],
+   "t-a021": [
+    [
+     "calendar:service_client-1-00264",
+     "mail:service_client-1-00265",
+     "task:service_client-1-00267",
+     "file:service_client-1-00266"
+    ],
+    [
+     "task:service_client-1-00294"
+    ]
+   ],
+   "t-a022": [
+    [
+     "task:hotel-1-00179"
+    ],
+    [
+     "calendar:hotel-1-00152",
+     "mail:hotel-1-00153",
+     "file:hotel-1-00154",
+     "task:hotel-1-00156",
+     "file:hotel-1-00155"
+    ]
+   ],
+   "t-a023": [
+    [
+     "mail:laboratoire-1-00039"
+    ],
+    [
+     "task:laboratoire-1-00016"
+    ]
+   ],
+   "t-a024": [
+    [
+     "file:service_client-1-00026",
+     "mail:service_client-1-00024",
+     "task:service_client-1-00025",
+     "mail:service_client-1-00027"
+    ],
+    [
+     "mail:service_client-1-00089",
+     "mail:service_client-1-00090",
+     "mail:service_client-1-00091"
+    ]
+   ],
+   "t-a025": [
+    [
+     "mail:achats-1-00263"
+    ],
+    [
+     "mail:achats-1-00327"
+    ]
+   ],
+   "t-a026": [
+    [
+     "mail:achats-1-00009",
+     "mail:achats-1-00010"
+    ],
+    [
+     "mail:achats-1-00021",
+     "mail:achats-1-00022"
+    ]
+   ],
+   "t-a027": [
+    [
+     "calendar:service_client-1-00083"
+    ],
+    [
+     "calendar:service_client-1-00163"
+    ]
+   ],
+   "t-a028": [
+    [
+     "file:achats-1-00126",
+     "mail:achats-1-00124",
+     "task:achats-1-00125",
+     "mail:achats-1-00127"
+    ],
+    [
+     "mail:achats-1-00213",
+     "mail:achats-1-00214"
+    ]
+   ],
+   "t-a029": [
+    [
+     "calendar:hotel-1-00135"
+    ],
+    [
+     "mail:hotel-1-00209",
+     "mail:hotel-1-00210"
+    ]
+   ],
+   "t-a030": [
+    [
+     "mail:service_client-1-00253",
+     "mail:service_client-1-00254",
+     "mail:service_client-1-00287",
+     "mail:service_client-1-00288",
+     "mail:service_client-1-00324",
+     "mail:service_client-1-00444"
+    ],
+    [
+     "calendar:service_client-1-00097",
+     "file:service_client-1-00098",
+     "task:service_client-1-00100",
+     "file:service_client-1-00099"
+    ]
+   ],
+   "t-a031": [
+    [
+     "mail:achats-1-00416",
+     "mail:achats-1-00417"
+    ],
+    [
+     "task:achats-1-00163"
+    ]
+   ],
+   "t-a032": [
+    [
+     "mail:achats-1-00418"
+    ],
+    [
+     "task:achats-1-00163"
+    ]
+   ],
+   "t-a033": [
+    [
+     "task:service_client-1-00160"
+    ],
+    [
+     "mail:service_client-1-00231",
+     "task:service_client-1-00232",
+     "mail:service_client-1-00233"
+    ]
+   ],
+   "t-a034": [
+    [
+     "calendar:achats-1-00041"
+    ],
+    [
+     "mail:achats-1-00037"
+    ]
+   ],
+   "t-a035": [
+    [
+     "file:laboratoire-1-00014",
+     "mail:laboratoire-1-00012",
+     "task:laboratoire-1-00013",
+     "mail:laboratoire-1-00015"
+    ],
+    [
+     "task:laboratoire-1-00016"
+    ]
+   ],
+   "t-a036": [
+    [
+     "mail:achats-1-00009",
+     "mail:achats-1-00010"
+    ],
+    [
+     "mail:achats-1-00008"
+    ]
+   ],
+   "t-a037": [
+    [
+     "task:laboratoire-1-00016"
+    ],
+    [
+     "calendar:laboratoire-1-00376",
+     "mail:laboratoire-1-00377"
+    ]
+   ],
+   "t-a038": [
+    [
+     "task:hotel-1-00269"
+    ],
+    [
+     "mail:hotel-1-00500"
+    ]
+   ],
+   "t-a039": [
+    [
+     "calendar:service_client-1-00019",
+     "mail:service_client-1-00020"
+    ],
+    [
+     "mail:service_client-1-00011",
+     "mail:service_client-1-00012"
+    ]
+   ],
+   "t-a040": [
+    [
+     "file:hotel-1-00146",
+     "mail:hotel-1-00144",
+     "task:hotel-1-00145",
+     "mail:hotel-1-00147"
+    ],
+    [
+     "calendar:hotel-1-00257",
+     "task:hotel-1-00259",
+     "file:hotel-1-00258"
+    ]
+   ],
+   "t-a041": [
+    [
+     "file:laboratoire-1-00179",
+     "mail:laboratoire-1-00177",
+     "task:laboratoire-1-00178",
+     "mail:laboratoire-1-00180"
+    ],
+    [
+     "file:laboratoire-1-00336",
+     "mail:laboratoire-1-00335",
+     "mail:laboratoire-1-00337"
+    ]
+   ],
+   "t-a042": [
+    [
+     "mail:laboratoire-1-00181",
+     "mail:laboratoire-1-00182"
+    ],
+    [
+     "mail:laboratoire-1-00195"
+    ]
+   ],
+   "t-a043": [
+    [
+     "file:service_client-1-00148",
+     "mail:service_client-1-00147",
+     "mail:service_client-1-00149"
+    ],
+    [
+     "task:service_client-1-00028"
+    ]
+   ],
+   "t-a044": [
+    [
+     "file:laboratoire-1-00370",
+     "mail:laboratoire-1-00369",
+     "mail:laboratoire-1-00371",
+     "mail:laboratoire-1-00372"
+    ],
+    [
+     "mail:laboratoire-1-00049",
+     "task:laboratoire-1-00050",
+     "mail:laboratoire-1-00051"
+    ]
+   ],
+   "t-a045": [
+    [
+     "file:achats-1-00118",
+     "mail:achats-1-00116",
+     "task:achats-1-00117",
+     "mail:achats-1-00119",
+     "mail:achats-1-00120"
+    ],
+    [
+     "calendar:achats-1-00273",
+     "mail:achats-1-00274",
+     "file:achats-1-00275"
+    ]
+   ],
+   "t-a046": [
+    [
+     "calendar:laboratoire-1-00032",
+     "file:laboratoire-1-00033",
+     "file:laboratoire-1-00034",
+     "task:laboratoire-1-00035"
+    ],
+    [
+     "task:laboratoire-1-00145"
+    ]
+   ],
+   "t-a047": [
+    [
+     "file:service_client-1-00026",
+     "mail:service_client-1-00024",
+     "task:service_client-1-00025",
+     "mail:service_client-1-00027"
+    ],
+    [
+     "calendar:service_client-1-00166"
+    ]
+   ],
+   "t-a048": [
+    [
+     "mail:laboratoire-1-00113",
+     "task:laboratoire-1-00114"
+    ],
+    [
+     "file:laboratoire-1-00121",
+     "mail:laboratoire-1-00119",
+     "mail:laboratoire-1-00122"
+    ]
+   ],
+   "t-a049": [
+    [
+     "mail:service_client-1-00399"
+    ],
+    [
+     "task:service_client-1-00028"
+    ]
+   ],
+   "t-a050": [
+    [
+     "mail:service_client-1-00150",
+     "mail:service_client-1-00151",
+     "mail:service_client-1-00152"
+    ],
+    [
+     "task:service_client-1-00160"
+    ]
+   ]
+  }
+ },
+ "tdemo": {
+  "paires": {
+   "d-p001": [
+    "mail:dm1-msg-000007",
+    "mail:dm1-msg-000692"
+   ],
+   "d-p002": [
+    "mail:dm1-msg-005186",
+    "mail:dm1-msg-000213"
+   ],
+   "d-p003": [
+    "mail:dm1-msg-000185",
+    "mail:dm1-msg-000184"
+   ],
+   "d-p004": [
+    "mail:dm1-msg-003827",
+    "mail:dm1-msg-000122"
+   ],
+   "d-p005": [
+    "mail:dm1-msg-000124",
+    "mail:dm1-msg-000125"
+   ],
+   "d-p006": [
+    "mail:dm1-msg-000131",
+    "mail:dm1-msg-003749"
+   ],
+   "d-p007": [
+    "mail:dm1-msg-005191",
+    "mail:dm1-msg-000185"
+   ],
+   "d-p008": [
+    "mail:dm1-msg-000996",
+    "mail:dm1-msg-000035"
+   ],
+   "d-p009": [
+    "mail:dm1-msg-000003",
+    "mail:dm1-msg-001023"
+   ],
+   "d-p010": [
+    "mail:dm1-msg-000037",
+    "mail:dm1-msg-001664"
+   ],
+   "d-p011": [
+    "mail:dm1-msg-000664",
+    "mail:dm1-msg-000007"
+   ],
+   "d-p012": [
+    "mail:dm1-msg-000218",
+    "mail:dm1-msg-000224"
+   ],
+   "d-p013": [
+    "mail:dm1-msg-000740",
+    "mail:dm1-msg-000873"
+   ],
+   "d-p014": [
+    "mail:dm1-msg-002449",
+    "mail:dm1-msg-002515"
+   ],
+   "d-p015": [
+    "mail:dm1-msg-003730",
+    "mail:dm1-msg-000236"
+   ],
+   "d-p016": [
+    "mail:dm1-msg-005167",
+    "mail:dm1-msg-005044"
+   ],
+   "d-p017": [
+    "mail:dm1-msg-004780",
+    "mail:dm1-msg-004842"
+   ],
+   "d-p018": [
+    "mail:dm1-msg-004095",
+    "mail:dm1-msg-000224"
+   ],
+   "d-p019": [
+    "mail:dm1-msg-000095",
+    "mail:dm1-msg-000080"
+   ],
+   "d-p020": [
+    "mail:dm1-msg-003834",
+    "mail:dm1-msg-003832"
+   ],
+   "d-p021": [
+    "mail:dm1-msg-002563",
+    "mail:dm1-msg-002449"
+   ],
+   "d-p022": [
+    "mail:dm1-msg-002703",
+    "mail:dm1-msg-000197"
+   ],
+   "d-p023": [
+    "mail:dm1-msg-000020",
+    "mail:dm1-msg-000192"
+   ],
+   "d-p024": [
+    "mail:dm1-msg-001312",
+    "mail:dm1-msg-000030"
+   ],
+   "d-p025": [
+    "mail:dm1-msg-002283",
+    "mail:dm1-msg-000077"
+   ],
+   "d-p026": [
+    "mail:dm1-msg-001289",
+    "mail:dm1-msg-001413"
+   ],
+   "d-p027": [
+    "mail:dm1-msg-000031",
+    "mail:dm1-msg-001360"
+   ],
+   "d-p028": [
+    "mail:dm1-msg-001514",
+    "mail:dm1-msg-000192"
+   ],
+   "d-p029": [
+    "mail:dm1-msg-001179",
+    "mail:dm1-msg-001189"
+   ],
+   "d-p030": [
+    "mail:dm1-msg-002316",
+    "mail:dm1-msg-000066"
+   ],
+   "d-p031": [
+    "mail:dm1-msg-004706",
+    "mail:dm1-msg-004710"
+   ],
+   "d-p032": [
+    "mail:dm1-msg-004706",
+    "mail:dm1-msg-000212"
+   ],
+   "d-p033": [
+    "mail:dm1-msg-004829",
+    "mail:dm1-msg-000153"
+   ],
+   "d-p034": [
+    "mail:dm1-msg-000692",
+    "mail:dm1-msg-000627"
+   ],
+   "d-p035": [
+    "mail:dm1-msg-000054",
+    "mail:dm1-msg-000066"
+   ],
+   "d-p036": [
+    "mail:dm1-msg-002347",
+    "mail:dm1-msg-000060"
+   ],
+   "d-p037": [
+    "mail:dm1-msg-003821",
+    "mail:dm1-msg-000138"
+   ],
+   "d-p038": [
+    "mail:dm1-msg-001725",
+    "mail:dm1-msg-001704"
+   ],
+   "d-p039": [
+    "mail:dm1-msg-005125",
+    "mail:dm1-msg-005084"
+   ],
+   "d-p040": [
+    "mail:dm1-msg-000109",
+    "mail:dm1-msg-000124"
+   ]
+  }
+ }
+}
