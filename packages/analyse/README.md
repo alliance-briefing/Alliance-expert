@@ -338,7 +338,10 @@ et la **référence de M6** : MiniLM gelé + régression logistique (numpy), qui
 l'urgence et l'alerte des 4 sources à partir de la carte que voit l'annotateur. Elle apprend sur
 les personas « train » du simulateur (gabarits + LLM), se règle sur 7 personas de validation et
 n'est mesurée sur les jeux gelés que par `--mesurer`, qui refuse un gel manquant ou modifié et
-inscrit chaque lecture au journal (`scoring/annotations/journal-geles.jsonl`). Jugés par Théo
+inscrit chaque lecture au journal (`scoring/annotations/journal-geles.jsonl`). Le journal
+identifie le modèle mesuré par son empreinte SHA-256, stable ; ses commits sont ceux de la
+branche avant son rebasage puis sa fusion en un seul commit (857b546 et 81f2b25, devenus 3910cea
+et 08619d9 sur `l2/feat/m6-reference`, contenu de `packages/` identique). Jugés par Théo
 seul (décision du 21/11), sans proposition d'un modèle.
 
 | F1 macro de l'action | validation | T-gen | démo |
