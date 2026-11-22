@@ -76,10 +76,18 @@ graine), sans toucher aux faits ni aux étiquettes.
 
 | Source | Règle |
 |---|---|
-| Mail | l'acte demandé ; deux actes → le plus engageant ; en copie d'une demande à un autre → S'informer ; envoyé par le manager, doublon, injection → Rien |
+| Mail | l'acte demandé ; deux actes → le plus engageant ; avis ou accord demandé sur un objet de décision (devis, commande, budget, planning, contrat, frais) → Décider ; sans demande (message d'un humain, accusé, notification qui informe) → S'informer ; en copie d'une demande à un autre → Rien, sauf si le texte dit « en copie pour suivre » → S'informer ; envoyé par le manager, doublon, injection, envoi en masse → Rien |
 | Réunion | annulée → Rien ; il organise ou doit apporter quelque chose → Préparer ; sans réponse, provisoire ou en conflit → Répondre ; il assiste seulement → Rien |
 | Tâche | le verbe de l'intitulé ; terminée → Rien |
-| Fichier | modifié par lui → Rien ; lié à une tâche → l'action de la tâche ; lié à une réunion → Préparer ; à signer → Décider ; à relire → Relire ; sinon S'informer |
+| Fichier | modifié par lui → Rien ; lié à une tâche → l'action de la tâche ; lié à une réunion → Préparer ; à signer → Décider ; sinon S'informer (à relire : c'est le mail qui porte Relire) |
+
+Règles du 23/11 (guide) : deux règles dépendent de la **formulation**, choisie par l'écrivain
+et non par le simulateur. `label(fait, gabarits)` reçoit donc les gabarits utilisés
+(`facts.AVIS_TEMPLATES`) ou les marques de l'écrivain LLM, posées à l'assemblage par des
+règles : `lecture:avis` (la fiche demandait un avis ou si l'objet convient) et
+`lecture:copie_suivi` (l'extrait dit que la copie sert à suivre ou à informer). Un même
+élément peut donc avoir deux étiquettes, une par écrivain : le lot 2 lit celle du corpus
+qu'il utilise.
 
 L'étiquette dépend du jour : `facts.label_on(ligne, moment)` rend Rien une fois l'élément
 traité (`resolved_at`) ou la réunion passée (`ends_at`), et None avant `visible_from`.
@@ -175,9 +183,6 @@ uv run python -m packages.collect.trainset.llm_corpus --compresser
 - La priorité entre éléments n'est pas étiquetée ici : elle vient des jugements par paires.
 - Écrivain LLM : seuls les mails sont réécrits ; réunions, tâches et fichiers gardent leurs
   gabarits.
-- Fiche du simulateur : « que X dise si {o} lui convient » ou « donne son avis » sur une
-  commande, un devis ou un budget se lit Décider (9 écarts sur 537 textes relus) ; les
-  formulations « appelle » et « choisisse entre » passent moins souvent les contrôles.
-- Mails en copie : la règle du guide « copie → S'informer » (19/11) n'est pas encore validée ;
-  l'annotateur lit Rien quand le texte ne dit pas que le manager est en copie pour suivre.
+- Les formulations « appelle » et « choisisse entre » passent moins souvent les contrôles.
+  (« dise si {o} lui convient » sur un objet de décision : réglé le 23/11, se lit Décider.)
 - Mesures humaines de M3 à un seul annotateur pour la relecture et la confirmation.
