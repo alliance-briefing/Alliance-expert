@@ -81,6 +81,14 @@ def session_expired(request: Request) -> bool:
     return _resolve(request)[1]
 
 
+def expired_user(request: Request) -> str | None:
+    """La personne dont la session vient d'expirer (pour reprendre son travail), sinon None."""
+    if not session_expired(request):
+        return None
+    status, session = request.app.state.sessions.lookup(request.cookies[SESSION_COOKIE])
+    return session.user if status == "expired" and session else None
+
+
 def current_principal(request: Request) -> Principal:
     principal, expired = _resolve(request)
     if principal is None:
