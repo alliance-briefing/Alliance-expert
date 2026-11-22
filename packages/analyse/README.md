@@ -353,9 +353,44 @@ Résultat négatif (G6) : la référence apprend la formulation du simulateur et
 vers la démo, et les règles de frontière du 23/11 n'y changent rien (égalité au sens de G2). La
 référence n'est pas branchée dans le brief ; le réajustement de l'encodeur est reporté en bonus.
 
+**Validation dure** (`--valider-dur`, étape 0 A du plan d'amélioration). La validation de 7
+personas, une par métier, est trop optimiste : elle donne 0,868 quand T-gen donne 0,625. Pour
+comparer les leviers suivants sans relire les jeux gelés (P3), trois découpages des personas
+« train », tous sur des métiers jamais vus :
+
+1. **métiers** : 4 plis de 3 métiers entiers sur 12 ; chaque carte est mesurée une fois ;
+2. **gabarits** : en plus, une part des variantes de chaque famille de gabarits est retirée de
+   l'entraînement (une variante au moins reste par famille) ; mesure sur les cartes qui les
+   utilisent, comparée au découpage 1 sur les mêmes cartes ;
+3. **écrivain** : sur les mails qui ont les deux textes, appris sur un écrivain, mesuré sur
+   chacun (mêmes mails dans les quatre cases).
+
+Le réglage est choisi par découpage selon G2 puis G3 : le plus simple dont l'écart au meilleur
+n'est pas significatif. Cette correction vaut aussi pour `--entrainer` ; la référence commitée,
+choisie avant au meilleur score strict, n'est pas réentraînée (sinon il faudrait la remesurer).
+Rapport : `scoring/ml/comprendre_validation_dure.json`.
+
+| F1 macro de l'action (référence MiniLM gelé + régression) | valeur [IC 95 %] |
+|---|---|
+| validation de 7 personas (rapport de `--entrainer`) | 0,868 |
+| 1. métiers tenus à l'écart (23 390 cartes) | 0,728 [0,721 ; 0,735] |
+| 2. gabarits tenus à l'écart (3 108 cartes) | 0,578 [0,555 ; 0,598], −0,166 sur les mêmes cartes |
+| 3. écrivain : gabarits → gabarits / → LLM (6 409 mails) | 0,751 / 0,501 |
+| 3. écrivain : LLM → LLM / → gabarits | 0,674 / 0,524 |
+| pour mémoire : T-gen, 2e mesure | 0,625 [0,545 ; 0,695] |
+
+Lecture : tenir des métiers entiers à l'écart retire une partie de l'optimisme (0,868 →
+0,728), pas tout. Le découpage 1 reste au-dessus de l'intervalle de T-gen. Explications
+possibles, non vérifiées : T-gen a une moitié de non-mails (75/25/25/25), où la référence est
+faible (agenda 0,48, fichiers 0,46), et il est jugé par Théo, pas par l'étiqueteur du simulateur.
+Les découpages 2 et 3 confirment le diagnostic de M6 : une formulation jamais vue coûte 0,17,
+un changement d'écrivain 0,17 à 0,23. Le découpage 1 sert à suivre le niveau, les découpages 2
+et 3 à mesurer ce que les leviers apportent contre l'apprentissage du style.
+
 ```bash
 uv run python -m packages.analyse.scoring.ml.jeux_m5 --reste            # réponses manquantes
 uv run python -m packages.analyse.scoring.ml.comprendre --entrainer     # référence + rapport
+uv run python -m packages.analyse.scoring.ml.comprendre --valider-dur   # validation dure
 uv run python -m packages.analyse.scoring.ml.comprendre --mesurer       # une fois par modèle
 ```
 
