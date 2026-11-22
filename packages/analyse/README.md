@@ -398,6 +398,22 @@ Les étiquettes sont gelées (`m6-dev-reel.gel.json`) : `--valider-reel` refuse 
 elles ont changé. Jugé surtout par un LLM : c'est un garde-fou de développement, pas une
 mesure humaine (P2).
 
+Accord de Théo avec Claude sur l'échantillon : action 25/30 (83 %, sous le seuil), urgence et
+alerte 30/30 ; 3 répétitions cachées cohérentes. Arbitrage de Théo : les 5 désaccords gardent
+l'étiquette de Claude (4 mails qui annoncent une réunion sans invitation visible, règle ajoutée
+au guide ; une tâche « Répondre à… », règle du verbe de l'intitulé). Une carte de l'échantillon
+a été jugée après que Théo a lu la convention de Claude sur ces mails : non aveugle sur ce point.
+
+| référence de M6 (MiniLM gelé + régression), jeu réel | F1 macro [IC 95 %] |
+|---|---|
+| action, 104 cartes | 0,229 [0,155 ; 0,304] (Claire 0,273, David 0,197) |
+| urgence | 0,358 [0,298 ; 0,470] |
+| alerte | 0,495 ; la seule alerte (nouvel appareil connecté) est manquée |
+
+Le jeu réel retrouve l'échec de transfert vu sur la démo (0,164), quand la validation dure suit
+plutôt T-gen : les deux parties du jeu de développement se complètent. Erreur la plus nette :
+les envois en masse de David (Rien) sont lus comme Faire ou Relire.
+
 ```bash
 uv run python -m packages.analyse.scoring.ml.jeux_m5 --reste            # réponses manquantes
 uv run python -m packages.analyse.scoring.ml.comprendre --entrainer     # référence + rapport

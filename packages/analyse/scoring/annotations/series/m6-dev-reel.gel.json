@@ -3,6 +3,8 @@
   "m6-dev-reel.jsonl": "84f4344988e394e86cfed04ffeb22fd9e6365e534f3bb211610ac8276215df4e",
   "m6-dev-reel-echantillon.jsonl": "68e1b33ac175319ea16aedb578833de05be202951e658e7a011a2dbfffbeb962",
   "m6-dev-reel.tirage.json": "0b20e1776226c17c3022b0e9c6eea5deb8feada68dd3db07bff1ecf9136dcab5",
-  "m6-dev-reel_claude.jsonl": "63615b65bafcc9b376b16cff6be66210dc4abf5f63928e6478691b7a820a786b"
+  "m6-dev-reel_claude.jsonl": "63615b65bafcc9b376b16cff6be66210dc4abf5f63928e6478691b7a820a786b",
+  "m6-dev-reel-echantillon_theo.jsonl": "108eb2b997f943fcea4135b1d0d481ad044061eb2ebfa7d82aaa178b969af0d1",
+  "m6-dev-reel_arbitrage.jsonl": "496d878e9ea46b72bffc599510ec44110043ffda0a3a1d799f927cfcabd96c96"
  }
 }

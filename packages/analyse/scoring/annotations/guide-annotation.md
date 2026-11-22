@@ -74,6 +74,10 @@ fraude, incident bloquant (panne, production arrêtée, accident, plainte grave 
   pour suivre ») → **S'informer**. L'urgence reste celle du ton écrit. Attention : l'extrait
   commence souvent par « Tu peux… » sans nommer le destinataire (la salutation est retirée) ;
   c'est le champ « Copie : vous » qui le signale.
+- **Mail qui annonce une réunion** (22/11, arbitrage du jeu de développement réel) : un
+  titre de réunion, un ordre du jour ou une ligne de description, sans invitation visible
+  sur la carte (ni lien de réunion, ni réponse attendue) → **S'informer**. On ne devine pas
+  une invitation que la carte ne montre pas ; si elle se voit → **Répondre**.
 - **Message sans demande** (23/11) : un humain qui informe, un accusé ou une confirmation,
   une notification automatique qui porte une information → **S'informer**. Seul l'envoi en
   masse (lettre d'information, promotion) reste **Rien**.
