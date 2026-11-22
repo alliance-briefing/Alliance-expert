@@ -31,6 +31,22 @@ La référence (`--entrainer`) :
 
     uv run python -m packages.analyse.scoring.ml.comprendre --entrainer
 
+Le choix des réglages suit G2 puis G3 depuis la validation dure (`select`) : le plus simple
+dont l'écart au meilleur n'est pas significatif. La référence commitée et mesurée sur les jeux
+gelés a été choisie avant, au meilleur score strict ; elle n'est pas réentraînée (un nouveau
+modèle demanderait une nouvelle lecture des jeux gelés).
+
+La validation dure (`--valider-dur`, étape 0 A du plan d'amélioration) : la validation de 7
+personas, une par métier, donne 0,87 sur l'action quand T-gen donne 0,63. Ses trois découpages,
+tous sur des métiers jamais vus, se relancent autant qu'on veut pour comparer des leviers sans
+relire les jeux gelés (P3) :
+1. métiers : 4 plis de 3 métiers entiers sur 12, chaque carte mesurée une fois ;
+2. gabarits : en plus, une part des variantes de chaque famille de gabarits retirée de
+   l'entraînement, mesure sur les cartes qui les utilisent (effet d'une formulation inconnue) ;
+3. écrivain : sur les mails aux deux textes, appris sur un écrivain, mesuré sur chacun.
+
+    uv run python -m packages.analyse.scoring.ml.comprendre --valider-dur
+
 La mesure finale (`--mesurer`), une seule fois par modèle (G1) : sur T-gen (M5) et la série
 démo de M6, refusée si un gel manque ou a changé, ou si le code ou le modèle ne sont pas
 commités ; chaque lecture s'ajoute à `scoring/annotations/journal-geles.jsonl`.
@@ -248,6 +264,16 @@ class Example:
     writer: str  # « gabarits » ou « llm »
     text: str
     labels: dict[str, str]  # une valeur de TARGETS par cible
+    templates: tuple[str, ...] = ()  # gabarits utilisés par le texte de cette carte
+
+    @property
+    def metier(self) -> str:
+        return metier(self.persona)
+
+
+def metier(persona: str) -> str:
+    """Le métier d'une persona : « daf-3 » → « daf »."""
+    return persona.rsplit("-", 1)[0]
 
 
 def card_text(c: dict) -> str:
@@ -321,8 +347,19 @@ def persona_examples(
             if text in texts:  # même carte qu'avec l'autre écrivain : une seule fois
                 continue
             texts.add(text)
-            labels = labels_of(labels_by_writer[writer][item_id])
-            out.append(Example(item_id, key, row["case_id"], row["source"], writer, text, labels))
+            own = labels_by_writer[writer][item_id]
+            out.append(
+                Example(
+                    item_id,
+                    key,
+                    row["case_id"],
+                    row["source"],
+                    writer,
+                    text,
+                    labels_of(own),
+                    tuple(own.get("templates", ())),
+                )
+            )
     return out, excluded
 
 
@@ -346,7 +383,7 @@ def validation_personas(keys: Sequence[str], n: int = 7, seed: int = 0) -> list[
     rng = random.Random(f"m6:validation:{seed}")
     by_metier: dict[str, list[str]] = {}
     for key in sorted(keys):
-        by_metier.setdefault(key.rsplit("-", 1)[0], []).append(key)
+        by_metier.setdefault(metier(key), []).append(key)
     chosen = rng.sample(sorted(by_metier), n)
     return sorted(rng.choice(by_metier[m]) for m in chosen)
 
@@ -543,19 +580,55 @@ def _selection_score(target: str, pred: np.ndarray, truth: np.ndarray) -> float:
     return per_class(pred, truth, k)[1][2] if target == "alerte" else f1_macro(pred, truth, k)
 
 
+DIFF_DRAWS = 1000  # G2 : 1 000 tirages, graine fixe
+
+
+def paired_diff_ci(
+    score: Callable[[np.ndarray, np.ndarray], float],
+    pred_a: np.ndarray,
+    pred_b: np.ndarray,
+    truth: np.ndarray,
+    draws: int = DIFF_DRAWS,
+    seed: int = 0,
+) -> tuple[float, float]:
+    """Intervalle à 95 % de score(a) − score(b), les deux prédictions rééchantillonnées sur
+    les mêmes exemples (appariées) : l'écart propre aux modèles, sans le hasard du tirage."""
+    rng = np.random.default_rng(seed)
+    diffs = []
+    for _ in range(draws):
+        idx = rng.integers(0, len(truth), len(truth))
+        diffs.append(score(pred_a[idx], truth[idx]) - score(pred_b[idx], truth[idx]))
+    low, high = np.percentile(diffs, [2.5, 97.5])
+    return float(low), float(high)
+
+
+def select(target: str, preds: Sequence[np.ndarray], truth: np.ndarray) -> tuple[int, list[dict]]:
+    """Le réglage retenu parmi `preds`, rangées de la plus simple à la moins simple (G3) : la
+    plus simple dont l'écart au meilleur score n'est pas significatif (G2 : l'intervalle
+    apparié de l'écart contient zéro). Le meilleur strict gagnait aussi sur un écart de bruit."""
+
+    def score(pred: np.ndarray, y: np.ndarray) -> float:
+        return _selection_score(target, pred, y)
+
+    scores = [score(p, truth) for p in preds]
+    best = int(np.argmax(scores))  # à score identique, le premier, donc le plus simple
+    tried = [{"score": round(s, 4)} for s in scores]
+    for rank in range(best):
+        low, high = paired_diff_ci(score, preds[best], preds[rank], truth)
+        tried[rank]["ecart_au_meilleur_ic95"] = [round(low, 4), round(high, 4)]
+        if low <= 0:
+            return rank, tried
+    return best, tried
+
+
 def choose(
     target: str, X_tr: np.ndarray, y_tr: np.ndarray, X_val: np.ndarray, y_val: np.ndarray
 ) -> tuple[Config, Softmax, list[dict]]:
-    """La configuration au meilleur score de validation ; à égalité, la plus simple (G3)."""
-    k, best, tried = len(TARGETS[target]), None, []
-    for rank, config in enumerate(configs()):
-        model = fit_softmax(X_tr, y_tr, k, config)
-        score = _selection_score(target, predict(model, X_val), y_val)
-        tried.append(config.as_dict() | {"score": round(score, 4)})
-        if best is None or score > best[0] + 1e-9:
-            best = (score, rank, config, model)
-    assert best is not None
-    return best[2], best[3], tried
+    """La configuration retenue sur la validation par `select` (G2 puis G3)."""
+    k, grid = len(TARGETS[target]), configs()
+    models = [fit_softmax(X_tr, y_tr, k, config) for config in grid]
+    rank, tried = select(target, [predict(m, X_val) for m in models], y_val)
+    return grid[rank], models[rank], [c.as_dict() | t for c, t in zip(grid, tried, strict=True)]
 
 
 def _class_table(target: str, pred: np.ndarray, truth: np.ndarray) -> dict:
@@ -756,6 +829,336 @@ def summary(report: dict) -> str:
     return "\n".join(lines)
 
 
+# --- validation dure (M6, étape 0 A) -------------------------------------------------------------
+
+HARD_REPORT_PATH = Path(__file__).with_name("comprendre_validation_dure.json")
+HARD_FOLDS = 4  # 12 métiers « train » : 4 plis de 3 métiers
+
+
+def metier_folds(
+    metiers: Iterable[str], n_folds: int = HARD_FOLDS, seed: int = 0
+) -> list[list[str]]:
+    """Les métiers répartis en `n_folds` plis de même taille (à un près), tirage à graine fixe.
+    Chaque métier est tenu à l'écart une fois, avec toutes ses personas : un métier jamais vu,
+    comme sur T-gen."""
+    ms = sorted(set(metiers))
+    if not 2 <= n_folds <= len(ms):
+        raise ValueError(f"{n_folds} plis pour {len(ms)} métiers")
+    random.Random(f"m6:validation-dure:metiers:{seed}").shuffle(ms)
+    return [sorted(ms[f::n_folds]) for f in range(n_folds)]
+
+
+def template_family(template: str) -> str | None:
+    """« mail.decider.question.7 » → « mail.decider.question » ; None pour une marque qui n'est
+    pas un gabarit (« llm:mail-v8 », « lecture:avis »)."""
+    head, _, tail = template.rpartition(".")
+    return head if head and tail.isdigit() else None
+
+
+def template_folds(templates: Iterable[str], n_folds: int, seed: int = 0) -> list[set[str]]:
+    """Les variantes de chaque famille de gabarits réparties entre les plis, à partir d'un pli
+    tiré au hasard par famille. Une famille d'une seule variante n'est jamais tenue à l'écart :
+    on retirerait la formulation, et avec elle une forme entière d'une classe. Avec au moins
+    deux variantes, il en reste toujours une à l'entraînement de chaque pli."""
+    families: dict[str, list[str]] = {}
+    for t in sorted(set(templates)):
+        if (family := template_family(t)) is not None:
+            families.setdefault(family, []).append(t)
+    folds: list[set[str]] = [set() for _ in range(n_folds)]
+    for family, variants in sorted(families.items()):
+        if len(variants) < 2:
+            continue
+        rng = random.Random(f"m6:validation-dure:gabarits:{seed}:{family}")
+        rng.shuffle(variants)
+        start = rng.randrange(n_folds)
+        for n, variant in enumerate(variants):
+            folds[(start + n) % n_folds].add(variant)
+    return folds
+
+
+@dataclass
+class Fold:
+    """Un pli : les exemples d'entraînement et un ou plusieurs jeux mesurés."""
+
+    train: list[int]
+    measured: dict[str, list[int]]
+
+
+@dataclass
+class OutOfFold:
+    """Les prédictions hors pli d'un jeu mesuré, mises bout à bout : `index` (exemples),
+    `fold` (numéro du pli), et les probabilités de chaque réglage de la grille."""
+
+    index: np.ndarray
+    fold: np.ndarray
+    proba: list[np.ndarray]
+
+
+def out_of_fold(
+    target: str,
+    X: np.ndarray,
+    y: np.ndarray,
+    folds: Sequence[Fold],
+    log: Callable[[str], None] = lambda _: None,
+) -> dict[str, OutOfFold]:
+    """Chaque réglage appris sur l'entraînement de chaque pli, appliqué à ses jeux mesurés :
+    un seul apprentissage par pli et par réglage, quel que soit le nombre de jeux mesurés."""
+    k, grid = len(TARGETS[target]), configs()
+    names = list(folds[0].measured)
+    idx = {n: [np.asarray(f.measured[n], dtype=int) for f in folds] for n in names}
+    proba: dict[str, list[list[np.ndarray]]] = {n: [[] for _ in grid] for n in names}
+    for f, fold in enumerate(folds):
+        if not fold.train:
+            raise ValueError(f"pli {f} sans exemple d'entraînement")
+        for c, config in enumerate(grid):
+            log(f"  {target}, pli {f + 1}/{len(folds)}, réglage {c + 1}/{len(grid)}")
+            model = fit_softmax(X[fold.train], y[fold.train], k, config)
+            for name in names:
+                proba[name][c].append(model.proba(X[idx[name][f]]))
+    return {
+        name: OutOfFold(
+            np.concatenate(idx[name]),
+            np.concatenate([np.full(len(i), f) for f, i in enumerate(idx[name])]),
+            [np.concatenate(p) for p in proba[name]],
+        )
+        for name in names
+    }
+
+
+def _entry(target: str, pred: np.ndarray, y: np.ndarray, sources: Sequence[str]) -> dict:
+    """F1 macro avec intervalle (G2), par classe et par source ; confusion de l'action."""
+    k = len(TARGETS[target])
+    entry = {
+        "f1_macro": round(f1_macro(pred, y, k), 4),
+        "f1_macro_ic95": [round(v, 4) for v in bootstrap_ci(pred, y, k)],
+        "classes": _class_table(target, pred, y),
+        "par_source": {
+            s: round(f1_macro(pred[m], y[m], k), 4)
+            for s in SOURCE_NAMES
+            if (m := np.array([x == s for x in sources], dtype=bool)).any()
+        },
+    }
+    if target == "action":
+        confusion = np.zeros((k, k), dtype=int)
+        np.add.at(confusion, (y, pred), 1)
+        entry["confusion"] = confusion.tolist()
+    return entry
+
+
+def judge(
+    target: str, oof: OutOfFold, y: np.ndarray, examples: Sequence[Example]
+) -> tuple[dict, np.ndarray]:
+    """Le réglage retenu (G2 puis G3) sur l'ensemble des prédictions hors pli, et ses chiffres.
+    Un seul réglage par découpage, comme un levier qu'on fixerait, et non un par pli."""
+    truth, k = y[oof.index], len(TARGETS[target])
+    preds = [p.argmax(axis=1) for p in oof.proba]
+    rank, tried = select(target, preds, truth)
+    pred, grid = preds[rank], configs()
+    entry = {
+        "configuration": grid[rank].as_dict(),
+        "essais": [c.as_dict() | t for c, t in zip(grid, tried, strict=True)],
+        "exemples": len(truth),
+    } | _entry(target, pred, truth, [examples[n].source for n in oof.index])
+    n_folds = int(oof.fold.max()) + 1 if len(oof.fold) else 0
+    entry["par_pli"] = [
+        round(f1_macro(pred[m], truth[m], k), 4) if (m := oof.fold == f).any() else None
+        for f in range(n_folds)
+    ]
+    if target == "alerte":  # le seuil du veto G5, posé sur ces mêmes prédictions
+        p_yes = oof.proba[rank][:, 1]
+        threshold = alert_threshold(p_yes, truth)
+        precision, recall, _, _ = per_class((p_yes >= threshold).astype(int), truth, 2)[1]
+        entry["seuil_rappel_095"] = {
+            "seuil": round(threshold, 4),
+            "rappel": round(recall, 3),
+            "précision": round(precision, 3),
+        }
+    return entry, pred
+
+
+def _f1_action(pred: np.ndarray, truth: np.ndarray) -> float:
+    return f1_macro(pred, truth, len(ACTIONS))
+
+
+def hard_validation(
+    examples: list[Example],
+    X: np.ndarray,
+    n_folds: int = HARD_FOLDS,
+    seed: int = 0,
+    log: Callable[[str], None] = lambda _: None,
+) -> dict:
+    """Les trois découpages de la validation dure, tous sur des métiers jamais vus :
+    1. métiers : `n_folds` plis de métiers entiers, les trois cibles ;
+    2. gabarits : en plus, une part des variantes de chaque famille retirée de l'entraînement,
+       mesure sur les cartes qui les utilisent, comparée au découpage 1 sur les mêmes cartes ;
+    3. écrivain : mails qui ont les deux textes, appris sur un écrivain, mesurés sur chacun."""
+    plis = metier_folds((e.metier for e in examples), n_folds, seed)
+    base: list[tuple[list[int], list[int]]] = []
+    for held in plis:
+        personas = sorted({e.persona for e in examples if e.metier in held})
+        base.append(split(examples, personas))  # vérifie aussi que les affaires sont disjointes
+    report: dict = {
+        "plis_metiers": plis,
+        "graine": seed,
+        "selection": "G2 puis G3 : le réglage le plus simple à égalité avec le meilleur",
+    }
+
+    log("1. métiers tenus à l'écart")
+    first: dict = {"exemples": len(examples), "cibles": {}}
+    action_pred = np.full(len(examples), -1)
+    for target, classes in TARGETS.items():
+        y = _codes(examples, target)
+        oof = out_of_fold(target, X, y, [Fold(tr, {"v": va}) for tr, va in base], log)["v"]
+        entry, pred = judge(target, oof, y, examples)
+        k = len(classes)
+        entry["par_ecrivain"] = {
+            w: round(f1_macro(pred[m], y[oof.index][m], k), 4)
+            for w in CORPORA
+            if (m := np.array([examples[n].writer == w for n in oof.index], dtype=bool)).any()
+        }
+        first["cibles"][target] = entry
+        if target == "action":
+            action_pred[oof.index] = pred
+    report["metiers"] = first
+
+    log("2. gabarits tenus à l'écart")
+    y = _codes(examples, "action")
+    held_templates = template_folds((t for e in examples for t in e.templates), n_folds, seed)
+    folds = [
+        Fold(
+            [n for n in tr if not held.intersection(examples[n].templates)],
+            {"v": [n for n in va if held.intersection(examples[n].templates)]},
+        )
+        for (tr, va), held in zip(base, held_templates, strict=True)
+    ]
+    oof = out_of_fold("action", X, y, folds, log)["v"]
+    entry, pred = judge("action", oof, y, examples)
+    truth, same = y[oof.index], action_pred[oof.index]
+    low, high = paired_diff_ci(_f1_action, pred, same, truth)
+    families = {template_family(t) for e in examples for t in e.templates} - {None}
+    held_families = {template_family(t) for h in held_templates for t in h}
+    report["gabarits"] = {
+        "familles": len(families),
+        "familles_jamais_tenues": len(families - held_families),
+        "variantes_tenues_par_pli": [len(h) for h in held_templates],
+        "cartes_retirees_de_l_entrainement": [
+            len(tr) - len(f.train) for (tr, _), f in zip(base, folds, strict=True)
+        ],
+        "action": entry,
+        "memes_cartes_decoupage_metiers": round(_f1_action(same, truth), 4),
+        "ecart_au_decoupage_metiers": round(_f1_action(pred, truth) - _f1_action(same, truth), 4),
+        "ecart_ic95": [round(low, 4), round(high, 4)],
+    }
+
+    log("3. écrivain tenu à l'écart (mails)")
+    by_writer = {
+        w: {e.item_id for e in examples if e.source == "mail" and e.writer == w} for w in CORPORA
+    }
+    both = set.intersection(*by_writer.values())
+    mails = {n for n, e in enumerate(examples) if e.source == "mail" and e.item_id in both}
+    cells: dict[str, tuple[dict, np.ndarray, OutOfFold]] = {}
+    for learn in CORPORA:
+        folds = [
+            Fold(
+                [n for n in tr if n in mails and examples[n].writer == learn],
+                {w: [n for n in va if n in mails and examples[n].writer == w] for w in CORPORA},
+            )
+            for tr, va in base
+        ]
+        for measure, oof in out_of_fold("action", X, y, folds, log).items():
+            entry, pred = judge("action", oof, y, examples)
+            cells[f"{learn}→{measure}"] = (entry, pred, oof)
+    keys = ("configuration", "exemples", "f1_macro", "f1_macro_ic95", "par_pli", "classes")
+    third: dict = {
+        "elements_aux_deux_textes": len(both),
+        "cellules": {name: {k: cell[0][k] for k in keys} for name, cell in cells.items()},
+        "ecarts": {},
+    }
+    for measure in CORPORA:
+        other = next(w for w in CORPORA if w != measure)
+        _, crossed, oof = cells[f"{other}→{measure}"]
+        _, same_writer, oof_same = cells[f"{measure}→{measure}"]
+        if not np.array_equal(oof.index, oof_same.index):
+            raise AssertionError("les deux cellules doivent mesurer les mêmes cartes")
+        truth = y[oof.index]
+        low, high = paired_diff_ci(_f1_action, crossed, same_writer, truth)
+        third["ecarts"][f"mesuré sur {measure}"] = {
+            "appris_sur_l_autre_moins_appris_sur_le_meme": round(
+                _f1_action(crossed, truth) - _f1_action(same_writer, truth), 4
+            ),
+            "ic95": [round(low, 4), round(high, 4)],
+        }
+    report["ecrivain"] = third
+    return report
+
+
+def valider_dur(
+    corpora: dict[str, Path] = CORPORA,
+    embedder: Embedder | None = None,
+    cache: VectorCache | None = None,
+    out_report: Path = HARD_REPORT_PATH,
+    n_folds: int = HARD_FOLDS,
+    log: Callable[[str], None] = lambda _: None,
+) -> dict:
+    """La validation dure de la recette de référence (MiniLM gelé + régression) : exemples et
+    vecteurs de `--entrainer` (cache), trois découpages, rapport versionné. Aucun jeu gelé n'est
+    lu : leurs éléments sont exclus des exemples (`frozen_items`)."""
+    embedder = embedder or FastEmbedder(DEFAULT_MODEL)
+    cache = cache or VectorCache(cache_path(embedder))
+    log("cartes des personas « train »…")
+    examples, excluded = training_examples(corpora)
+    X = embed_with_progress(cache, embedder, [e.text for e in examples], log=log)
+    report = {
+        "modele": f"{embedder.name} gelé + régression logistique",
+        "grille": {"l2": list(L2_CHOICES), "pas": STEPS},
+        "exemples": {
+            "total": len(examples),
+            "elements_geles_exclus": excluded,
+            "par_ecrivain": dict(sorted(Counter(e.writer for e in examples).items())),
+        },
+        "corpus": _corpus_ids(corpora),
+    } | hard_validation(examples, X, n_folds, log=log)
+    out_report.write_text(
+        json.dumps(report, ensure_ascii=False, indent=1) + "\n", encoding="utf-8", newline="\n"
+    )
+    return report
+
+
+def hard_summary(report: dict) -> str:
+    """Les chiffres de la validation dure à lire d'abord."""
+
+    def f1(e: dict) -> str:
+        low, high = e["f1_macro_ic95"]
+        return f"{e['f1_macro']:.3f} [{low:.3f} ; {high:.3f}]"
+
+    first, second, third = report["metiers"], report["gabarits"], report["ecrivain"]
+    lines = [f"plis de métiers : {report['plis_metiers']}", f"1. métiers ({first['exemples']})"]
+    for target, e in first["cibles"].items():
+        lines.append(
+            f"   {target:<8} F1 macro {f1(e)}  par pli {e['par_pli']}  {e['configuration']}"
+        )
+    lines.append(f"   alerte au rappel 0,95 : {first['cibles']['alerte']['seuil_rappel_095']}")
+    action = first["cibles"]["action"]
+    lines.append(
+        f"   action par écrivain {action['par_ecrivain']}, par source {action['par_source']}"
+    )
+    e = second["action"]
+    lines.append(
+        f"2. gabarits ({e['exemples']} cartes) : action F1 macro {f1(e)} ; mêmes cartes au "
+        f"découpage 1 : {second['memes_cartes_decoupage_metiers']:.3f} ; écart "
+        f"{second['ecart_au_decoupage_metiers']:+.3f} {second['ecart_ic95']}"
+    )
+    lines.append(f"3. écrivain ({third['elements_aux_deux_textes']} mails aux deux textes)")
+    for name, e in third["cellules"].items():
+        lines.append(f"   {name:<16} action F1 macro {f1(e)}  {e['configuration']}")
+    for name, e in third["ecarts"].items():
+        lines.append(
+            f"   {name} : appris sur l'autre − appris sur le même "
+            f"{e['appris_sur_l_autre_moins_appris_sur_le_meme']:+.3f} {e['ic95']}"
+        )
+    return "\n".join(lines)
+
+
 # --- mesure finale sur les jeux gelés (G1) ----------------------------------------------------
 
 # Les jeux d'éléments jugés à la main : T-gen (M5) et la série démo de M6.
@@ -830,25 +1233,11 @@ def self_agreement(name: str, series: Path = SERIES, annotator: str = ANNOTATOR)
 def evaluate(reference: Reference, X: np.ndarray, sources: list[str], truth: dict) -> dict:
     """Les chiffres d'un jeu : F1 macro avec intervalle (G2) pour chaque cible, par source et
     par classe ; matrice de confusion de l'action ; rappel et précision des alertes."""
-    out = {"elements": len(sources)}
-    for target, classes in TARGETS.items():
+    out: dict = {"elements": len(sources)}
+    for target in TARGETS:
         threshold = reference.alert_threshold if target == "alerte" else None
-        pred, y, k = predict(reference.models[target], X, threshold), truth[target], len(classes)
-        entry = {
-            "f1_macro": round(f1_macro(pred, y, k), 4),
-            "f1_macro_ic95": [round(v, 4) for v in bootstrap_ci(pred, y, k)],
-            "classes": _class_table(target, pred, y),
-            "par_source": {
-                s: round(f1_macro(pred[m], y[m], k), 4)
-                for s in SOURCE_NAMES
-                if (m := np.array([x == s for x in sources])).any()
-            },
-        }
-        if target == "action":
-            confusion = np.zeros((k, k), dtype=int)
-            np.add.at(confusion, (y, pred), 1)
-            entry["confusion"] = confusion.tolist()
-        out[target] = entry
+        pred = predict(reference.models[target], X, threshold)
+        out[target] = _entry(target, pred, truth[target], sources)
     return out
 
 
@@ -921,6 +1310,11 @@ def main(argv: list[str]) -> int:
         print(summary(report))
         print(f"→ {MODEL_PATH.name}, {REPORT_PATH.name}")
         return 0
+    if argv == ["--valider-dur"]:
+        report = valider_dur(log=lambda line: print(line, flush=True))
+        print(hard_summary(report))
+        print(f"→ {HARD_REPORT_PATH.name}")
+        return 0
     if argv == ["--mesurer"]:
         print(measure_summary(mesurer()))
         print(f"→ {JOURNAL.name}")
@@ -943,7 +1337,10 @@ def main(argv: list[str]) -> int:
         freeze = freeze_demo_answers()
         print(f"Réponses gelées : {', '.join(freeze['reponses'])}")
         return 0
-    print("usage : comprendre --entrainer | --mesurer | --tirer-demo | --reste-demo | --geler-demo")
+    print(
+        "usage : comprendre --entrainer | --valider-dur | --mesurer | --tirer-demo | "
+        "--reste-demo | --geler-demo"
+    )
     return 2
 
 
