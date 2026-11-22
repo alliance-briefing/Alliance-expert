@@ -30,6 +30,12 @@ La référence (`--entrainer`) :
   validation et son seuil d'alerte sont les siens, pas ceux d'un autre modèle réentraîné.
 
     uv run python -m packages.analyse.scoring.ml.comprendre --entrainer
+
+La mesure finale (`--mesurer`), une seule fois par modèle (G1) : sur T-gen (M5) et la série
+démo de M6, refusée si un gel manque ou a changé, ou si le code ou le modèle ne sont pas
+commités ; chaque lecture s'ajoute à `scoring/annotations/journal-geles.jsonl`.
+
+    uv run python -m packages.analyse.scoring.ml.comprendre --mesurer
 """
 
 from __future__ import annotations
@@ -44,7 +50,7 @@ import time
 from collections import Counter
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -60,6 +66,7 @@ from packages.analyse.scoring.ml.annoter import (
     AnswerStore,
     answers_path,
     card,
+    final_labels,
     load_series,
     order,
     viewpoint,
@@ -743,12 +750,174 @@ def summary(report: dict) -> str:
     return "\n".join(lines)
 
 
+# --- mesure finale sur les jeux gelés (G1) ----------------------------------------------------
+
+# Les jeux d'éléments jugés à la main : T-gen (M5) et la série démo de M6.
+FROZEN_SETS = {"T-gen": jeux_m5.NAMES["elements"], "T-démo": DEMO_SERIES}
+FREEZES = (jeux_m5.GEL.name, GEL)
+JOURNAL = ANNOTATIONS / "journal-geles.jsonl"
+REPO = Path(__file__).resolve().parents[4]
+
+
+def check_frozen(series: Path = SERIES, freezes: Sequence[str] = FREEZES) -> None:
+    """Refuse la mesure si un gel manque, si des réponses ne sont pas gelées, ou si un fichier
+    gelé a changé : on ne mesure que contre une vérité fixée avant (P3)."""
+    for name in freezes:
+        path = series / name
+        if not path.exists() or not json.loads(path.read_text(encoding="utf-8"))["reponses"]:
+            raise ValueError(f"{name} : réponses pas encore gelées")
+    changed = changed_since_freeze(series)
+    if changed:
+        raise ValueError(f"fichiers gelés modifiés : {changed}")
+
+
+def git_commit(paths: Sequence[Path] = (MODEL_PATH, Path(__file__))) -> str:
+    """Le commit du code et du modèle mesurés ; refusé s'ils ont des modifications non
+    commitées : le journal doit permettre de refaire la mesure à l'identique."""
+    import subprocess
+
+    def git(*args: str) -> str:
+        return subprocess.run(
+            ["git", *args], cwd=REPO, capture_output=True, text=True, check=True
+        ).stdout.strip()
+
+    if git("status", "--porcelain", "--", *(str(p) for p in paths)):
+        raise ValueError("code ou modèle modifiés depuis le dernier commit : commiter d'abord")
+    return git("rev-parse", "HEAD")
+
+
+def series_truth(name: str, series: Path = SERIES) -> tuple[list[str], list[str], dict]:
+    """Textes, sources et étiquettes (codes par cible) des cartes jugées d'une série."""
+    labels = final_labels(name, series)
+    tasks = [t for t in load_series(series / f"{name}.jsonl") if t["task_id"] in labels]
+    truth = {
+        target: np.array(
+            [
+                TARGETS[target].index(
+                    ("oui" if labels[t["task_id"]]["alerte"] else "non")
+                    if target == "alerte"
+                    else labels[t["task_id"]][target]
+                )
+                for t in tasks
+            ],
+            dtype=int,
+        )
+        for target in TARGETS
+    }
+    return [card_text(t["card"]) for t in tasks], [t["card"]["source"] for t in tasks], truth
+
+
+def self_agreement(name: str, series: Path = SERIES, annotator: str = ANNOTATOR) -> dict:
+    """Cohérence de l'annotateur sur les répétitions cachées : le plafond qu'on peut espérer
+    d'un modèle jugé par lui (avec un seul annotateur, pas de kappa entre annotateurs)."""
+    answers = AnswerStore(answers_path(name, annotator, series)).answers
+    repeated = [t for (t, rep) in answers if rep and (t, False) in answers]
+    same = {
+        target: sum(answers[t, True][target] == answers[t, False][target] for t in repeated)
+        for target in TARGETS
+    }
+    return {"repetitions": len(repeated)} | {
+        t: round(n / len(repeated), 3) if repeated else None for t, n in same.items()
+    }
+
+
+def evaluate(reference: Reference, X: np.ndarray, sources: list[str], truth: dict) -> dict:
+    """Les chiffres d'un jeu : F1 macro avec intervalle (G2) pour chaque cible, par source et
+    par classe ; matrice de confusion de l'action ; rappel et précision des alertes."""
+    out = {"elements": len(sources)}
+    for target, classes in TARGETS.items():
+        threshold = reference.alert_threshold if target == "alerte" else None
+        pred, y, k = predict(reference.models[target], X, threshold), truth[target], len(classes)
+        entry = {
+            "f1_macro": round(f1_macro(pred, y, k), 4),
+            "f1_macro_ic95": [round(v, 4) for v in bootstrap_ci(pred, y, k)],
+            "classes": _class_table(target, pred, y),
+            "par_source": {
+                s: round(f1_macro(pred[m], y[m], k), 4)
+                for s in SOURCE_NAMES
+                if (m := np.array([x == s for x in sources])).any()
+            },
+        }
+        if target == "action":
+            confusion = np.zeros((k, k), dtype=int)
+            np.add.at(confusion, (y, pred), 1)
+            entry["confusion"] = confusion.tolist()
+        out[target] = entry
+    return out
+
+
+def mesurer(
+    series: Path = SERIES,
+    model_path: Path = MODEL_PATH,
+    embedder: Embedder | None = None,
+    journal: Path = JOURNAL,
+    commit: Callable[[], str] = git_commit,
+    sets: dict[str, str] = FROZEN_SETS,
+    freezes: Sequence[str] = FREEZES,
+) -> dict:
+    """La mesure finale de la référence sur les jeux gelés, une seule fois par modèle (G1) :
+    chaque lecture est ajoutée au journal (date, commit, empreinte du modèle, chiffres)."""
+    check_frozen(series, freezes)
+    model_sha = _sha(model_path)
+    if journal.exists() and any(
+        json.loads(line)["modele_sha256"] == model_sha
+        for line in journal.read_text(encoding="utf-8").splitlines()
+        if line
+    ):
+        raise ValueError("ce modèle a déjà été mesuré sur les jeux gelés : voir le journal")
+    revision = commit()
+    reference = Reference.load(model_path)
+    embedder = embedder or FastEmbedder(reference.embedder_name)
+    results = {}
+    for label, name in sets.items():
+        texts, sources, truth = series_truth(name, series)
+        X = embedder.embed(texts)
+        results[label] = {"serie": name} | evaluate(reference, X, sources, truth)
+        results[label]["coherence_annotateur"] = self_agreement(name, series)
+    entry = {
+        "date": datetime.now(UTC).isoformat(timespec="seconds"),
+        "tache": "M6, référence",
+        "commit": revision,
+        "modele": model_path.name,
+        "modele_sha256": model_sha,
+        "encodeur": reference.embedder_name,
+        "seuil_alerte": reference.alert_threshold,
+        "jeux": results,
+    }
+    with journal.open("a", encoding="utf-8", newline="\n") as file:
+        file.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    return entry
+
+
+def measure_summary(entry: dict) -> str:
+    lines = [f"commit {entry['commit'][:7]}, modèle {entry['modele_sha256'][:12]}"]
+    for label, result in entry["jeux"].items():
+        lines.append(f"{label} ({result['serie']}, {result['elements']} éléments) :")
+        for target in TARGETS:
+            e = result[target]
+            low, high = e["f1_macro_ic95"]
+            lines.append(
+                f"  {target:<8} F1 macro {e['f1_macro']:.3f} [{low:.3f} ; {high:.3f}]  "
+                f"par source {e['par_source']}"
+            )
+        alert = result["alerte"]["classes"]["oui"]
+        lines.append(
+            f"  alertes : {alert['n']}, rappel {alert['rappel']}, précision {alert['précision']}"
+        )
+        lines.append(f"  cohérence de l'annotateur : {result['coherence_annotateur']}")
+    return "\n".join(lines)
+
+
 def main(argv: list[str]) -> int:
     sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
     if argv == ["--entrainer"]:
         report = entrainer(log=lambda line: print(line, flush=True))
         print(summary(report))
         print(f"→ {MODEL_PATH.name}, {REPORT_PATH.name}")
+        return 0
+    if argv == ["--mesurer"]:
+        print(measure_summary(mesurer()))
+        print(f"→ {JOURNAL.name}")
         return 0
     if argv == ["--tirer-demo"]:
         info = draw_tdemo_elements()
@@ -768,7 +937,7 @@ def main(argv: list[str]) -> int:
         freeze = freeze_demo_answers()
         print(f"Réponses gelées : {', '.join(freeze['reponses'])}")
         return 0
-    print("usage : comprendre --entrainer | --tirer-demo | --reste-demo | --geler-demo")
+    print("usage : comprendre --entrainer | --mesurer | --tirer-demo | --reste-demo | --geler-demo")
     return 2
 
 

@@ -245,3 +245,106 @@ def test_l_entrainement_complet_ecrit_un_modele_relisible(corpora, tmp_path):
         corpora, HashEmbedder(), VectorCache(None), tmp_path / "m2.npz", tmp_path / "r2.json", 1
     )
     assert again == report
+
+
+# --- mesure finale sur les jeux gelés --------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def trained(corpora, tmp_path_factory):
+    folder = tmp_path_factory.mktemp("modele")
+    model = folder / "reference.npz"
+    comprendre.entrainer(
+        corpora, HashEmbedder(), VectorCache(None), model, folder / "r.json", n_validation=1
+    )
+    return model
+
+
+def _frozen_series(folder, answers):
+    """Une série d'éléments jugée et gelée comme T-gen : séries, réponses, deux gels."""
+    cards = [
+        ("mail", "Devis à valider", "Merci de valider le devis avant jeudi."),
+        ("mail", "Lettre interne", "Voici les nouvelles du mois, bonne lecture."),
+        ("task", "Envoyer le rapport", ""),
+        ("file", "Contrat.docx", "Contrat à relire."),
+    ]
+    tasks = [
+        {
+            "task_id": f"t-e{n:03d}",
+            "kind": "element",
+            "context": "Brief d'essai",
+            "card": {
+                "item_id": f"{source}:x-{n}",
+                "source": source,
+                "title": title,
+                "when": "reçu hier à 10:00",
+                "fields": [],
+                "text": text,
+            },
+        }
+        for n, (source, title, text) in enumerate(cards, 1)
+    ]
+    annoter.write_series(tasks, folder / "essai-m6.jsonl")
+    store = annoter.AnswerStore(annoter.answers_path("essai-m6", "theo", folder))
+    for task_id, answer in answers.items():
+        store.record(task_id, False, answer)
+    store.record("t-e001", True, answers["t-e001"])  # une répétition cachée, cohérente
+    sha = comprendre._sha
+    gel = {
+        "series": {"essai-m6.jsonl": sha(folder / "essai-m6.jsonl")},
+        "reponses": {store.path.name: sha(store.path)},
+    }
+    for name in comprendre.FREEZES:
+        (folder / name).write_text(json.dumps(gel), encoding="utf-8")
+
+
+ANSWERS = {
+    "t-e001": {"action": "decider", "urgence": "normal", "alerte": False},
+    "t-e002": {"action": "informer", "urgence": "sans_urgence", "alerte": False},
+    "t-e003": {"action": "faire", "urgence": "normal", "alerte": False},
+    "t-e004": {"action": "relire", "urgence": "urgent", "alerte": True},
+}
+
+
+def _measure(folder, model, journal):
+    return comprendre.mesurer(
+        folder, model, HashEmbedder(), journal, lambda: "abc1234", {"T-essai": "essai-m6"}
+    )
+
+
+def test_la_mesure_lit_la_verite_gelee_et_s_inscrit_au_journal(trained, tmp_path):
+    _frozen_series(tmp_path, ANSWERS)
+    journal = tmp_path / "journal.jsonl"
+    entry = _measure(tmp_path, trained, journal)
+    result = entry["jeux"]["T-essai"]
+    assert result["elements"] == 4 and result["coherence_annotateur"]["repetitions"] == 1
+    assert result["coherence_annotateur"]["action"] == 1.0
+    assert result["alerte"]["classes"]["oui"]["n"] == 1
+    assert sum(map(sum, result["action"]["confusion"])) == 4
+    assert json.loads(journal.read_text("utf-8")) == entry
+    assert entry["commit"] == "abc1234" and entry["modele_sha256"] == comprendre._sha(trained)
+    assert "T-essai" in comprendre.measure_summary(entry)
+    with pytest.raises(ValueError, match="déjà été mesuré"):
+        _measure(tmp_path, trained, journal)
+
+
+def test_la_mesure_refuse_une_verite_non_gelee_ou_modifiee(trained, tmp_path):
+    _frozen_series(tmp_path, ANSWERS)
+    gel = tmp_path / comprendre.GEL
+    frozen = json.loads(gel.read_text("utf-8"))
+    gel.write_text(json.dumps(frozen | {"reponses": {}}), encoding="utf-8")
+    with pytest.raises(ValueError, match="pas encore gelées"):
+        _measure(tmp_path, trained, tmp_path / "j.jsonl")
+    gel.write_text(json.dumps(frozen), encoding="utf-8")
+    answers = annoter.answers_path("essai-m6", "theo", tmp_path)
+    answers.write_text(answers.read_text("utf-8") + "\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="modifiés"):
+        _measure(tmp_path, trained, tmp_path / "j.jsonl")
+    assert not (tmp_path / "j.jsonl").exists()  # rien n'a été lu ni journalisé
+
+
+def test_les_vrais_jeux_gelés_sont_prets_a_mesurer():
+    comprendre.check_frozen()
+    for name in comprendre.FROZEN_SETS.values():
+        texts, sources, truth = comprendre.series_truth(name)
+        assert len(texts) == len(sources) == len(truth["action"]) > 0
