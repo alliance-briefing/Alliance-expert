@@ -9,7 +9,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from alliance_api import briefs, errors, feedback, items, ui
+from alliance_api import briefs, errors, feedback, items, oidc, ui
 from alliance_api.audit import AuditSink, LogAuditSink
 from alliance_api.auth import CurrentUser, install_csrf
 from alliance_api.briefs import BriefGenerator, BriefStore, MemoryBriefStore
@@ -31,6 +31,7 @@ def create_app(
     session_store: SessionStore | None = None,
     pending_store: PendingStore | None = None,
     policy: Policy | None = None,
+    oidc_login: oidc.Oidc | None = None,
     auth_mode: str | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Alliance Briefing API")
@@ -45,11 +46,16 @@ def create_app(
     # Origines acceptées en plus de celle de l'application (proxy, nom de domaine) ; virgules.
     app.state.allowed_origins = {o for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o}
     app.state.auth_mode = auth_mode if auth_mode is not None else os.getenv("AUTH_MODE", "")
+    # AUTH_MODE=oidc : configuration incomplète → l'application ne démarre pas.
+    if oidc_login is None and app.state.auth_mode == "oidc":
+        oidc_login = oidc.Oidc.from_env()
+    app.state.oidc = oidc_login
     install_csrf(app)  # avant errors.install : la corrélation l'enveloppe
     errors.install(app)
     app.include_router(briefs.router)
     app.include_router(items.router)
     app.include_router(feedback.router)
+    app.include_router(oidc.router)
     app.include_router(ui.router)
     app.mount("/static", StaticFiles(directory=ui.STATIC_DIR), name="static")
 
