@@ -3,11 +3,17 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 
+import numpy as np
 import pytest
 
+from packages.analyse.rag.embeddings import HashEmbedder
 from packages.analyse.scoring.ml import annoter, comprendre, jeux_m5
+from packages.analyse.scoring.ml.intents import VectorCache
 from packages.analyse.scoring.ml.sample import ANNOTATIONS
+from packages.collect.trainset import build, load
+from packages.collect.trainset.world import all_personas, brief_moment
 
 
 @pytest.fixture(scope="module")
@@ -87,3 +93,155 @@ def test_le_gel_detecte_tout_changement_et_exclut_de_l_entrainement(drawn, tmp_p
 
 def test_les_jeux_reels_n_ont_pas_change_depuis_leur_gel():
     assert comprendre.changed_since_freeze() == []
+
+
+# --- la référence --------------------------------------------------------------------------------
+
+TRAIN_KEYS = ("agence-1", "agence-2", "chantier-1", "daf-1")
+
+
+@pytest.fixture(scope="module")
+def corpora(tmp_path_factory):
+    """Un corpus de gabarits (4 personas « train » et 1 réservée) et un corpus « LLM » où
+    les mails d'une demande ont un autre texte, au format d'un corpus assemblé."""
+    roots = {w: tmp_path_factory.mktemp(w) for w in ("gabarits", "llm")}
+    personas = {}
+    for p in all_personas():
+        if p.key not in (*TRAIN_KEYS, "hotel-1"):
+            continue
+        items, scenario = build.build_persona(p)
+        rewritten = [
+            i.model_copy(update={"snippet": "Texte réécrit : " + i.snippet})
+            if i.source == "mail" and n % 3 == 0
+            else i
+            for n, i in enumerate(items)
+        ]
+        for writer, its in (("gabarits", items), ("llm", rewritten)):
+            for sub, rows in (
+                ("items", [i.model_dump(mode="json") for i in its]),
+                ("scenario", scenario),
+            ):
+                (roots[writer] / sub).mkdir(exist_ok=True)
+                (roots[writer] / sub / f"{p.key}.jsonl").write_text(
+                    build._jsonl(rows), encoding="utf-8"
+                )
+        personas[p.key] = {"split": p.split}
+    for root in roots.values():
+        (root / "manifest.json").write_text(json.dumps({"personas": personas}), "utf-8")
+    return roots
+
+
+@pytest.fixture(scope="module")
+def examples(corpora):
+    return comprendre.training_examples(corpora, frozen=set())[0]
+
+
+def test_les_exemples_ne_viennent_que_des_personas_d_entrainement(examples):
+    assert {e.persona for e in examples} == set(TRAIN_KEYS)
+    assert all(e.text and e.writer in comprendre.CORPORA for e in examples)
+
+
+def test_une_carte_identique_n_est_gardee_qu_une_fois(examples):
+    by_item: dict[str, list] = {}
+    for e in examples:
+        by_item.setdefault(e.item_id, []).append(e)
+    assert all(len({e.writer for e in group}) == len(group) for group in by_item.values())
+    assert all(len({e.text for e in group}) == len(group) for group in by_item.values())
+    llm = [e for e in examples if e.writer == "llm"]
+    assert llm and all(e.source in ("mail", "file") for e in llm)  # fichier : « Cité dans »
+
+
+def test_la_cible_est_l_action_du_fait_meme_si_traite_avant_le_brief(corpora, examples):
+    rows = {
+        r["item_id"]: r for key in TRAIN_KEYS for r in load.load_scenario(key, corpora["gabarits"])
+    }
+    assert all(e.labels["action"] == rows[e.item_id]["action"] for e in examples)
+    first = {}
+    for key in TRAIN_KEYS:
+        items = load.load_items(key, corpora["gabarits"])
+        first |= comprendre.first_briefs(items, {i.item_id: rows[i.item_id] for i in items})
+    resolved_before = [
+        e
+        for e in examples
+        if rows[e.item_id]["resolved_at"]
+        and datetime.fromisoformat(rows[e.item_id]["resolved_at"]) <= brief_moment(first[e.item_id])
+    ]
+    # Des cas existent : « rien » au moment du brief, mais la carte n'en montre rien.
+    assert resolved_before and any(e.labels["action"] != "rien" for e in resolved_before)
+
+
+def test_les_elements_geles_sont_exclus(corpora, examples):
+    frozen = {examples[0].item_id, examples[1].item_id}
+    kept, excluded = comprendre.training_examples(corpora, frozen=frozen)
+    assert excluded == 2 and not frozen & {e.item_id for e in kept}
+
+
+def test_la_validation_coupe_par_persona_et_par_affaire(examples):
+    held = comprendre.validation_personas(TRAIN_KEYS, n=2)
+    assert len({k.rsplit("-", 1)[0] for k in held}) == 2
+    assert held == comprendre.validation_personas(TRAIN_KEYS, n=2)
+    train, val = comprendre.split(examples, held)
+    assert not {examples[n].persona for n in train} & {examples[n].persona for n in val}
+    assert not {examples[n].case_id for n in train} & {examples[n].case_id for n in val}
+
+
+def test_la_regression_apprend_et_reste_deterministe():
+    rng = np.random.default_rng(0)
+    centers = rng.normal(size=(3, 8)) * 3
+    y = np.repeat(np.arange(3), 60)
+    X = centers[y] + rng.normal(size=(180, 8))
+    config = comprendre.Config(1e-3, balanced=True)
+    model = comprendre.fit_softmax(X, y, 3, config, steps=300)
+    assert (comprendre.predict(model, X) == y).mean() > 0.95
+    again = comprendre.fit_softmax(X, y, 3, config, steps=300)
+    assert np.array_equal(model.W, again.W) and np.array_equal(model.b, again.b)
+
+
+def test_les_vecteurs_s_affichent_par_paquets_et_restent_en_cache():
+    lines: list[str] = []
+    cache, texts = VectorCache(None), [f"texte {n}" for n in range(25)]
+    X = comprendre.embed_with_progress(cache, HashEmbedder(), texts, chunk=10, log=lines.append)
+    assert [line.split(" (")[0] for line in lines] == [
+        "vecteurs : 10/25",
+        "vecteurs : 20/25",
+        "vecteurs : 25/25",
+    ]
+    assert np.array_equal(X, HashEmbedder().embed(texts)) and len(cache.vectors) == 25
+
+
+def test_le_seuil_d_alerte_garde_le_rappel():
+    p = np.array([0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05])
+    truth = np.array([1, 0, 1, 1, 0, 1, 0, 0, 1, 0])
+    t = comprendre.alert_threshold(p, truth, recall=0.8)
+    assert t == 0.4 and ((p >= t) & (truth == 1)).sum() / truth.sum() >= 0.8
+    assert comprendre.alert_threshold(p, np.zeros(10, dtype=int)) == 0.5
+
+
+def test_les_mesures_par_classe():
+    pred, truth = np.array([0, 0, 1, 2]), np.array([0, 1, 1, 2])
+    assert comprendre.per_class(pred, truth, 3)[0][:2] == (0.5, 1.0)
+    assert comprendre.f1_macro(truth, truth, 3) == 1.0
+    low, high = comprendre.bootstrap_ci(pred, truth, 3, draws=50)
+    assert 0 <= low <= high <= 1
+
+
+def test_l_entrainement_complet_ecrit_un_modele_relisible(corpora, tmp_path):
+    model_path, report_path = tmp_path / "m.npz", tmp_path / "r.json"
+    report = comprendre.entrainer(
+        corpora, HashEmbedder(), VectorCache(None), model_path, report_path, n_validation=1
+    )
+    assert set(report["cibles"]) == set(comprendre.TARGETS)
+    assert report["exemples"]["elements_geles_exclus"] == 0
+    assert json.loads(report_path.read_text("utf-8")) == report
+    assert "Texte" not in json.dumps(report)  # le rapport ne recopie aucun texte
+    assert "F1 macro" in comprendre.summary(report)
+    reference = comprendre.Reference.load(model_path)
+    X = HashEmbedder().embed(["mail : Devis à valider\nMerci de valider le devis."])
+    out = reference.predict(X)
+    assert {t: v[0] in comprendre.TARGETS[t] for t, v in out.items()} == dict.fromkeys(
+        comprendre.TARGETS, True
+    )
+    again = comprendre.entrainer(
+        corpora, HashEmbedder(), VectorCache(None), tmp_path / "m2.npz", tmp_path / "r2.json", 1
+    )
+    assert again == report

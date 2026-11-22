@@ -1,0 +1,413 @@
+{
+ "modele": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2 gelé + régression logistique",
+ "grille": {
+  "l2": [
+   0.01,
+   0.001,
+   0.0001,
+   1e-05
+  ],
+  "pas": 1000,
+  "note": "1e-5 ajouté le 22/11 : 1e-4, bord de la grille, choisi par les 3 cibles au 1er essai"
+ },
+ "exemples": {
+  "total": 23390,
+  "elements_geles_exclus": 0,
+  "par_ecrivain": {
+   "gabarits": 15935,
+   "llm": 7455
+  },
+  "par_source": {
+   "calendar": 1084,
+   "file": 2972,
+   "mail": 18449,
+   "task": 885
+  },
+  "cartes_tronquees": {
+   "jetons_max": 128,
+   "total": 0.0867,
+   "par_source": {
+    "mail": 0.0119,
+    "calendar": 0.0,
+    "task": 0.0,
+    "file": 0.6083
+   }
+  }
+ },
+ "corpus": {
+  "gabarits": {
+   "graine": 0
+  },
+  "llm": {
+   "graine": 0,
+   "consigne": "mail-v8",
+   "textes_sha256": "dba2051b4f3a8e40977123e5949e5176e60f9810fcfa87537a66ecd504a43537"
+  }
+ },
+ "validation": {
+  "personas": [
+   "chantier-3",
+   "daf-3",
+   "drh-3",
+   "ecole-3",
+   "logistique-3",
+   "operations-1",
+   "qualite-2"
+  ],
+  "exemples": 4551
+ },
+ "entrainement": {
+  "exemples": 18839
+ },
+ "cibles": {
+  "action": {
+   "configuration": {
+    "l2": 0.0001,
+    "classes_pondérées": false
+   },
+   "essais": [
+    {
+     "l2": 0.01,
+     "classes_pondérées": false,
+     "score": 0.8108
+    },
+    {
+     "l2": 0.001,
+     "classes_pondérées": false,
+     "score": 0.867
+    },
+    {
+     "l2": 0.0001,
+     "classes_pondérées": false,
+     "score": 0.887
+    },
+    {
+     "l2": 1e-05,
+     "classes_pondérées": false,
+     "score": 0.883
+    },
+    {
+     "l2": 0.01,
+     "classes_pondérées": true,
+     "score": 0.7991
+    },
+    {
+     "l2": 0.001,
+     "classes_pondérées": true,
+     "score": 0.8561
+    },
+    {
+     "l2": 0.0001,
+     "classes_pondérées": true,
+     "score": 0.8746
+    },
+    {
+     "l2": 1e-05,
+     "classes_pondérées": true,
+     "score": 0.8706
+    }
+   ],
+   "f1_macro": 0.887,
+   "f1_macro_ic95": [
+    0.8751,
+    0.8981
+   ],
+   "classes": {
+    "repondre": {
+     "précision": 0.85,
+     "rappel": 0.885,
+     "f1": 0.867,
+     "n": 494
+    },
+    "faire": {
+     "précision": 0.866,
+     "rappel": 0.826,
+     "f1": 0.846,
+     "n": 305
+    },
+    "decider": {
+     "précision": 0.864,
+     "rappel": 0.878,
+     "f1": 0.871,
+     "n": 523
+    },
+    "preparer": {
+     "précision": 0.918,
+     "rappel": 0.911,
+     "f1": 0.914,
+     "n": 270
+    },
+    "relire": {
+     "précision": 0.867,
+     "rappel": 0.81,
+     "f1": 0.837,
+     "n": 289
+    },
+    "informer": {
+     "précision": 0.932,
+     "rappel": 0.925,
+     "f1": 0.929,
+     "n": 1516
+    },
+    "rien": {
+     "précision": 0.938,
+     "rappel": 0.952,
+     "f1": 0.945,
+     "n": 1154
+    }
+   },
+   "par_source": {
+    "mail": 0.8698,
+    "calendar": 0.7262,
+    "task": 0.894,
+    "file": 0.8972
+   },
+   "par_ecrivain": {
+    "gabarits": 0.9155,
+    "llm": 0.8174
+   },
+   "confusion": {
+    "lignes = vérité, colonnes = prédiction": [
+     "repondre",
+     "faire",
+     "decider",
+     "preparer",
+     "relire",
+     "informer",
+     "rien"
+    ],
+    "matrice": [
+     [
+      437,
+      21,
+      8,
+      7,
+      1,
+      13,
+      7
+     ],
+     [
+      19,
+      252,
+      5,
+      1,
+      5,
+      16,
+      7
+     ],
+     [
+      9,
+      2,
+      459,
+      11,
+      14,
+      16,
+      12
+     ],
+     [
+      5,
+      1,
+      8,
+      246,
+      1,
+      6,
+      3
+     ],
+     [
+      7,
+      3,
+      18,
+      2,
+      234,
+      21,
+      4
+     ],
+     [
+      28,
+      8,
+      24,
+      1,
+      12,
+      1403,
+      40
+     ],
+     [
+      9,
+      4,
+      9,
+      0,
+      3,
+      30,
+      1099
+     ]
+    ]
+   }
+  },
+  "urgence": {
+   "configuration": {
+    "l2": 0.0001,
+    "classes_pondérées": false
+   },
+   "essais": [
+    {
+     "l2": 0.01,
+     "classes_pondérées": false,
+     "score": 0.6924
+    },
+    {
+     "l2": 0.001,
+     "classes_pondérées": false,
+     "score": 0.786
+    },
+    {
+     "l2": 0.0001,
+     "classes_pondérées": false,
+     "score": 0.8116
+    },
+    {
+     "l2": 1e-05,
+     "classes_pondérées": false,
+     "score": 0.8101
+    },
+    {
+     "l2": 0.01,
+     "classes_pondérées": true,
+     "score": 0.6552
+    },
+    {
+     "l2": 0.001,
+     "classes_pondérées": true,
+     "score": 0.7043
+    },
+    {
+     "l2": 0.0001,
+     "classes_pondérées": true,
+     "score": 0.7384
+    },
+    {
+     "l2": 1e-05,
+     "classes_pondérées": true,
+     "score": 0.7403
+    }
+   ],
+   "f1_macro": 0.8116,
+   "f1_macro_ic95": [
+    0.7859,
+    0.8358
+   ],
+   "classes": {
+    "urgent": {
+     "précision": 0.917,
+     "rappel": 0.8,
+     "f1": 0.855,
+     "n": 250
+    },
+    "normal": {
+     "précision": 0.974,
+     "rappel": 0.986,
+     "f1": 0.98,
+     "n": 4141
+    },
+    "sans_urgence": {
+     "précision": 0.643,
+     "rappel": 0.562,
+     "f1": 0.6,
+     "n": 160
+    }
+   },
+   "par_source": {
+    "mail": 0.8088,
+    "calendar": 1.0,
+    "task": 1.0,
+    "file": 1.0
+   },
+   "par_ecrivain": {
+    "gabarits": 0.8594,
+    "llm": 0.7389
+   }
+  },
+  "alerte": {
+   "configuration": {
+    "l2": 1e-05,
+    "classes_pondérées": false
+   },
+   "essais": [
+    {
+     "l2": 0.01,
+     "classes_pondérées": false,
+     "score": 0.9605
+    },
+    {
+     "l2": 0.001,
+     "classes_pondérées": false,
+     "score": 0.9778
+    },
+    {
+     "l2": 0.0001,
+     "classes_pondérées": false,
+     "score": 0.9945
+    },
+    {
+     "l2": 1e-05,
+     "classes_pondérées": false,
+     "score": 1.0
+    },
+    {
+     "l2": 0.01,
+     "classes_pondérées": true,
+     "score": 0.9634
+    },
+    {
+     "l2": 0.001,
+     "classes_pondérées": true,
+     "score": 0.9892
+    },
+    {
+     "l2": 0.0001,
+     "classes_pondérées": true,
+     "score": 1.0
+    },
+    {
+     "l2": 1e-05,
+     "classes_pondérées": true,
+     "score": 1.0
+    }
+   ],
+   "seuil": 0.9443,
+   "f1_macro": 0.9887,
+   "f1_macro_ic95": [
+    0.9771,
+    0.9974
+   ],
+   "classes": {
+    "non": {
+     "précision": 0.999,
+     "rappel": 1.0,
+     "f1": 1.0,
+     "n": 4459
+    },
+    "oui": {
+     "précision": 1.0,
+     "rappel": 0.957,
+     "f1": 0.978,
+     "n": 92
+    }
+   },
+   "par_source": {
+    "mail": 0.9886,
+    "calendar": 1.0,
+    "task": 1.0,
+    "file": 1.0
+   },
+   "par_ecrivain": {
+    "gabarits": 0.9886,
+    "llm": 1.0
+   }
+  }
+ },
+ "ecrivain_croise": {
+  "exemples_llm_validation": 1457,
+  "gabarits_seuls": 0.6247,
+  "deux_ecrivains": 0.8174
+ }
+}

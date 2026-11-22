@@ -14,30 +14,62 @@ Décisions du 22/11 (plan, §11) :
     uv run python -m packages.analyse.scoring.ml.comprendre --tirer-demo
     uv run python -m packages.analyse.scoring.ml.annoter --serie m6-tdemo-elements --annotateur theo
     uv run python -m packages.analyse.scoring.ml.comprendre --geler-demo
+
+La référence (`--entrainer`) :
+- **exemples** : chaque élément des personas « train » à son premier brief (fenêtres des
+  connecteurs, `jeux_m5.on_brief`), mis en texte par sa carte ; un mail réécrit par le LLM
+  donne une seconde carte, une carte identique d'un corpus à l'autre n'est gardée qu'une fois ;
+  tout élément d'un jeu gelé est exclu ;
+- **validation (G1)** : 7 personas tenues à l'écart, une par métier pour 7 métiers tirés ;
+  couper par persona coupe aussi par affaire (une affaire n'appartient qu'à une persona) ;
+- **modèle** : une régression logistique multinomiale par cible sur le vecteur MiniLM gelé,
+  numpy seul (déterministe, aucune dépendance de plus) ; régularisation et pondération des
+  classes choisies sur la validation, à égalité la plus simple (G3) ; seuil d'alerte le plus
+  haut qui garde un rappel ≥ 0,95 sur la validation (veto G5) ;
+- le modèle livré est celui qu'on a mesuré (appris sans la validation) : ses chiffres de
+  validation et son seuil d'alerte sont les siens, pas ceux d'un autre modèle réentraîné.
+
+    uv run python -m packages.analyse.scoring.ml.comprendre --entrainer
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import math
 import random
 import re
 import sys
-from datetime import date
+import time
+from collections import Counter
+from collections.abc import Callable, Iterable, Sequence
+from dataclasses import dataclass
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
+import numpy as np
+
 from contracts.models import Item
+from packages.analyse.rag.embeddings import DEFAULT_MODEL, Embedder, FastEmbedder
 from packages.analyse.scoring.ml import jeux_m5
 from packages.analyse.scoring.ml.annoter import (
+    ACTIONS,
     SERIES,
+    SOURCE_NAMES,
+    URGENCIES,
     AnswerStore,
     answers_path,
     card,
     load_series,
     order,
+    viewpoint,
     write_series,
 )
+from packages.analyse.scoring.ml.intents import VectorCache, cache_path
 from packages.analyse.scoring.ml.sample import ANNOTATIONS
+from packages.collect.trainset import load
+from packages.collect.trainset.build import DATA as GABARITS
+from packages.collect.trainset.world import brief_moment
 
 DEMO_SERIES = "m6-tdemo-elements"
 DEMO_TIRAGE = f"{DEMO_SERIES}.tirage.json"
@@ -188,8 +220,536 @@ def frozen_items(series: Path = SERIES) -> set[str]:
     return out
 
 
+# --- exemples d'entraînement ---------------------------------------------------------------------
+
+CORPORA = {"gabarits": GABARITS, "llm": jeux_m5.CORPUS}
+TARGETS: dict[str, tuple[str, ...]] = {
+    "action": ACTIONS,
+    "urgence": URGENCIES,
+    "alerte": ("non", "oui"),
+}
+MODEL_PATH = Path(__file__).with_name("comprendre_reference.npz")
+REPORT_PATH = Path(__file__).with_name("comprendre_reference.json")
+
+
+@dataclass(frozen=True)
+class Example:
+    item_id: str
+    persona: str
+    case_id: str
+    source: str
+    writer: str  # « gabarits » ou « llm »
+    text: str
+    labels: dict[str, str]  # une valeur de TARGETS par cible
+
+
+def card_text(c: dict) -> str:
+    """La carte en texte, dans l'ordre où l'annotateur la lit : source et titre, date, champs
+    (expéditeur et relation, réponse, échéance…), puis le texte."""
+    lines = [f"{SOURCE_NAMES[c['source']]} : {c['title']}", c["when"]]
+    lines += [f"{label} : {value}" for label, value in c["fields"]]
+    return "\n".join([*lines, c["text"]]).strip()
+
+
+def labels_of(row: dict) -> dict[str, str]:
+    """La cible : l'action du fait (décision du 22/11), pas « rien » pour un élément traité
+    avant le brief, car la carte ne le montre pas ; l'urgence et l'alerte écrites."""
+    return {
+        "action": row["action"],
+        "urgence": row["urgence"],
+        "alerte": "oui" if row["alerte"] else "non",
+    }
+
+
+def first_briefs(items: Iterable[Item], rows: dict[str, dict]) -> dict[str, date]:
+    """Le jour du premier brief où figure chaque élément (mêmes fenêtres que T-gen)."""
+    items = list(items)
+    days = jeux_m5._working_days(rows.values())
+    first: dict[str, date] = {}
+    for n, day in enumerate(days):
+        moment = brief_moment(day)
+        previous = brief_moment(days[n - 1]) if n else moment - timedelta(days=3)
+        for item in items:
+            if item.item_id not in first and jeux_m5.on_brief(
+                item, rows[item.item_id], moment, previous
+            ):
+                first[item.item_id] = day
+    return first
+
+
+def persona_examples(
+    key: str, corpora: dict[str, Path], frozen: set[str]
+) -> tuple[list[Example], int]:
+    """Les exemples d'une persona, et le nombre d'éléments écartés parce que gelés."""
+    rows = {r["item_id"]: r for r in load.load_scenario(key, corpora["gabarits"])}
+    by_writer = {
+        writer: {i.item_id: i for i in load.load_items(key, path)}
+        for writer, path in corpora.items()
+    }
+    first = first_briefs(by_writer["gabarits"].values(), rows)
+    excluded = sum(item_id in frozen for item_id in first)
+    out: list[Example] = []
+    views, known = {}, {}
+    for item_id, day in sorted(first.items(), key=lambda x: (x[1], x[0])):
+        if item_id in frozen:
+            continue
+        if day not in views:
+            views[day] = viewpoint(key, day)
+        vp, row, texts = views[day], rows[item_id], set()
+        for writer, items in by_writer.items():
+            if (writer, day) not in known:  # déjà visibles : la ligne « Cité dans » des fichiers
+                known[writer, day] = [
+                    i
+                    for i in items.values()
+                    if datetime.fromisoformat(rows[i.item_id]["visible_from"]) <= vp.moment
+                ]
+            text = card_text(card(items[item_id], vp, known[writer, day]))
+            if text in texts:  # même carte qu'avec l'autre écrivain : une seule fois
+                continue
+            texts.add(text)
+            out.append(
+                Example(item_id, key, row["case_id"], row["source"], writer, text, labels_of(row))
+            )
+    return out, excluded
+
+
+def training_examples(
+    corpora: dict[str, Path] = CORPORA, frozen: set[str] | None = None
+) -> tuple[list[Example], int]:
+    """Les exemples des personas « train » seulement, hors jeux gelés."""
+    frozen = frozen_items() if frozen is None else frozen
+    out, excluded = [], 0
+    for key in load.personas("train", data=corpora["gabarits"]):
+        examples, n = persona_examples(key, corpora, frozen)
+        out += examples
+        excluded += n
+    return out, excluded
+
+
+def validation_personas(keys: Sequence[str], n: int = 7, seed: int = 0) -> list[str]:
+    """Les personas tenues à l'écart : une par métier, pour `n` métiers tirés. Chaque métier
+    de validation garde ses autres personas à l'entraînement : les métiers jamais vus sont le
+    rôle de T-gen, pas de la validation."""
+    rng = random.Random(f"m6:validation:{seed}")
+    by_metier: dict[str, list[str]] = {}
+    for key in sorted(keys):
+        by_metier.setdefault(key.rsplit("-", 1)[0], []).append(key)
+    chosen = rng.sample(sorted(by_metier), n)
+    return sorted(rng.choice(by_metier[m]) for m in chosen)
+
+
+def split(examples: list[Example], held_out: Sequence[str]) -> tuple[list[int], list[int]]:
+    """Indices d'entraînement et de validation. Vérifie que personas et affaires sont
+    disjointes : aucun quasi-doublon d'une même affaire de part et d'autre."""
+    val = [n for n, e in enumerate(examples) if e.persona in held_out]
+    train = [n for n, e in enumerate(examples) if e.persona not in held_out]
+    cases = ({examples[n].case_id for n in train}, {examples[n].case_id for n in val})
+    if cases[0] & cases[1]:
+        raise ValueError(f"affaires des deux côtés : {sorted(cases[0] & cases[1])[:3]}")
+    return train, val
+
+
+# --- régression logistique multinomiale -------------------------------------------------------
+
+# De la plus régularisée (la plus simple) à la moins. 1e-5 ajouté le 22/11 après la première
+# lecture de la validation : les trois cibles y choisissaient 1e-4, le bord de la grille
+# (choix permis par G1 sur la validation, signalé au rapport, aucun jeu gelé lu).
+L2_CHOICES = (1e-2, 1e-3, 1e-4, 1e-5)
+GRID_NOTE = "1e-5 ajouté le 22/11 : 1e-4, bord de la grille, choisi par les 3 cibles au 1er essai"
+STEPS = 1000
+ALERT_RECALL = 0.95  # veto G5
+
+
+@dataclass(frozen=True)
+class Config:
+    l2: float
+    balanced: bool
+
+    def as_dict(self) -> dict:
+        return {"l2": self.l2, "classes_pondérées": self.balanced}
+
+
+def configs() -> list[Config]:
+    """Dans l'ordre de simplicité (G3) : sans pondération d'abord, la plus régularisée d'abord."""
+    return [Config(l2, balanced) for balanced in (False, True) for l2 in L2_CHOICES]
+
+
+@dataclass
+class Softmax:
+    """P(classe | x) = softmax(W · (x − moyenne) / écart + b). Les vecteurs sont centrés et
+    réduits : sans cela, la descente de gradient avance très lentement sur des coordonnées
+    de l'ordre de 0,05."""
+
+    W: np.ndarray  # (dimension, classes)
+    b: np.ndarray  # (classes,)
+    mean: np.ndarray
+    scale: np.ndarray
+
+    def proba(self, X: np.ndarray) -> np.ndarray:
+        return _softmax(((X - self.mean) / self.scale) @ self.W + self.b)
+
+
+def _softmax(z: np.ndarray) -> np.ndarray:
+    z = z - z.max(axis=1, keepdims=True)
+    e = np.exp(z)
+    return e / e.sum(axis=1, keepdims=True)
+
+
+def fit_softmax(
+    X: np.ndarray, y: np.ndarray, k: int, config: Config, steps: int = STEPS
+) -> Softmax:
+    """Entropie croisée (pondérée si `balanced` : chaque classe pèse autant au total) + L2 sur
+    W, par descente de gradient accélérée (Nesterov) depuis zéro, à pas fixe 1/L (L : borne
+    de la courbure). Convexe et sans tirage : mêmes données, mêmes poids."""
+    X = np.asarray(X, dtype=np.float64)
+    mean, scale = X.mean(axis=0), X.std(axis=0) + 1e-6
+    Z = np.hstack([(X - mean) / scale, np.ones((len(X), 1))])
+    Y = np.eye(k)[y]
+    if config.balanced:
+        counts = np.bincount(y, minlength=k).astype(float)
+        weight = len(y) / (k * np.maximum(counts, 1.0))[y]
+    else:
+        weight = np.ones(len(y))
+    weight = weight / weight.mean()
+    reg = np.r_[np.full(Z.shape[1] - 1, config.l2), 0.0][:, None]  # pas de L2 sur le biais
+    curvature = np.linalg.eigvalsh((Z * weight[:, None]).T @ Z / len(Z))[-1]
+    step = 1.0 / (0.5 * curvature + config.l2)
+    W = V = np.zeros((Z.shape[1], k))
+    for t in range(1, steps + 1):
+        grad = Z.T @ ((_softmax(Z @ V) - Y) * weight[:, None]) / len(Z) + reg * V
+        W_next = V - step * grad
+        V = W_next + (t - 1) / (t + 2) * (W_next - W)
+        W = W_next
+    return Softmax(W[:-1], W[-1], mean, scale)
+
+
+# --- mesures ----------------------------------------------------------------------------------
+
+
+def per_class(pred: np.ndarray, truth: np.ndarray, k: int) -> list[tuple[float, float, float, int]]:
+    """(précision, rappel, F1, effectif réel) de chaque classe."""
+    out = []
+    for c in range(k):
+        tp = float(((pred == c) & (truth == c)).sum())
+        p = tp / max(float((pred == c).sum()), 1.0)
+        r = tp / max(float((truth == c).sum()), 1.0)
+        out.append((p, r, 2 * p * r / (p + r) if p + r else 0.0, int((truth == c).sum())))
+    return out
+
+
+def f1_macro(pred: np.ndarray, truth: np.ndarray, k: int) -> float:
+    """Moyenne des F1 sur les classes présentes dans la vérité ou la prédiction."""
+    present = set(truth.tolist()) | set(pred.tolist())
+    scores = per_class(pred, truth, k)
+    return float(np.mean([scores[c][2] for c in sorted(present)])) if present else 0.0
+
+
+def bootstrap_ci(
+    pred: np.ndarray, truth: np.ndarray, k: int, draws: int = 1000, seed: int = 0
+) -> tuple[float, float]:
+    """Intervalle à 95 % du F1 macro par rééchantillonnage des exemples (graine fixe, G2)."""
+    rng = np.random.default_rng(seed)
+    values = []
+    for _ in range(draws):
+        idx = rng.integers(0, len(truth), len(truth))
+        values.append(f1_macro(pred[idx], truth[idx], k))
+    low, high = np.percentile(values, [2.5, 97.5])
+    return float(low), float(high)
+
+
+def alert_threshold(p_yes: np.ndarray, truth: np.ndarray, recall: float = ALERT_RECALL) -> float:
+    """Le seuil le plus haut qui garde au moins `recall` des vraies alertes (veto G5) : plus
+    haut, moins de fausses alertes ; jamais au prix d'une alerte manquée de trop."""
+    positives = np.sort(p_yes[truth == 1])[::-1]
+    if not len(positives):
+        return 0.5
+    return float(positives[math.ceil(recall * len(positives)) - 1])
+
+
+def predict(model: Softmax, X: np.ndarray, threshold: float | None = None) -> np.ndarray:
+    """Classe prédite ; pour une cible binaire avec seuil, « oui » dès p ≥ seuil."""
+    proba = model.proba(X)
+    if threshold is not None:
+        return (proba[:, 1] >= threshold).astype(int)
+    return proba.argmax(axis=1)
+
+
+# --- modèle enregistré ------------------------------------------------------------------------
+
+
+@dataclass
+class Reference:
+    """La référence de M6 : une régression par cible, et le seuil d'alerte."""
+
+    models: dict[str, Softmax]
+    alert_threshold: float
+    embedder_name: str
+
+    def predict(self, X: np.ndarray) -> dict[str, list[str]]:
+        out = {}
+        for target, classes in TARGETS.items():
+            threshold = self.alert_threshold if target == "alerte" else None
+            out[target] = [classes[c] for c in predict(self.models[target], X, threshold)]
+        return out
+
+    def save(self, path: Path = MODEL_PATH) -> None:
+        arrays = {
+            f"{part}_{target}": getattr(model, part)
+            for target, model in self.models.items()
+            for part in ("W", "b", "mean", "scale")
+        }
+        meta = {
+            "embedder": self.embedder_name,
+            "seuil_alerte": self.alert_threshold,
+            "classes": {t: list(c) for t, c in TARGETS.items()},
+        }
+        np.savez(path, meta=np.array(json.dumps(meta, ensure_ascii=False)), **arrays)
+
+    @classmethod
+    def load(cls, path: Path = MODEL_PATH) -> Reference:
+        with np.load(path) as data:
+            meta = json.loads(str(data["meta"]))
+            models = {
+                t: Softmax(*(data[f"{part}_{t}"] for part in ("W", "b", "mean", "scale")))
+                for t in TARGETS
+            }
+        return cls(models, meta["seuil_alerte"], meta["embedder"])
+
+
+# --- entraînement et rapport ------------------------------------------------------------------
+
+
+def _codes(examples: Sequence[Example], target: str) -> np.ndarray:
+    index = {c: n for n, c in enumerate(TARGETS[target])}
+    return np.array([index[e.labels[target]] for e in examples], dtype=int)
+
+
+def _selection_score(target: str, pred: np.ndarray, truth: np.ndarray) -> float:
+    """F1 macro (action, urgence) ; F1 des « oui » pour l'alerte, classe rare qui compte."""
+    k = len(TARGETS[target])
+    return per_class(pred, truth, k)[1][2] if target == "alerte" else f1_macro(pred, truth, k)
+
+
+def choose(
+    target: str, X_tr: np.ndarray, y_tr: np.ndarray, X_val: np.ndarray, y_val: np.ndarray
+) -> tuple[Config, Softmax, list[dict]]:
+    """La configuration au meilleur score de validation ; à égalité, la plus simple (G3)."""
+    k, best, tried = len(TARGETS[target]), None, []
+    for rank, config in enumerate(configs()):
+        model = fit_softmax(X_tr, y_tr, k, config)
+        score = _selection_score(target, predict(model, X_val), y_val)
+        tried.append(config.as_dict() | {"score": round(score, 4)})
+        if best is None or score > best[0] + 1e-9:
+            best = (score, rank, config, model)
+    assert best is not None
+    return best[2], best[3], tried
+
+
+def _class_table(target: str, pred: np.ndarray, truth: np.ndarray) -> dict:
+    classes = TARGETS[target]
+    return {
+        classes[c]: {"précision": round(p, 3), "rappel": round(r, 3), "f1": round(f, 3), "n": n}
+        for c, (p, r, f, n) in enumerate(per_class(pred, truth, len(classes)))
+    }
+
+
+def train_reference(
+    examples: list[Example],
+    X: np.ndarray,
+    held_out: Sequence[str],
+    embedder_name: str,
+) -> tuple[Reference, dict]:
+    """Choisit et entraîne la référence sur l'entraînement, la mesure sur la validation."""
+    train, val = split(examples, held_out)
+    ex_val = [examples[n] for n in val]
+    report: dict = {
+        "validation": {"personas": list(held_out), "exemples": len(val)},
+        "entrainement": {"exemples": len(train)},
+        "cibles": {},
+    }
+    models, threshold = {}, 0.5
+    for target, classes in TARGETS.items():
+        y = _codes(examples, target)
+        config, model, tried = choose(target, X[train], y[train], X[val], y[val])
+        models[target] = model
+        entry: dict = {"configuration": config.as_dict(), "essais": tried}
+        if target == "alerte":
+            threshold = alert_threshold(model.proba(X[val])[:, 1], y[val])
+            entry["seuil"] = round(threshold, 4)
+        pred = predict(model, X[val], threshold if target == "alerte" else None)
+        k = len(classes)
+        entry |= {
+            "f1_macro": round(f1_macro(pred, y[val], k), 4),
+            "f1_macro_ic95": [round(v, 4) for v in bootstrap_ci(pred, y[val], k)],
+            "classes": _class_table(target, pred, y[val]),
+            "par_source": {
+                s: round(f1_macro(pred[m], y[val][m], k), 4)
+                for s in SOURCE_NAMES
+                if (m := np.array([e.source == s for e in ex_val])).any()
+            },
+            "par_ecrivain": {
+                w: round(f1_macro(pred[m], y[val][m], k), 4)
+                for w in CORPORA
+                if (m := np.array([e.writer == w for e in ex_val])).any()
+            },
+        }
+        if target == "action":
+            confusion = np.zeros((k, k), dtype=int)
+            np.add.at(confusion, (y[val], pred), 1)
+            entry["confusion"] = {
+                "lignes = vérité, colonnes = prédiction": list(classes),
+                "matrice": confusion.tolist(),
+            }
+        report["cibles"][target] = entry
+    report["ecrivain_croise"] = cross_writer(examples, X, train, val)
+    return Reference(models, threshold, embedder_name), report
+
+
+def cross_writer(examples: list[Example], X: np.ndarray, train: list[int], val: list[int]) -> dict:
+    """Test croisé du plan (§6) : appris sur les seules cartes des gabarits, mesuré sur les
+    mails du LLM de la validation, comparé au même apprentissage avec les deux écrivains."""
+    llm_val = [n for n in val if examples[n].writer == "llm"]
+    if not llm_val:
+        return {}
+    y, k = _codes(examples, "action"), len(ACTIONS)
+    gab_train = [n for n in train if examples[n].writer == "gabarits"]
+    out = {"exemples_llm_validation": len(llm_val)}
+    for name, rows in (("gabarits_seuls", gab_train), ("deux_ecrivains", train)):
+        config, _, _ = choose("action", X[rows], y[rows], X[val], y[val])
+        model = fit_softmax(X[rows], y[rows], k, config)
+        out[name] = round(f1_macro(predict(model, X[llm_val]), y[llm_val], k), 4)
+    return out
+
+
+def truncated_share(embedder: Embedder, examples: Sequence[Example]) -> dict | None:
+    """Part des cartes coupées par la longueur maximale de l'encodeur, au total et par source
+    (fastembed seulement ; None pour un autre encodeur)."""
+    if not isinstance(embedder, FastEmbedder):
+        return None
+    if embedder._model is None:  # vecteurs tous en cache : le modèle n'a pas été chargé
+        embedder.embed(["chargement"])
+    tokenizer = embedder._model.model.tokenizer
+    limit = tokenizer.truncation["max_length"]
+    # Le lot est complété jusqu'au plus long : on compte les vrais jetons, pas le remplissage.
+    cut = [
+        sum(e.attention_mask) >= limit for e in tokenizer.encode_batch([x.text for x in examples])
+    ]
+    by_source = {
+        s: round(
+            float(np.mean([c for c, x in zip(cut, examples, strict=True) if x.source == s])), 4
+        )
+        for s in SOURCE_NAMES
+        if any(x.source == s for x in examples)
+    }
+    return {"jetons_max": limit, "total": round(float(np.mean(cut)), 4), "par_source": by_source}
+
+
+CHUNK = 1000
+
+
+def embed_with_progress(
+    cache: VectorCache,
+    embedder: Embedder,
+    texts: Sequence[str],
+    chunk: int = CHUNK,
+    log: Callable[[str], None] = print,
+) -> np.ndarray:
+    """Les vecteurs, calculés par paquets : l'avancement s'affiche, et le cache est enregistré
+    après chaque paquet, donc un calcul interrompu reprend où il s'était arrêté."""
+    start, total = time.monotonic(), len(texts)
+    for begin in range(0, total, chunk):
+        cache.embed(embedder, texts[begin : begin + chunk])
+        done = min(begin + chunk, total)
+        elapsed = time.monotonic() - start
+        left = elapsed / done * (total - done)
+        log(f"vecteurs : {done}/{total} ({elapsed:.0f} s, reste ≈ {left:.0f} s)")
+    return cache.embed(embedder, texts)  # tout est en cache : simple lecture
+
+
+def entrainer(
+    corpora: dict[str, Path] = CORPORA,
+    embedder: Embedder | None = None,
+    cache: VectorCache | None = None,
+    out_model: Path = MODEL_PATH,
+    out_report: Path = REPORT_PATH,
+    n_validation: int = 7,
+    log: Callable[[str], None] = lambda _: None,
+) -> dict:
+    """Exemples, vecteurs, choix et mesure sur la validation ; écrit le modèle et le rapport."""
+    embedder = embedder or FastEmbedder(DEFAULT_MODEL)
+    cache = cache or VectorCache(cache_path(embedder))
+    log("cartes des personas « train »…")
+    examples, excluded = training_examples(corpora)
+    log(f"{len(examples)} cartes")
+    keys = sorted({e.persona for e in examples})
+    held_out = validation_personas(keys, n_validation)
+    X = embed_with_progress(cache, embedder, [e.text for e in examples], log=log)
+    log("choix des réglages et mesure sur la validation…")
+    reference, report = train_reference(examples, X, held_out, embedder.name)
+    report = {
+        "modele": f"{embedder.name} gelé + régression logistique",
+        "grille": {"l2": list(L2_CHOICES), "pas": STEPS, "note": GRID_NOTE},
+        "exemples": {
+            "total": len(examples),
+            "elements_geles_exclus": excluded,
+            "par_ecrivain": dict(sorted(Counter(e.writer for e in examples).items())),
+            "par_source": dict(sorted(Counter(e.source for e in examples).items())),
+            "cartes_tronquees": truncated_share(embedder, examples),
+        },
+        "corpus": _corpus_ids(corpora),
+    } | report
+    reference.save(out_model)
+    out_report.write_text(
+        json.dumps(report, ensure_ascii=False, indent=1) + "\n", encoding="utf-8", newline="\n"
+    )
+    return report
+
+
+def _corpus_ids(corpora: dict[str, Path]) -> dict:
+    out = {}
+    for writer, path in corpora.items():
+        manifest = json.loads((path / "manifest.json").read_text(encoding="utf-8"))
+        out[writer] = {"graine": manifest.get("seed")} | (
+            {"consigne": manifest["consigne"], "textes_sha256": manifest["textes"]["sha256"]}
+            if "textes" in manifest
+            else {}
+        )
+    return out
+
+
+def summary(report: dict) -> str:
+    """Les chiffres à lire d'abord."""
+    ex, val = report["exemples"], report["validation"]
+    lines = [
+        (
+            f"{ex['total']} exemples ({ex['par_ecrivain']}), {ex['elements_geles_exclus']} "
+            f"éléments gelés exclus ; validation : {val['exemples']} exemples "
+            f"({', '.join(val['personas'])})"
+        ),
+        f"cartes tronquées par l'encodeur : {ex['cartes_tronquees']}",
+    ]
+    for target, entry in report["cibles"].items():
+        low, high = entry["f1_macro_ic95"]
+        lines.append(
+            f"{target:<8} F1 macro {entry['f1_macro']:.3f} [{low:.3f} ; {high:.3f}]  "
+            f"{entry['configuration']}  par source {entry['par_source']}"
+        )
+    alert = report["cibles"]["alerte"]
+    lines.append(
+        f"alerte : seuil {alert['seuil']}, rappel {alert['classes']['oui']['rappel']}, "
+        f"précision {alert['classes']['oui']['précision']}"
+    )
+    lines.append(f"test croisé des écrivains (action, mails LLM) : {report['ecrivain_croise']}")
+    return "\n".join(lines)
+
+
 def main(argv: list[str]) -> int:
     sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
+    if argv == ["--entrainer"]:
+        report = entrainer(log=lambda line: print(line, flush=True))
+        print(summary(report))
+        print(f"→ {MODEL_PATH.name}, {REPORT_PATH.name}")
+        return 0
     if argv == ["--tirer-demo"]:
         info = draw_tdemo_elements()
         print(
@@ -208,7 +768,7 @@ def main(argv: list[str]) -> int:
         freeze = freeze_demo_answers()
         print(f"Réponses gelées : {', '.join(freeze['reponses'])}")
         return 0
-    print("usage : comprendre --tirer-demo | --reste-demo | --geler-demo")
+    print("usage : comprendre --entrainer | --tirer-demo | --reste-demo | --geler-demo")
     return 2
 
 
