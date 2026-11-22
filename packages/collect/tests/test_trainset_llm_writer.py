@@ -139,6 +139,37 @@ def test_la_copie_dit_a_qui_s_adresse_la_demande(persona):
     assert f"la demande s'adresse à {member.first}, pas à {persona.manager.first}" in text
 
 
+@pytest.mark.parametrize(
+    ("text", "follow"),
+    [
+        ("Julie, je te mets en copie pour que tu puisses suivre l'évolution.", True),
+        ("Julie est en copie pour information.", True),
+        ("Pour un suivi transparent, j'ai joint Julie en copie.", True),
+        ("Julie, je te mets en copie car le sujet te concerne aussi.", False),
+        ("Peux-tu déposer la commande sur le portail ?", False),
+    ],
+)
+def test_la_copie_pour_suivre_se_lit_dans_l_extrait(persona, text, follow):
+    """Règle du 23/11 : une copie n'est S'informer que si le texte dit qu'elle sert à suivre."""
+    member = persona.team[1]
+    fact = _mail(persona, "faire", to_manager=False, addressee=member, recipients=[member])
+    writer = L.LLMWriter(persona, client=FakeOllama([]))
+    item = Item.model_validate(writer.templates.write(fact)[0].model_dump() | {"snippet": text})
+    assert (L.COPIE_SUIVI in writer.marks(fact, item)) is follow
+
+
+def test_une_fiche_qui_demande_un_avis_est_marquee(persona):
+    writer = L.LLMWriter(persona, client=FakeOllama([]))
+    marked = []
+    for n in range(40):
+        fact = _mail(persona, "repondre")
+        fact.item_id = f"mail:t-{n}"
+        item = writer.templates.write(fact)[0]
+        marked.append((L.AVIS in writer.marks(fact, item), writer.sheet(fact).text))
+    assert any(m for m, _ in marked) and not all(m for m, _ in marked)
+    assert all(m == bool(re.search("avis concernant|lui convient", t)) for m, t in marked)
+
+
 def test_seuls_les_mails_rediges_par_gabarits_sont_reecrits(persona):
     assert L.rewritable(_mail(persona))
     assert not L.rewritable(_mail(persona, sent=True))
@@ -676,18 +707,25 @@ def templates():
 
 
 def test_l_assemblage_ecrit_tout_le_corpus_en_item_valides(corpus, templates):
-    """100 % des lignes sont des Item du contrat A : mêmes éléments, même ordre, mêmes
-    étiquettes que le corpus des gabarits ; seuls le texte et la marque d'écrivain changent."""
+    """100 % des lignes sont des Item du contrat A : mêmes éléments, même ordre, mêmes faits
+    que le corpus des gabarits ; seuls le texte, la marque d'écrivain et, pour un mail, l'action
+    lue dans sa formulation (règles du 23/11 : avis, copie pour suivre) changent."""
     out, _, manifest = corpus
     assert set(load.personas(data=out)) == set(templates)
     for key, (items, scenario) in templates.items():
         assembled = load.load_items(key, out)  # valide chaque ligne (contrat A)
         assert [i.item_id for i in assembled] == [i.item_id for i in items]
-        same = [{k: v for k, v in r.items() if k != "templates"} for r in scenario]
-        got = [
-            {k: v for k, v in r.items() if k != "templates"} for r in load.load_scenario(key, out)
-        ]
-        assert got == same
+        skip = ("templates", "action")
+        same = [{k: v for k, v in r.items() if k not in skip} for r in scenario]
+        got = load.load_scenario(key, out)
+        assert [{k: v for k, v in r.items() if k not in skip} for r in got] == same
+        for old, new in zip(scenario, got, strict=True):
+            if old["action"] != new["action"]:  # seulement un mail dont le LLM a écrit le texte
+                assert new["source"] == "mail" and f"llm:{L.PROMPT_VERSION}" in new["templates"]
+                assert {old["action"], new["action"]} in (
+                    {"repondre", "decider"},
+                    {"rien", "informer"},
+                )
     c = manifest["llm"]
     assert c["ecrits"] == N_TEXTS and c["a_reecrire"] == len(llm_corpus.plan())
     assert c["retenus"] + c["rejetes"] + c["recontroles"] == N_TEXTS
@@ -705,7 +743,8 @@ def test_un_texte_retenu_donne_l_objet_et_l_extrait_du_llm(corpus):
         item, marks = _assembled(out, row)
         assert item.snippet == row["extrait"] and item.content_text is None
         assert item.title.endswith(row["llm"]["objet"])  # « Re: » ajouté pour une relance
-        assert marks == [f"llm:{L.PROMPT_VERSION}"]
+        assert marks[0] == f"llm:{L.PROMPT_VERSION}"
+        assert all(m in (L.AVIS, L.COPIE_SUIVI) for m in marks[1:])
 
 
 def test_un_texte_absent_garde_exactement_les_gabarits(corpus, templates):

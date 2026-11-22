@@ -11,8 +11,8 @@ import pytest
 
 from packages.collect.trainset import build, load
 from packages.collect.trainset import phrases as P
-from packages.collect.trainset.facts import ACTIONS, Fact, label, label_on
-from packages.collect.trainset.metiers import METIERS
+from packages.collect.trainset.facts import ACTIONS, AVIS, COPIE_SUIVI, Fact, label, label_on
+from packages.collect.trainset.metiers import METIERS, Obj
 from packages.collect.trainset.world import PARIS, all_personas, at
 
 DAY = date(2026, 11, 4)
@@ -90,18 +90,37 @@ def test_etiqueteur_taches_et_fichiers():
     assert label(_fact("file", meta={"linked_task_act": "decider"}))["action"] == "decider"
     assert label(_fact("file", meta={"linked_meeting": True}))["action"] == "preparer"
     assert label(_fact("file", meta={"to_sign": True}))["action"] == "decider"
-    assert label(_fact("file", meta={"review": True}))["action"] == "relire"
+    # 23/11 : la relecture est demandée par le mail de l'affaire, qui porte Relire.
+    assert label(_fact("file", meta={"review": True}))["action"] == "informer"
     assert label(_fact("file", meta={"cr": True}))["action"] == "informer"
 
 
 def test_etiqueteur_mails():
     assert label(_fact("mail", "repondre", secondary="decider"))["action"] == "decider"
-    assert label(_fact("mail", "faire", to_manager=False))["action"] == "informer"
+    assert label(_fact("mail", "faire", to_manager=False))["action"] == "rien"
     injection = label(_fact("mail", "rien", alert=True, trap="injection"))
     assert injection == {"action": "rien", "urgence": "normal", "alerte": True}
     assert label(_fact("mail", "decider", sent=True))["action"] == "rien"
     assert label(_fact("mail", "decider", trap="doublon"))["action"] == "rien"
     assert label(_fact("mail", "relire", tone="sans_urgence"))["urgence"] == "sans_urgence"
+
+
+def test_etiqueteur_regles_du_23_11():
+    """Copie, message sans demande, avis sur un objet de décision (guide, 23/11)."""
+    copy = _fact("mail", "faire", to_manager=False)
+    assert label(copy, ["llm:mail-v8", COPIE_SUIVI])["action"] == "informer"
+    assert label(_fact("mail", "rien"))["action"] == "informer"  # accusé d'un collègue
+    teams = _fact("mail", "rien", meta={"kind": "fixed", "template": "teams.2"})
+    assert label(teams)["action"] == "informer"
+    newsletter = _fact("mail", "rien", meta={"kind": "fixed", "template": "newsletter.1"})
+    assert label(newsletter)["action"] == "rien"
+    devis = Obj("devis", "le devis Stockeo", "Devis_Stockeo", "pdf")
+    rapport = Obj("rapport", "le rapport", "Rapport", "docx")
+    avis = _fact("mail", "repondre", obj=devis)
+    assert label(avis, ["mail.repondre.question.0"])["action"] == "decider"
+    assert label(avis, ["llm:mail-v8", AVIS])["action"] == "decider"
+    assert label(avis, ["mail.repondre.question.4"])["action"] == "repondre"  # une date
+    assert label(_fact("mail", "repondre", obj=rapport), [AVIS])["action"] == "repondre"
 
 
 def test_l_etiquette_depend_du_jour():
@@ -150,7 +169,8 @@ def test_toutes_les_actions_et_les_pieges_sont_presents(built):
     assert by_source["mail"] == set(ACTIONS)
     assert {"preparer", "repondre", "rien"} <= by_source["calendar"]
     assert {"decider", "faire"} <= by_source["task"]  # tâche terminée : jamais collectée
-    assert {"decider", "preparer", "relire", "informer", "rien"} <= by_source["file"]
+    # 23/11 : un fichier à relire se lit S'informer (le mail porte Relire).
+    assert {"decider", "preparer", "informer", "rien"} <= by_source["file"]
     assert {"injection"} <= {r["trap"] for r in rows}
     assert any(r["alerte"] for r in rows)
 

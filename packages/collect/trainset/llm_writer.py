@@ -29,7 +29,7 @@ from dataclasses import dataclass, field
 from contracts.models import Item
 from packages.collect.connectors.mail_graph.mapping import snippet as graph_snippet
 from packages.collect.trainset import phrases as P
-from packages.collect.trainset.facts import Fact
+from packages.collect.trainset.facts import AVIS, COPIE_SUIVI, Fact
 from packages.collect.trainset.llm_exemples import EXAMPLES, MORCEAUX
 from packages.collect.trainset.metiers import METIERS
 from packages.collect.trainset.world import FEMALE, LAST, MALE, MONTHS, WEEKDAYS, Persona, fr_day
@@ -92,6 +92,15 @@ RELATION = {
 # catégorie (la v2 disait « une décision : … », que le LLM recopiait). {x} : la personne qui
 # agit, {a} : l'expéditeur, {o} : l'objet avec son article (il suit « concernant » ou
 # « pour », jamais « de » ni « à »). Pas de « lire {o} avant la réunion » : trop proche de Relire.
+# Règles du 23/11 : les demandes de la fiche qui attendent un avis ou un accord, et les
+# phrases qui disent que la copie sert à suivre (lues dans l'extrait, comme le verrait le modèle).
+_AVIS_SHEET = re.compile(r"donne son avis concernant|lui convient")
+_COPY_FOLLOW = re.compile(
+    r"copie[^.!?\n]{0,80}(suiv|au courant|inform|connaissance|surveill)"
+    r"|suivi[^.!?\n]{0,40}copie",
+    re.IGNORECASE,
+)
+
 ACTS = {
     "decider": (
         "que {x} valide {o}",
@@ -991,6 +1000,16 @@ class LLMWriter:
         fields = item.model_dump() | {"title": title, "snippet": extract(d.corps)}
         return Item.model_validate(fields)
 
+    def marks(self, fact: Fact, item: Item) -> list[str]:
+        """Les marques de lecture du texte retenu (règles du 23/11, guide) : la fiche
+        demandait un avis ou un accord ; le texte dit que la copie est « pour suivre »."""
+        out = []
+        if fact.act == "repondre" and _AVIS_SHEET.search(self.sheet(fact).text):
+            out.append(AVIS)
+        if not fact.to_manager and _COPY_FOLLOW.search(item.snippet):
+            out.append(COPIE_SUIVI)
+        return out
+
     def choose(self, fact: Fact, d: Draft | None) -> tuple[Item | None, list[str]]:
         """L'Item retenu : le texte du LLM s'il a passé les contrôles, sinon celui des gabarits.
 
@@ -1002,7 +1021,8 @@ class LLMWriter:
             return item, used
         if not d.ok:
             return item, used + [f"llm:{d.prompt_version}:rejete"]
-        return self.item(fact, d), [f"llm:{d.prompt_version}"]
+        item = self.item(fact, d)
+        return item, [f"llm:{d.prompt_version}", *self.marks(fact, item)]
 
     def write(self, fact: Fact) -> tuple[Item | None, list[str], Draft | None]:
         """L'Item (texte du LLM s'il passe les contrôles, sinon celui des gabarits)."""

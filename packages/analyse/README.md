@@ -329,6 +329,36 @@ uv run python -m packages.analyse.scoring.ml.annoter --accord essai             
 uv run python -m packages.analyse.scoring.ml.annoter --serie essai --arbitrage
 ```
 
+## Jeux de mesure gelés (M5) et compréhension des éléments (M6)
+
+`scoring/ml/jeux_m5.py` tire et gèle les jeux de mesure, avant tout réglage : T-gen (150 éléments,
+150 paires, 50 paires d'affaires sur les 4 métiers réservés) et T-démo (40 paires de la démo du
+lot 1). `scoring/ml/comprendre.py` ajoute une série de 60 éléments de démo (`m6-tdemo-elements`)
+et la **référence de M6** : MiniLM gelé + régression logistique (numpy), qui prédit l'action,
+l'urgence et l'alerte des 4 sources à partir de la carte que voit l'annotateur. Elle apprend sur
+les personas « train » du simulateur (gabarits + LLM), se règle sur 7 personas de validation et
+n'est mesurée sur les jeux gelés que par `--mesurer`, qui refuse un gel manquant ou modifié et
+inscrit chaque lecture au journal (`scoring/annotations/journal-geles.jsonl`). Le journal
+identifie le modèle mesuré par son empreinte SHA-256, stable ; ses commits sont ceux de la
+branche avant son rebasage puis sa fusion en un seul commit (857b546 et 81f2b25, devenus 3910cea
+et 08619d9 sur `l2/feat/m6-reference`, contenu de `packages/` identique). Jugés par Théo
+seul (décision du 21/11), sans proposition d'un modèle.
+
+| F1 macro de l'action | validation | T-gen | démo |
+|---|---|---|---|
+| référence, étiquettes du 22/11 | 0,887 | 0,651 [0,565 ; 0,723] | 0,175 [0,096 ; 0,251] |
+| référence, règles du guide du 23/11 | 0,868 | 0,625 [0,545 ; 0,695] | 0,164 [0,098 ; 0,230] |
+
+Résultat négatif (G6) : la référence apprend la formulation du simulateur et ne transfère pas
+vers la démo, et les règles de frontière du 23/11 n'y changent rien (égalité au sens de G2). La
+référence n'est pas branchée dans le brief ; le réajustement de l'encodeur est reporté en bonus.
+
+```bash
+uv run python -m packages.analyse.scoring.ml.jeux_m5 --reste            # réponses manquantes
+uv run python -m packages.analyse.scoring.ml.comprendre --entrainer     # référence + rapport
+uv run python -m packages.analyse.scoring.ml.comprendre --mesurer       # une fois par modèle
+```
+
 ## Commandes
 
 ```bash
@@ -354,6 +384,8 @@ scoring/learned.py   score appris des affaires dans le brief (meilleur mail + t�
 scoring/ml/          score appris : données Graph, bruit, intentions, échéances (pipeline A)
 scoring/ml/synth/    générateur de mails du lot 2 (SPEC.md)
 scoring/ml/annoter.py outil d'annotation unifié (M4)
+scoring/ml/jeux_m5.py jeux de mesure gelés (M5)
+scoring/ml/comprendre.py référence de M6 et mesure sur les jeux gelés
 scoring/annotations/ échantillon et étiquettes de Théo (versionnés, données synthétiques)
 tests/               fabrique d'Item synthétiques + tests
 ```

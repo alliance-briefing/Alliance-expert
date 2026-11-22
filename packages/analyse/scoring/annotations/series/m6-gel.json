@@ -1,0 +1,9 @@
+{
+ "series": {
+  "m6-tdemo-elements.jsonl": "aac4ee5976c693a8637756b9b96bb44c3f46541ddf0c9a085bd3838d2ca4b70f",
+  "m6-tdemo-elements.tirage.json": "c3fc5f8d8f3565df7f2c7216c2fbfe58cefb7342f96e0a41c06fd7f42c0eb217"
+ },
+ "reponses": {
+  "m6-tdemo-elements_theo.jsonl": "2debd0842131490e2f3abb190190cee8cb6f15c651e579dd230e36e87acd95e4"
+ }
+}

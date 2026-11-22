@@ -6,14 +6,20 @@ L'écrivain n'en montre qu'une partie dans l'`Item` : le modèle doit retrouver 
 
 L'étiquette dépend du jour : `label_on` rend « rien » une fois l'élément traité par le
 manager (`resolved_at`) ou la réunion passée, comme le guide (« déjà traité → Rien »).
+
+Règles du 23/11 (guide) : deux d'entre elles dépendent de la formulation choisie par
+l'écrivain, pas du fait. `label` reçoit donc les gabarits utilisés (ou les marques posées par
+l'écrivain LLM) : « avis ou accord » sur un objet de décision → Décider ; copie dont le texte
+dit « pour suivre » → S'informer.
 """
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from packages.collect.trainset.metiers import Obj
+from packages.collect.trainset.metiers import DECISION_KINDS, Obj
 from packages.collect.trainset.world import Person
 
 ACTIONS = ("repondre", "faire", "decider", "preparer", "relire", "informer", "rien")
@@ -21,6 +27,17 @@ ACTIONS = ("repondre", "faire", "decider", "preparer", "relire", "informer", "ri
 PRIORITY = ("decider", "faire", "repondre", "preparer", "relire", "informer", "rien")
 URGENCY = ("urgent", "normal", "sans_urgence")
 SOURCES = ("mail", "calendar", "task", "file")
+
+
+# Gabarits de Répondre qui demandent un avis ou un accord (« te convient », « ton avis », « ta
+# position », « ce que tu en penses »…) : sur un objet de décision, ils se lisent Décider.
+AVIS_TEMPLATES = frozenset(
+    {f"mail.repondre.question.{i}" for i in (0, 1)}
+    | {f"mail.repondre.directe.{i}" for i in (0, 2, 3, 7, 8, 9)}
+    | {f"mail.repondre.indirecte.{i}" for i in (0, 1, 4)}
+)
+AVIS = "lecture:avis"  # marque de l'écrivain LLM : la fiche demandait un avis
+COPIE_SUIVI = "lecture:copie_suivi"  # marque : le texte dit « en copie pour suivre »
 
 
 def strongest(*actions: str | None) -> str:
@@ -55,19 +72,34 @@ class Fact:
     meta: dict = field(default_factory=dict)  # détails propres à la source (voir label)
 
 
-def label(fact: Fact) -> dict:
-    """Étiquette propre de l'élément, à la lecture du guide (action, urgence, alerte)."""
-    return {"action": _action(fact), "urgence": fact.tone, "alerte": fact.alert}
+def label(fact: Fact, wording: Iterable[str] = ()) -> dict:
+    """Étiquette propre de l'élément, à la lecture du guide (action, urgence, alerte).
+    `wording` : gabarits utilisés par l'écrivain et marques de lecture de l'écrivain LLM."""
+    return {"action": _action(fact, set(wording)), "urgence": fact.tone, "alerte": fact.alert}
 
 
-def _action(f: Fact) -> str:
+def _mass_mailing(f: Fact) -> bool:
+    return str(f.meta.get("template", "")).startswith("newsletter")
+
+
+def _action(f: Fact, wording: set[str] | frozenset[str] = frozenset()) -> str:
     m = f.meta
     if f.source == "mail":
         if f.sent or f.trap in ("injection", "doublon"):
             return "rien"
-        main = strongest(f.act, f.secondary)
-        if not f.to_manager and main not in ("informer", "rien"):
-            return "informer"  # en copie d'une demande adressée à quelqu'un d'autre
+        if not f.to_manager:  # en copie d'une demande adressée à quelqu'un d'autre (23/11)
+            return "informer" if COPIE_SUIVI in wording else "rien"
+        act = f.act
+        if (
+            act == "repondre"
+            and f.obj is not None
+            and f.obj.kind in DECISION_KINDS
+            and (AVIS in wording or AVIS_TEMPLATES & wording)
+        ):
+            act = "decider"  # avis ou accord sur un objet de décision (23/11)
+        main = strongest(act, f.secondary)
+        if main == "rien" and not _mass_mailing(f):
+            return "informer"  # message sans demande, accusé, notification qui informe (23/11)
         return main
     if f.source == "calendar":
         if m.get("cancelled"):
@@ -90,9 +122,7 @@ def _action(f: Fact) -> str:
             return "preparer"
         if m.get("to_sign"):
             return "decider"
-        if m.get("review"):
-            return "relire"
-        return "informer"
+        return "informer"  # à relire : c'est le mail qui le demande qui porte Relire (23/11)
     raise ValueError(f"source inconnue : {f.source}")
 
 

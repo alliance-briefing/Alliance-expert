@@ -35,7 +35,7 @@ SAMPLE_DAYS = 2
 def scenario_row(
     fact: Fact, persona: Persona, templates: list[str], collected: bool = True
 ) -> dict:
-    labels = label(fact)
+    labels = label(fact, templates)
     ends = fact.meta.get("end") or fact.meta.get("ends_at")
     return {
         "item_id": fact.item_id,
