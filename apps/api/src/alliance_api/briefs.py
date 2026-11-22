@@ -19,7 +19,7 @@ from pydantic import BaseModel
 from starlette.datastructures import State
 
 from alliance_api.audit import api_event
-from alliance_api.auth import CurrentUser
+from alliance_api.auth import CurrentUser, requires
 from alliance_api.errors import ApiError
 from contracts.models import Brief, Item
 
@@ -77,7 +77,12 @@ class HistoryDay(BaseModel):
     entries: int | None = None
 
 
-@router.post("/briefs", status_code=201, response_model=BriefStatus)
+@router.post(
+    "/briefs",
+    status_code=201,
+    response_model=BriefStatus,
+    dependencies=[requires("brief:generate_own")],
+)
 def create_brief(
     body: BriefRequest, user: CurrentUser, request: Request, response: Response
 ) -> BriefStatus:
@@ -86,12 +91,17 @@ def create_brief(
     return BriefStatus(status="done", brief_id=brief.brief_id, date=brief.date)
 
 
-@router.get("/briefs/{day}", response_model=Brief)
+@router.get("/briefs/{day}", response_model=Brief, dependencies=[requires("brief:read_own")])
 def read_brief(day: Date, user: CurrentUser, request: Request) -> Brief:
     return view(request.app.state, user, day)
 
 
-@router.get("/briefs", response_model=list[HistoryDay], response_model_exclude_none=True)
+@router.get(
+    "/briefs",
+    response_model=list[HistoryDay],
+    response_model_exclude_none=True,
+    dependencies=[requires("brief:read_own")],
+)
 def list_briefs(
     user: CurrentUser,
     request: Request,
