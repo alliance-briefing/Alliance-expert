@@ -483,3 +483,108 @@ def test_le_rapport_de_validation_dure_est_relisible_et_sans_texte(hard):
     assert "Texte" not in json.dumps(report)
     summary = comprendre.hard_summary(report)
     assert "1. métiers" in summary and "2. gabarits" in summary and "3. écrivain" in summary
+
+
+# --- jeu de développement réel ---------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def dev(briefs, tmp_path_factory):
+    """Un tirage sur un faux jeu de David (deux journées de démo, autre propriétaire) et la
+    vraie journée de Claire."""
+    from packages.analyse.scoring.ml import graph_convert
+
+    items = [i for _, its in briefs[:3] for i in its if i.source in ("mail", "calendar")]
+    dataset = graph_convert.GraphDataset(items=list({i.item_id: i for i in items}.values()))
+    series = tmp_path_factory.mktemp("dev")
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(graph_convert, "load_graph_dataset", lambda _: dataset)
+        info = comprendre.draw_dev(
+            series / "x", series=series, quota={"mail": 6, "calendar": 2}, sample_size=8
+        )
+    return series, info, dataset
+
+
+def test_le_jeu_reel_prend_claire_et_un_element_par_modele_de_david(dev):
+    from packages.analyse.scoring.ml.sample import template
+
+    series, info, dataset = dev
+    tasks = annoter.load_series(series / f"{comprendre.DEV_SERIES}.jsonl")  # check_blind
+    origins = [v["origine"] for v in info["elements"].values()]
+    assert origins.count("claire") == 34 and origins.count("david") == 8 == len(tasks) - 34
+    by_id = {i.item_id: i for i in dataset.items}
+    drawn = [by_id[v["item_id"]] for v in info["elements"].values() if v["origine"] == "david"]
+    titles = [template(i.title) for i in drawn]
+    assert len(set(titles)) == len(titles)  # un par modèle de phrase
+    assert sorted(titles) == sorted(
+        t for v in info["david_modeles_exclus_du_test"].values() for t in v
+    )
+    assert all("Claire Fontaine" in t["context"] or "Hélène" in t["context"] for t in tasks)
+
+
+def test_l_echantillon_de_theo_reprend_les_cartes_sous_d_autres_numeros(dev):
+    series, info, _ = dev
+    tasks = {
+        t["task_id"]: t for t in annoter.load_series(series / f"{comprendre.DEV_SERIES}.jsonl")
+    }
+    sample = annoter.load_series(series / f"{comprendre.DEV_SAMPLE}.jsonl")
+    assert len(sample) == 8 and all(t["pour"] == ["theo"] for t in sample)
+    for task in sample:
+        source = tasks[info["echantillon_theo"][task["task_id"]]]
+        assert task["card"] == source["card"] and task["task_id"] != source["task_id"]
+    with pytest.raises(FileExistsError):
+        comprendre.draw_dev(series / "x", series=series)
+
+
+def _answer(action):
+    return {"action": action, "urgence": "normal", "alerte": False}
+
+
+def test_la_mesure_reelle_exige_le_gel_et_suit_l_arbitrage(dev, trained, tmp_path):
+    source, info, _ = dev
+    for path in source.iterdir():
+        (tmp_path / path.name).write_bytes(path.read_bytes())
+    tasks = annoter.load_series(tmp_path / f"{comprendre.DEV_SERIES}.jsonl")
+    with pytest.raises(ValueError, match="sans réponse"):
+        comprendre.freeze_dev(tmp_path)
+    claude = annoter.AnswerStore(annoter.answers_path(comprendre.DEV_SERIES, "claude", tmp_path))
+    for t in tasks:
+        claude.record(t["task_id"], False, _answer("informer"))
+    with pytest.raises(ValueError, match="non gelé"):
+        comprendre.valider_reel(tmp_path, trained, HashEmbedder(), None)
+    comprendre.freeze_dev(tmp_path)
+    report = comprendre.valider_reel(tmp_path, trained, HashEmbedder(), tmp_path / "r.json")
+    assert report["elements"] == len(tasks) and set(report["action"]["par_origine"]) == {
+        "claire",
+        "david",
+    }
+    assert report["accord_theo_claude"]["cartes"] == 0
+    assert "par origine" in comprendre.dev_summary(report)
+    # Théo n'est d'accord que sur 2 cartes sur 8 : son arbitrage remplace Claude.
+    theo = annoter.AnswerStore(annoter.answers_path(comprendre.DEV_SAMPLE, "theo", tmp_path))
+    arbitrage = annoter.AnswerStore(
+        annoter.answers_path(comprendre.DEV_SERIES, "arbitrage", tmp_path)
+    )
+    for n, (s, t) in enumerate(info["echantillon_theo"].items()):
+        theo.record(s, False, _answer("informer" if n < 2 else "faire"))
+        if n >= 2:
+            arbitrage.record(t, False, _answer("faire"))
+    agreement = comprendre.dev_agreement(tmp_path)
+    assert agreement["cartes"] == 8 and agreement["action"] == 0.25
+    assert len(agreement["desaccords_action"]) == 6
+    truth = comprendre.dev_truth(tmp_path)
+    assert sum(a["action"] == "faire" for a in truth.values()) == 6
+    claude.record(tasks[0]["task_id"], False, _answer("rien"))  # corriger après coup : refusé
+    with pytest.raises(ValueError, match="modifié"):
+        comprendre.valider_reel(tmp_path, trained, HashEmbedder(), None)
+
+
+def test_le_vrai_jeu_reel_est_gele_et_complet():
+    assert comprendre.dev_changed() == []
+    info = json.loads((annoter.SERIES / comprendre.DEV_TIRAGE).read_text("utf-8"))
+    origins = [v["origine"] for v in info["elements"].values()]
+    assert origins.count("claire") == 34 and origins.count("david") == 70
+    assert {k: len(v) for k, v in info["david_modeles_exclus_du_test"].items()} == (
+        comprendre.DAVID_QUOTA
+    )
+    assert len(comprendre.dev_labels()) == len(origins)

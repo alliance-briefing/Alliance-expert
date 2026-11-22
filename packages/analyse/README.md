@@ -387,10 +387,24 @@ Les découpages 2 et 3 confirment le diagnostic de M6 : une formulation jamais v
 un changement d'écrivain 0,17 à 0,23. Le découpage 1 sert à suivre le niveau, les découpages 2
 et 3 à mesurer ce que les leviers apportent contre l'apprentissage du style.
 
+**Jeu de développement réel** (étape 0 B ; règle M0 modifiée le 22/11, plan §11). 104 cartes
+de texte écrit hors de nos générateurs : les 34 éléments de la journée de Claire (écrits à la
+main par Paul) et 70 éléments du jeu de David (55 mails reçus, 15 réunions), un par modèle de
+phrase. Ces modèles sont inscrits au tirage (`m6-dev-reel.tirage.json`) et seront exclus du
+futur test de transfert sur David. Claude a jugé les 104 cartes avec le guide avant toute
+mesure ; Théo rejuge 30 cartes à l'aveugle (`m6-dev-reel-echantillon`). Sous 85 % d'accord
+sur l'action, il arbitre les désaccords de l'échantillon (`m6-dev-reel_arbitrage.jsonl`).
+Les étiquettes sont gelées (`m6-dev-reel.gel.json`) : `--valider-reel` refuse de mesurer si
+elles ont changé. Jugé surtout par un LLM : c'est un garde-fou de développement, pas une
+mesure humaine (P2).
+
 ```bash
 uv run python -m packages.analyse.scoring.ml.jeux_m5 --reste            # réponses manquantes
 uv run python -m packages.analyse.scoring.ml.comprendre --entrainer     # référence + rapport
 uv run python -m packages.analyse.scoring.ml.comprendre --valider-dur   # validation dure
+uv run python -m packages.analyse.scoring.ml.annoter --serie m6-dev-reel-echantillon --annotateur theo
+uv run python -m packages.analyse.scoring.ml.comprendre --geler-dev     # après l'échantillon
+uv run python -m packages.analyse.scoring.ml.comprendre --valider-reel  # jeu de développement réel
 uv run python -m packages.analyse.scoring.ml.comprendre --mesurer       # une fois par modèle
 ```
 

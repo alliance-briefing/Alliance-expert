@@ -47,6 +47,14 @@ relire les jeux gelés (P3) :
 
     uv run python -m packages.analyse.scoring.ml.comprendre --valider-dur
 
+Le jeu de développement réel (étape 0 B, règle M0 modifiée le 22/11) : 104 cartes écrites hors
+de nos générateurs (journée de Claire, un élément par modèle de phrase du jeu de David), jugées
+par Claude avec le guide, 30 rejugées à l'aveugle par Théo, gelées avant toute mesure.
+
+    uv run python -m packages.analyse.scoring.ml.comprendre --tirer-dev <data de David>
+    uv run python -m packages.analyse.scoring.ml.comprendre --geler-dev
+    uv run python -m packages.analyse.scoring.ml.comprendre --valider-reel
+
 La mesure finale (`--mesurer`), une seule fois par modèle (G1) : sur T-gen (M5) et la série
 démo de M6, refusée si un gel manque ou a changé, ou si le code ou le modèle ne sont pas
 commités ; chaque lecture s'ajoute à `scoring/annotations/journal-geles.jsonl`.
