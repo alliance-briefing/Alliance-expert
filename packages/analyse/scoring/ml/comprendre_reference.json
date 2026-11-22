@@ -62,109 +62,109 @@
  "cibles": {
   "action": {
    "configuration": {
-    "l2": 0.0001,
+    "l2": 1e-05,
     "classes_pondérées": false
    },
    "essais": [
     {
      "l2": 0.01,
      "classes_pondérées": false,
-     "score": 0.8108
+     "score": 0.7785
     },
     {
      "l2": 0.001,
      "classes_pondérées": false,
-     "score": 0.867
+     "score": 0.8444
     },
     {
      "l2": 0.0001,
      "classes_pondérées": false,
-     "score": 0.887
+     "score": 0.8671
     },
     {
      "l2": 1e-05,
      "classes_pondérées": false,
-     "score": 0.883
+     "score": 0.8678
     },
     {
      "l2": 0.01,
      "classes_pondérées": true,
-     "score": 0.7991
+     "score": 0.7701
     },
     {
      "l2": 0.001,
      "classes_pondérées": true,
-     "score": 0.8561
+     "score": 0.8243
     },
     {
      "l2": 0.0001,
      "classes_pondérées": true,
-     "score": 0.8746
+     "score": 0.8549
     },
     {
      "l2": 1e-05,
      "classes_pondérées": true,
-     "score": 0.8706
+     "score": 0.8524
     }
    ],
-   "f1_macro": 0.887,
+   "f1_macro": 0.8678,
    "f1_macro_ic95": [
-    0.8751,
-    0.8981
+    0.8542,
+    0.8789
    ],
    "classes": {
     "repondre": {
-     "précision": 0.85,
-     "rappel": 0.885,
-     "f1": 0.867,
-     "n": 494
+     "précision": 0.797,
+     "rappel": 0.803,
+     "f1": 0.8,
+     "n": 396
     },
     "faire": {
-     "précision": 0.866,
-     "rappel": 0.826,
-     "f1": 0.846,
-     "n": 305
+     "précision": 0.861,
+     "rappel": 0.841,
+     "f1": 0.851,
+     "n": 302
     },
     "decider": {
-     "précision": 0.864,
-     "rappel": 0.878,
-     "f1": 0.871,
-     "n": 523
+     "précision": 0.809,
+     "rappel": 0.84,
+     "f1": 0.824,
+     "n": 624
     },
     "preparer": {
-     "précision": 0.918,
-     "rappel": 0.911,
-     "f1": 0.914,
+     "précision": 0.926,
+     "rappel": 0.881,
+     "f1": 0.903,
      "n": 270
     },
     "relire": {
-     "précision": 0.867,
-     "rappel": 0.81,
-     "f1": 0.837,
-     "n": 289
+     "précision": 0.816,
+     "rappel": 0.829,
+     "f1": 0.823,
+     "n": 193
     },
     "informer": {
-     "précision": 0.932,
-     "rappel": 0.925,
-     "f1": 0.929,
-     "n": 1516
+     "précision": 0.949,
+     "rappel": 0.931,
+     "f1": 0.94,
+     "n": 1845
     },
     "rien": {
-     "précision": 0.938,
-     "rappel": 0.952,
-     "f1": 0.945,
-     "n": 1154
+     "précision": 0.922,
+     "rappel": 0.947,
+     "f1": 0.934,
+     "n": 921
     }
    },
    "par_source": {
-    "mail": 0.8698,
-    "calendar": 0.7262,
-    "task": 0.894,
-    "file": 0.8972
+    "mail": 0.8446,
+    "calendar": 0.9362,
+    "task": 0.8726,
+    "file": 0.9049
    },
    "par_ecrivain": {
-    "gabarits": 0.9155,
-    "llm": 0.8174
+    "gabarits": 0.8964,
+    "llm": 0.7834
    },
    "confusion": {
     "lignes = vérité, colonnes = prédiction": [
@@ -178,67 +178,67 @@
     ],
     "matrice": [
      [
-      437,
-      21,
-      8,
+      318,
+      16,
+      41,
+      3,
+      3,
       7,
-      1,
+      8
+     ],
+     [
       13,
-      7
-     ],
-     [
-      19,
-      252,
-      5,
+      254,
+      16,
       1,
-      5,
-      16,
-      7
+      2,
+      10,
+      6
      ],
      [
-      9,
-      2,
-      459,
-      11,
-      14,
-      16,
+      31,
+      10,
+      524,
+      8,
+      6,
+      33,
       12
      ],
      [
-      5,
-      1,
+      4,
+      2,
+      11,
+      238,
+      0,
+      9,
+      6
+     ],
+     [
       8,
-      246,
+      2,
+      7,
       1,
-      6,
-      3
+      160,
+      15,
+      0
+     ],
+     [
+      18,
+      10,
+      33,
+      3,
+      21,
+      1718,
+      42
      ],
      [
       7,
-      3,
-      18,
-      2,
-      234,
-      21,
-      4
-     ],
-     [
-      28,
-      8,
-      24,
       1,
-      12,
-      1403,
-      40
-     ],
-     [
-      9,
-      4,
-      9,
-      0,
+      16,
       3,
-      30,
-      1099
+      4,
+      18,
+      872
      ]
     ]
    }
@@ -407,7 +407,7 @@
  },
  "ecrivain_croise": {
   "exemples_llm_validation": 1457,
-  "gabarits_seuls": 0.6247,
-  "deux_ecrivains": 0.8174
+  "gabarits_seuls": 0.5689,
+  "deux_ecrivains": 0.7834
  }
 }

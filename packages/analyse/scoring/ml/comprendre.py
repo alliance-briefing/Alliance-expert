@@ -260,7 +260,8 @@ def card_text(c: dict) -> str:
 
 def labels_of(row: dict) -> dict[str, str]:
     """La cible : l'action du fait (décision du 22/11), pas « rien » pour un élément traité
-    avant le brief, car la carte ne le montre pas ; l'urgence et l'alerte écrites."""
+    avant le brief, car la carte ne le montre pas ; l'urgence et l'alerte écrites. Les
+    règles du guide du 23/11 sont appliquées par l'étiqueteur du simulateur."""
     return {
         "action": row["action"],
         "urgence": row["urgence"],
@@ -287,8 +288,14 @@ def first_briefs(items: Iterable[Item], rows: dict[str, dict]) -> dict[str, date
 def persona_examples(
     key: str, corpora: dict[str, Path], frozen: set[str]
 ) -> tuple[list[Example], int]:
-    """Les exemples d'une persona, et le nombre d'éléments écartés parce que gelés."""
-    rows = {r["item_id"]: r for r in load.load_scenario(key, corpora["gabarits"])}
+    """Les exemples d'une persona, et le nombre d'éléments écartés parce que gelés. Chaque
+    carte prend l'étiquette de son écrivain : depuis le 23/11, une copie « pour suivre » ou une
+    demande d'avis se lit dans la formulation, qui diffère d'un écrivain à l'autre."""
+    labels_by_writer = {
+        writer: {r["item_id"]: r for r in load.load_scenario(key, path)}
+        for writer, path in corpora.items()
+    }
+    rows = labels_by_writer["gabarits"]
     by_writer = {
         writer: {i.item_id: i for i in load.load_items(key, path)}
         for writer, path in corpora.items()
@@ -314,9 +321,8 @@ def persona_examples(
             if text in texts:  # même carte qu'avec l'autre écrivain : une seule fois
                 continue
             texts.add(text)
-            out.append(
-                Example(item_id, key, row["case_id"], row["source"], writer, text, labels_of(row))
-            )
+            labels = labels_of(labels_by_writer[writer][item_id])
+            out.append(Example(item_id, key, row["case_id"], row["source"], writer, text, labels))
     return out, excluded
 
 

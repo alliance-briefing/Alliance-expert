@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from datetime import datetime
 
 import numpy as np
@@ -168,6 +169,24 @@ def test_la_cible_est_l_action_du_fait_meme_si_traite_avant_le_brief(corpora, ex
     ]
     # Des cas existent : « rien » au moment du brief, mais la carte n'en montre rien.
     assert resolved_before and any(e.labels["action"] != "rien" for e in resolved_before)
+
+
+def test_chaque_carte_prend_l_etiquette_de_son_ecrivain(corpora, examples, tmp_path):
+    """23/11 : une copie « pour suivre » se lit dans le texte du LLM, pas dans les gabarits."""
+    target = next(e for e in examples if e.writer == "llm")
+    llm = tmp_path / "llm"
+    shutil.copytree(corpora["llm"], llm)
+    path = llm / "scenario" / f"{target.persona}.jsonl"
+    rows = [json.loads(x) for x in path.read_text("utf-8").splitlines() if x]
+    for row in rows:
+        if row["item_id"] == target.item_id:
+            row["action"] = "decider" if target.labels["action"] != "decider" else "faire"
+    path.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    got = comprendre.persona_examples(
+        target.persona, {"gabarits": corpora["gabarits"], "llm": llm}, set()
+    )[0]
+    by_writer = {e.writer: e.labels["action"] for e in got if e.item_id == target.item_id}
+    assert by_writer["gabarits"] == target.labels["action"] != by_writer["llm"]
 
 
 def test_les_elements_geles_sont_exclus(corpora, examples):
