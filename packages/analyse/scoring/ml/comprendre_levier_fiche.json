@@ -1,0 +1,967 @@
+{
+ "fiche": [
+  "source=mail",
+  "source=calendar",
+  "source=task",
+  "source=file",
+  "mail:destinataire_direct",
+  "mail:en_copie",
+  "mail:expediteur=automate",
+  "mail:expediteur=client",
+  "mail:expediteur=fournisseur",
+  "mail:expediteur=hierarchie",
+  "mail:expediteur=direction",
+  "mail:expediteur=interne",
+  "mail:expediteur=inconnu",
+  "mail:de_vous",
+  "mail:reponse",
+  "mail:transfert",
+  "mail:importance_haute",
+  "mail:non_lu",
+  "mail:desabonnement",
+  "reunion:organise",
+  "reunion:pas_repondu",
+  "reunion:acceptee",
+  "reunion:refusee",
+  "reunion:annulee",
+  "reunion:aujourd_hui",
+  "reunion:demain",
+  "reunion:hier",
+  "tache:echeance",
+  "tache:en_retard",
+  "tache:terminee",
+  "tache:planner",
+  "tache:verbe=repondre",
+  "tache:verbe=faire",
+  "tache:verbe=decider",
+  "tache:verbe=preparer",
+  "tache:verbe=relire",
+  "fichier:modifie_par_vous",
+  "fichier:cite"
+ ],
+ "fiche_frequence": {
+  "source=mail": 0.7888,
+  "source=calendar": 0.0463,
+  "source=task": 0.0378,
+  "source=file": 0.1271,
+  "mail:destinataire_direct": 0.6576,
+  "mail:en_copie": 0.0333,
+  "mail:expediteur=automate": 0.0862,
+  "mail:expediteur=client": 0.0323,
+  "mail:expediteur=fournisseur": 0.0097,
+  "mail:expediteur=hierarchie": 0.0435,
+  "mail:expediteur=direction": 0.2061,
+  "mail:expediteur=interne": 0.2873,
+  "mail:expediteur=inconnu": 0.0257,
+  "mail:de_vous": 0.0979,
+  "mail:reponse": 0.1486,
+  "mail:transfert": 0.0,
+  "mail:importance_haute": 0.0438,
+  "mail:non_lu": 0.5191,
+  "mail:desabonnement": 0.0107,
+  "reunion:organise": 0.0107,
+  "reunion:pas_repondu": 0.013,
+  "reunion:acceptee": 0.0227,
+  "reunion:refusee": 0.0,
+  "reunion:annulee": 0.0021,
+  "reunion:aujourd_hui": 0.0154,
+  "reunion:demain": 0.0309,
+  "reunion:hier": 0.0,
+  "tache:echeance": 0.0378,
+  "tache:en_retard": 0.0089,
+  "tache:terminee": 0.0,
+  "tache:planner": 0.0,
+  "tache:verbe=repondre": 0.0034,
+  "tache:verbe=faire": 0.0176,
+  "tache:verbe=decider": 0.012,
+  "tache:verbe=preparer": 0.003,
+  "tache:verbe=relire": 0.0019,
+  "fichier:modifie_par_vous": 0.0184,
+  "fichier:cite": 0.1024
+ },
+ "variantes": {
+  "R": {
+   "fiche": "aucune",
+   "metiers": {
+    "action": {
+     "f1_macro": 0.7278,
+     "f1_macro_ic95": [
+      0.7207,
+      0.7352
+     ],
+     "configuration": {
+      "l2": 0.001,
+      "classes_pondérées": false
+     },
+     "par_source": {
+      "mail": 0.7066,
+      "calendar": 0.4839,
+      "task": 0.5718,
+      "file": 0.4592
+     }
+    },
+    "urgence": {
+     "f1_macro": 0.6822,
+     "f1_macro_ic95": [
+      0.6692,
+      0.6948
+     ],
+     "configuration": {
+      "l2": 0.001,
+      "classes_pondérées": false
+     },
+     "par_source": {
+      "mail": 0.6796,
+      "calendar": 0.3326,
+      "task": 0.58,
+      "file": 0.4997
+     }
+    },
+    "alerte": {
+     "f1_macro": 0.9596,
+     "f1_macro_ic95": [
+      0.9493,
+      0.969
+     ],
+     "configuration": {
+      "l2": 0.01,
+      "classes_pondérées": false
+     },
+     "par_source": {
+      "mail": 0.9594,
+      "calendar": 1.0,
+      "task": 1.0,
+      "file": 1.0
+     }
+    }
+   },
+   "alerte_rappel_095": {
+    "seuil": 0.2472,
+    "rappel": 0.95,
+    "précision": 0.857
+   },
+   "gabarits": {
+    "f1_macro": 0.5782,
+    "f1_macro_ic95": [
+     0.5553,
+     0.5984
+    ]
+   },
+   "ecrivain": {
+    "gabarits→gabarits": {
+     "f1_macro": 0.7514,
+     "f1_macro_ic95": [
+      0.7376,
+      0.7652
+     ]
+    },
+    "gabarits→llm": {
+     "f1_macro": 0.5014,
+     "f1_macro_ic95": [
+      0.4861,
+      0.5162
+     ]
+    },
+    "llm→gabarits": {
+     "f1_macro": 0.5239,
+     "f1_macro_ic95": [
+      0.5073,
+      0.5392
+     ]
+    },
+    "llm→llm": {
+     "f1_macro": 0.6737,
+     "f1_macro_ic95": [
+      0.6574,
+      0.6895
+     ]
+    }
+   },
+   "reel": {
+    "action": {
+     "f1_macro": 0.2203,
+     "f1_macro_ic95": [
+      0.1596,
+      0.2712
+     ],
+     "par_source": {
+      "mail": 0.2068,
+      "calendar": 0.2086,
+      "task": 0.6,
+      "file": 0.4444
+     }
+    },
+    "urgence": {
+     "f1_macro": 0.3733,
+     "f1_macro_ic95": [
+      0.3037,
+      0.5249
+     ],
+     "par_source": {
+      "mail": 0.3654,
+      "calendar": 1.0,
+      "task": 1.0,
+      "file": 1.0
+     }
+    },
+    "alerte": {
+     "f1_macro": 0.4826,
+     "f1_macro_ic95": [
+      0.4667,
+      0.4951
+     ],
+     "par_source": {
+      "mail": 0.4762,
+      "calendar": 1.0,
+      "task": 1.0,
+      "file": 1.0
+     }
+    },
+    "action_par_origine": {
+     "claire": 0.3123,
+     "david": 0.1695
+    },
+    "action_classes": {
+     "repondre": {
+      "précision": 0.375,
+      "rappel": 0.429,
+      "f1": 0.4,
+      "n": 21
+     },
+     "faire": {
+      "précision": 0.208,
+      "rappel": 0.417,
+      "f1": 0.278,
+      "n": 12
+     },
+     "decider": {
+      "précision": 0.0,
+      "rappel": 0.0,
+      "f1": 0.0,
+      "n": 3
+     },
+     "preparer": {
+      "précision": 0.0,
+      "rappel": 0.0,
+      "f1": 0.0,
+      "n": 6
+     },
+     "relire": {
+      "précision": 0.0,
+      "rappel": 0.0,
+      "f1": 0.0,
+      "n": 0
+     },
+     "informer": {
+      "précision": 0.632,
+      "rappel": 0.387,
+      "f1": 0.48,
+      "n": 31
+     },
+     "rien": {
+      "précision": 0.476,
+      "rappel": 0.323,
+      "f1": 0.385,
+      "n": 31
+     }
+    },
+    "action_confusion": [
+     [
+      9,
+      1,
+      4,
+      0,
+      0,
+      6,
+      1
+     ],
+     [
+      0,
+      5,
+      3,
+      0,
+      2,
+      0,
+      2
+     ],
+     [
+      2,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      4,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1
+     ],
+     [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      5,
+      6,
+      0,
+      0,
+      1,
+      12,
+      7
+     ],
+     [
+      4,
+      11,
+      0,
+      2,
+      4,
+      0,
+      10
+     ]
+    ],
+    "alertes_reelles_detectees": "0/1"
+   }
+  },
+  "H": {
+   "fiche": "hybride",
+   "metiers": {
+    "action": {
+     "f1_macro": 0.8036,
+     "f1_macro_ic95": [
+      0.7972,
+      0.8099
+     ],
+     "configuration": {
+      "l2": 0.001,
+      "classes_pondérées": false
+     },
+     "par_source": {
+      "mail": 0.7682,
+      "calendar": 0.6954,
+      "task": 0.8263,
+      "file": 0.6647
+     }
+    },
+    "urgence": {
+     "f1_macro": 0.6998,
+     "f1_macro_ic95": [
+      0.6867,
+      0.713
+     ],
+     "configuration": {
+      "l2": 0.001,
+      "classes_pondérées": false
+     },
+     "par_source": {
+      "mail": 0.6962,
+      "calendar": 1.0,
+      "task": 0.894,
+      "file": 1.0
+     }
+    },
+    "alerte": {
+     "f1_macro": 0.9687,
+     "f1_macro_ic95": [
+      0.9598,
+      0.9768
+     ],
+     "configuration": {
+      "l2": 0.001,
+      "classes_pondérées": false
+     },
+     "par_source": {
+      "mail": 0.9685,
+      "calendar": 1.0,
+      "task": 1.0,
+      "file": 1.0
+     }
+    }
+   },
+   "alerte_rappel_095": {
+    "seuil": 0.4148,
+    "rappel": 0.95,
+    "précision": 0.911
+   },
+   "gabarits": {
+    "f1_macro": 0.6834,
+    "f1_macro_ic95": [
+     0.6635,
+     0.7029
+    ]
+   },
+   "ecrivain": {
+    "gabarits→gabarits": {
+     "f1_macro": 0.802,
+     "f1_macro_ic95": [
+      0.7893,
+      0.8145
+     ]
+    },
+    "gabarits→llm": {
+     "f1_macro": 0.5709,
+     "f1_macro_ic95": [
+      0.5569,
+      0.5854
+     ]
+    },
+    "llm→gabarits": {
+     "f1_macro": 0.62,
+     "f1_macro_ic95": [
+      0.6065,
+      0.6335
+     ]
+    },
+    "llm→llm": {
+     "f1_macro": 0.7422,
+     "f1_macro_ic95": [
+      0.7271,
+      0.7559
+     ]
+    }
+   },
+   "reel": {
+    "action": {
+     "f1_macro": 0.3824,
+     "f1_macro_ic95": [
+      0.2972,
+      0.4531
+     ],
+     "par_source": {
+      "mail": 0.2868,
+      "calendar": 0.3038,
+      "task": 1.0,
+      "file": 0.4444
+     }
+    },
+    "urgence": {
+     "f1_macro": 0.4327,
+     "f1_macro_ic95": [
+      0.3147,
+      0.6568
+     ],
+     "par_source": {
+      "mail": 0.4284,
+      "calendar": 1.0,
+      "task": 1.0,
+      "file": 1.0
+     }
+    },
+    "alerte": {
+     "f1_macro": 0.4927,
+     "f1_macro_ic95": [
+      0.4826,
+      1.0
+     ],
+     "par_source": {
+      "mail": 0.4901,
+      "calendar": 1.0,
+      "task": 1.0,
+      "file": 1.0
+     }
+    },
+    "action_par_origine": {
+     "claire": 0.3751,
+     "david": 0.3415
+    },
+    "action_classes": {
+     "repondre": {
+      "précision": 0.632,
+      "rappel": 0.571,
+      "f1": 0.6,
+      "n": 21
+     },
+     "faire": {
+      "précision": 0.316,
+      "rappel": 0.5,
+      "f1": 0.387,
+      "n": 12
+     },
+     "decider": {
+      "précision": 0.0,
+      "rappel": 0.0,
+      "f1": 0.0,
+      "n": 3
+     },
+     "preparer": {
+      "précision": 0.429,
+      "rappel": 0.5,
+      "f1": 0.462,
+      "n": 6
+     },
+     "relire": {
+      "précision": 0.0,
+      "rappel": 0.0,
+      "f1": 0.0,
+      "n": 0
+     },
+     "informer": {
+      "précision": 0.615,
+      "rappel": 0.516,
+      "f1": 0.561,
+      "n": 31
+     },
+     "rien": {
+      "précision": 0.85,
+      "rappel": 0.548,
+      "f1": 0.667,
+      "n": 31
+     }
+    },
+    "action_confusion": [
+     [
+      12,
+      1,
+      3,
+      0,
+      0,
+      5,
+      0
+     ],
+     [
+      1,
+      6,
+      1,
+      0,
+      1,
+      3,
+      0
+     ],
+     [
+      2,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      2,
+      0,
+      0,
+      3,
+      0,
+      1,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      1,
+      5,
+      4,
+      1,
+      1,
+      16,
+      3
+     ],
+     [
+      1,
+      6,
+      1,
+      3,
+      2,
+      1,
+      17
+     ]
+    ],
+    "alertes_reelles_detectees": "0/1"
+   }
+  },
+  "F": {
+   "fiche": "seule",
+   "metiers": {
+    "action": {
+     "f1_macro": 0.5417,
+     "f1_macro_ic95": [
+      0.5339,
+      0.5495
+     ],
+     "configuration": {
+      "l2": 0.001,
+      "classes_pondérées": false
+     },
+     "par_source": {
+      "mail": 0.4432,
+      "calendar": 0.7075,
+      "task": 1.0,
+      "file": 0.5024
+     }
+    },
+    "urgence": {
+     "f1_macro": 0.4339,
+     "f1_macro_ic95": [
+      0.4241,
+      0.444
+     ],
+     "configuration": {
+      "l2": 0.0001,
+      "classes_pondérées": false
+     },
+     "par_source": {
+      "mail": 0.4336,
+      "calendar": 1.0,
+      "task": 0.4864,
+      "file": 1.0
+     }
+    },
+    "alerte": {
+     "f1_macro": 0.586,
+     "f1_macro_ic95": [
+      0.5758,
+      0.5959
+     ],
+     "configuration": {
+      "l2": 0.0001,
+      "classes_pondérées": true
+     },
+     "par_source": {
+      "mail": 0.5781,
+      "calendar": 1.0,
+      "task": 1.0,
+      "file": 1.0
+     }
+    }
+   },
+   "alerte_rappel_095": {
+    "seuil": 0.3949,
+    "rappel": 0.95,
+    "précision": 0.056
+   },
+   "gabarits": {
+    "f1_macro": 0.513,
+    "f1_macro_ic95": [
+     0.4937,
+     0.5333
+    ]
+   },
+   "ecrivain": {
+    "gabarits→gabarits": {
+     "f1_macro": 0.4519,
+     "f1_macro_ic95": [
+      0.4402,
+      0.4642
+     ]
+    },
+    "gabarits→llm": {
+     "f1_macro": 0.4276,
+     "f1_macro_ic95": [
+      0.4149,
+      0.4401
+     ]
+    },
+    "llm→gabarits": {
+     "f1_macro": 0.4347,
+     "f1_macro_ic95": [
+      0.4232,
+      0.447
+     ]
+    },
+    "llm→llm": {
+     "f1_macro": 0.4401,
+     "f1_macro_ic95": [
+      0.4277,
+      0.4533
+     ]
+    }
+   },
+   "reel": {
+    "action": {
+     "f1_macro": 0.4955,
+     "f1_macro_ic95": [
+      0.3962,
+      0.5872
+     ],
+     "par_source": {
+      "mail": 0.3461,
+      "calendar": 0.5439,
+      "task": 1.0,
+      "file": 0.4444
+     }
+    },
+    "urgence": {
+     "f1_macro": 0.4951,
+     "f1_macro_ic95": [
+      0.3251,
+      1.0
+     ],
+     "par_source": {
+      "mail": 0.4933,
+      "calendar": 1.0,
+      "task": 1.0,
+      "file": 1.0
+     }
+    },
+    "alerte": {
+     "f1_macro": 0.446,
+     "f1_macro_ic95": [
+      0.3918,
+      0.52
+     ],
+     "par_source": {
+      "mail": 0.4083,
+      "calendar": 1.0,
+      "task": 1.0,
+      "file": 1.0
+     }
+    },
+    "action_par_origine": {
+     "claire": 0.4225,
+     "david": 0.3971
+    },
+    "action_classes": {
+     "repondre": {
+      "précision": 0.5,
+      "rappel": 0.524,
+      "f1": 0.512,
+      "n": 21
+     },
+     "faire": {
+      "précision": 1.0,
+      "rappel": 0.417,
+      "f1": 0.588,
+      "n": 12
+     },
+     "decider": {
+      "précision": 0.0,
+      "rappel": 0.0,
+      "f1": 0.0,
+      "n": 3
+     },
+     "preparer": {
+      "précision": 0.4,
+      "rappel": 1.0,
+      "f1": 0.571,
+      "n": 6
+     },
+     "relire": {
+      "précision": 0.0,
+      "rappel": 0.0,
+      "f1": 0.0,
+      "n": 0
+     },
+     "informer": {
+      "précision": 0.581,
+      "rappel": 0.581,
+      "f1": 0.581,
+      "n": 31
+     },
+     "rien": {
+      "précision": 0.733,
+      "rappel": 0.71,
+      "f1": 0.721,
+      "n": 31
+     }
+    },
+    "action_confusion": [
+     [
+      11,
+      0,
+      0,
+      1,
+      0,
+      7,
+      2
+     ],
+     [
+      2,
+      5,
+      1,
+      0,
+      0,
+      4,
+      0
+     ],
+     [
+      2,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      6,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      6,
+      0,
+      0,
+      1,
+      0,
+      18,
+      6
+     ],
+     [
+      1,
+      0,
+      0,
+      7,
+      0,
+      1,
+      22
+     ]
+    ],
+    "alertes_reelles_detectees": "1/1"
+   }
+  }
+ },
+ "ecarts_apparies_action": {
+  "H-R": {
+   "metiers": {
+    "ecart": 0.0758,
+    "ic95": [
+     0.0699,
+     0.0818
+    ]
+   },
+   "reel": {
+    "ecart": 0.162,
+    "ic95": [
+     0.0816,
+     0.2306
+    ]
+   },
+   "gabarits": {
+    "ecart": 0.1053,
+    "ic95": [
+     0.0885,
+     0.1238
+    ]
+   },
+   "gabarits→llm": {
+    "ecart": 0.0696,
+    "ic95": [
+     0.0594,
+     0.08
+    ]
+   },
+   "llm→gabarits": {
+    "ecart": 0.0962,
+    "ic95": [
+     0.0831,
+     0.1111
+    ]
+   }
+  },
+  "F-H": {
+   "metiers": {
+    "ecart": -0.2619,
+    "ic95": [
+     -0.2713,
+     -0.2528
+    ]
+   },
+   "reel": {
+    "ecart": 0.1132,
+    "ic95": [
+     0.0256,
+     0.2119
+    ]
+   },
+   "gabarits": {
+    "ecart": -0.1704,
+    "ic95": [
+     -0.1936,
+     -0.148
+    ]
+   },
+   "gabarits→llm": {
+    "ecart": -0.1434,
+    "ic95": [
+     -0.1606,
+     -0.1261
+    ]
+   },
+   "llm→gabarits": {
+    "ecart": -0.1853,
+    "ic95": [
+     -0.2017,
+     -0.1677
+    ]
+   }
+  },
+  "F-R": {
+   "metiers": {
+    "ecart": -0.1861,
+    "ic95": [
+     -0.1961,
+     -0.1761
+    ]
+   },
+   "reel": {
+    "ecart": 0.2752,
+    "ic95": [
+     0.1736,
+     0.3739
+    ]
+   },
+   "gabarits": {
+    "ecart": -0.0651,
+    "ic95": [
+     -0.0917,
+     -0.0348
+    ]
+   },
+   "gabarits→llm": {
+    "ecart": -0.0738,
+    "ic95": [
+     -0.0917,
+     -0.0553
+    ]
+   },
+   "llm→gabarits": {
+    "ecart": -0.0892,
+    "ic95": [
+     -0.108,
+     -0.0691
+    ]
+   }
+  }
+ },
+ "decision": {
+  "gains_significatifs_de_H": [
+   "reel",
+   "gabarits",
+   "gabarits→llm",
+   "llm→gabarits"
+  ],
+  "perte_significative_decoupage_1": false,
+  "veto_alertes": false,
+  "retenue": "H"
+ }
+}
