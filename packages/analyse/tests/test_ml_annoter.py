@@ -3,7 +3,9 @@ reprise après fermeture, accord, arbitrage, serveur local."""
 
 from __future__ import annotations
 
+import html
 import json
+import re
 import threading
 import urllib.error
 import urllib.request
@@ -379,3 +381,28 @@ def test_file_card_cites_known_items_only():
     assert later and all(f"« {i.title} » (" not in line or i in known for i in later)
     assert "Cité dans" not in dict(card(contract, vp)["fields"])  # sans boîte connue
     assert annoter.cited_in(contract, [], vp) == ""
+
+
+def _plain(text: str) -> str:
+    """Espaces fines et insécables, apostrophes courbes, retours à la ligne : ramenés à un
+    espace ou une apostrophe droite, pour comparer la page au guide."""
+    text = text.replace("\u2019", "'").replace("\u00a0", " ").replace("\u202f", " ")
+    return re.sub(r"\s+", " ", html.unescape(text)).strip()
+
+
+def test_guide_in_the_page_quotes_only_the_written_guide():
+    """Le guide affiché sous les boutons n'invente rien : chaque exemple cité (<q>) est une
+    phrase de guide-annotation.md, et chaque choix de la page a sa définition."""
+    page = annoter.PAGE.read_text(encoding="utf-8")
+    guide = _plain((annoter.ANNOTATIONS / "guide-annotation.md").read_text(encoding="utf-8"))
+    section = page[
+        page.index('<section class="guide"') : page.index(
+            "</section>", page.index('<section class="guide"')
+        )
+    ]
+    quotes = [_plain(q) for q in re.findall(r"<q>(.*?)</q>", section, flags=re.DOTALL)]
+    assert len(quotes) >= 30
+    missing = [q for q in quotes if q not in guide]
+    assert not missing, missing
+    keys = set(re.findall(r'class="def" data-key="([^"]+)"', section))
+    assert keys == {*annoter.ACTIONS, *annoter.URGENCIES, "alerte-oui", "alerte-non"}
