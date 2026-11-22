@@ -1,0 +1,6 @@
+# Comptes autorisés en AUTH_MODE=oidc (L3.4). Copier hors du dépôt, puis USERS_FILE=<chemin>.
+# Clé : claims de OIDC_IDENTITY_CLAIMS joints par « : » (Microsoft : "<tid>:<oid>", portail Entra).
+# Valeur : identifiant interne (u_…) → dossier de données et rôle. Compte absent = refusé.
+
+[accounts]
+"00000000-0000-0000-0000-000000000000:11111111-1111-1111-1111-111111111111" = "u_demo_001"
