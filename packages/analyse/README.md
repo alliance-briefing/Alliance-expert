@@ -464,6 +464,31 @@ graine 0. Limites : 30 % des copies perturbées sont identiques à l'original (u
 perturbation sans effet) ; la fiche seule (0,495 au levier 1, autre grille) n'a pas été remesurée
 contre N. Le candidat devient N : MiniLM gelé sur le texte normalisé, fiche, régression.
 
+**Levier 3, encodeur réajusté** (`scoring/ml/encodeur.py`, règle écrite le 23/11 avant la mesure,
+plan §11). E : MiniLM réajusté de bout en bout sur le PC GPU, même entrée que N (texte normalisé
+et fiche), trois têtes, recette fixée d'avance (3 époques, AdamW 2e-5 / 1e-3, lots de 32, 256
+jetons). La validation dure est la même (l'apprenant remplace la régression, mêmes plis) ; N est
+refait dans la même commande. E doit battre N avec chacune de ses 3 graines, puis tenir ≤ 300 Mo
+et ≤ 30 ms par élément en ONNX int8 sur le portable. Dépendances : groupe uv `gpu` (torch CUDA
+13.0, transformers, onnx), en conflit avec `nli` (torch processeur) ; ni la CI ni l'image Docker
+ne l'installent, et les tests de l'encodeur (petit BERT créé sur place) sont alors sautés.
+
+Sur le PC GPU (pilote NVIDIA compatible CUDA 13, branche `l2/feat/m6-encodeur`) :
+
+```bash
+uv sync --all-packages --group gpu
+uv run python -c "import torch; print(torch.cuda.is_available())"     # doit afficher True
+uv run python -m packages.collect.trainset                             # corpus des gabarits (2 s)
+uv run python -m packages.collect.trainset --verifier
+uv run python -m packages.collect.trainset.llm_corpus --assembler       # textes du LLM
+uv run python -m packages.analyse.scoring.ml.encodeur --sonde           # temps estimé
+uv run python -m packages.analyse.scoring.ml.encodeur --levier          # N contre E
+uv run python -m packages.analyse.scoring.ml.encodeur --exporter        # ONNX int8 de E0
+```
+
+Puis, sur le portable : `uv run python -m packages.analyse.scoring.ml.encodeur --latence <dossier
+onnx copié>` (taille, latence par élément, écart int8 − float32 sur le jeu réel).
+
 ```bash
 uv run python -m packages.analyse.scoring.ml.comprendre --levier-texte  # H, N, A, N+A comparées
 uv run python -m packages.analyse.scoring.ml.comprendre --levier-fiche  # R, H, F comparées

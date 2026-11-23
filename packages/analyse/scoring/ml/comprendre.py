@@ -1017,12 +1017,17 @@ def hard_validation(
     log: Callable[[str], None] = lambda _: None,
     keep: dict | None = None,
     grid: Sequence[Config] | None = None,
+    fit_folds: Callable[..., dict[str, OutOfFold]] | None = None,
 ) -> dict:
     """Les trois découpages de la validation dure, tous sur des métiers jamais vus :
     1. métiers : `n_folds` plis de métiers entiers, les trois cibles ;
     2. gabarits : en plus, une part des variantes de chaque famille retirée de l'entraînement,
        mesure sur les cartes qui les utilisent, comparée au découpage 1 sur les mêmes cartes ;
-    3. écrivain : mails qui ont les deux textes, appris sur un écrivain, mesurés sur chacun."""
+    3. écrivain : mails qui ont les deux textes, appris sur un écrivain, mesurés sur chacun.
+
+    `fit_folds` remplace la régression (`out_of_fold`) par un autre apprenant, mêmes plis
+    (encodeur réajusté, levier 3)."""
+    fit_folds = fit_folds or out_of_fold
     plis = metier_folds((e.metier for e in examples), n_folds, seed)
     base: list[tuple[list[int], list[int]]] = []
     for held in plis:
@@ -1042,7 +1047,7 @@ def hard_validation(
     for target, classes in TARGETS.items():
         y = _codes(examples, target)
         folds = [Fold(tr, {"v": va}) for tr, va in base]
-        oof = out_of_fold(target, X, y, folds, log, grid=grid)["v"]
+        oof = fit_folds(target, X, y, folds, log, grid=grid)["v"]
         entry, pred = judge(target, oof, y, examples, grid)
         k = len(classes)
         entry["par_ecrivain"] = {
@@ -1067,7 +1072,7 @@ def hard_validation(
         )
         for (tr, va), held in zip(base, held_templates, strict=True)
     ]
-    oof = out_of_fold("action", X, y, folds, log, grid=grid)["v"]
+    oof = fit_folds("action", X, y, folds, log, grid=grid)["v"]
     entry, pred = judge("action", oof, y, examples, grid)
     keep["gabarits"] = (oof.index, pred)
     truth, same = y[oof.index], action_pred[oof.index]
@@ -1102,7 +1107,7 @@ def hard_validation(
             )
             for tr, va in base
         ]
-        for measure, oof in out_of_fold("action", X, y, folds, log, grid=grid).items():
+        for measure, oof in fit_folds("action", X, y, folds, log, grid=grid).items():
             entry, pred = judge("action", oof, y, examples, grid)
             cells[f"{learn}→{measure}"] = (entry, pred, oof)
             keep[f"{learn}→{measure}"] = (oof.index, pred)
@@ -1711,17 +1716,34 @@ def run_variant(
     """Une variante : validation dure, puis modèle appris sur tout l'entraînement (réglages du
     découpage 1) et mesuré sur le jeu réel. Rend les chiffres, les prédictions de l'action par
     mesure (vérité, prédiction) pour les écarts appariés, et le rappel des alertes (veto G5)."""
-    dev_cards, origins, dev_truth_codes = dev
-    y_dev = dev_truth_codes["action"]
     keep: dict = {}
     hard = hard_validation(examples, Xv, n_folds, log=log, keep=keep, grid=grid)
+    reference = fit_from_report(examples, Xv, hard["metiers"], "", fiche)
+    dev_pred = {
+        t: predict(m, Xd, reference.alert_threshold if t == "alerte" else None)
+        for t, m in reference.models.items()
+    }
+    return variant_entry(examples, hard, keep, dev, dev_pred, fiche, texte)
+
+
+def variant_entry(
+    examples: Sequence[Example],
+    hard: dict,
+    keep: dict,
+    dev: tuple[list[dict], list[str], dict],
+    dev_pred: dict[str, np.ndarray],
+    fiche: str,
+    texte: str,
+) -> tuple[dict, dict[str, tuple[np.ndarray, np.ndarray]], float]:
+    """Les chiffres d'une variante (validation dure et jeu réel), ses prédictions de l'action
+    par mesure (vérité, prédiction) et le rappel des alertes ; commun à tous les apprenants."""
+    dev_cards, origins, dev_truth_codes = dev
+    y_dev = dev_truth_codes["action"]
     first = hard["metiers"]
-    reference = fit_from_report(examples, Xv, first, "", fiche)
-    reference.texte = texte
-    result = evaluate(reference, Xd, [c["source"] for c in dev_cards], dev_truth_codes)
-    keep["reel"] = (np.arange(len(y_dev)), predict(reference.models["action"], Xd))
+    sources = [c["source"] for c in dev_cards]
+    result = {t: _entry(t, dev_pred[t], dev_truth_codes[t], sources) for t in TARGETS}
+    keep = dict(keep) | {"reel": (np.arange(len(y_dev)), dev_pred["action"])}
     alerts = dev_truth_codes["alerte"] == 1
-    dev_alert = predict(reference.models["alerte"], Xd, reference.alert_threshold)
     entry = {
         "fiche": fiche,
         "texte": texte,
@@ -1746,13 +1768,15 @@ def run_variant(
         }
         | {
             "action_par_origine": {
-                o: round(_f1_action(keep["reel"][1][m], y_dev[m]), 4)
+                o: round(_f1_action(dev_pred["action"][m], y_dev[m]), 4)
                 for o in ("claire", "david")
                 if (m := np.array([x == o for x in origins])).any()
             },
             "action_classes": result["action"]["classes"],
             "action_confusion": result["action"]["confusion"],
-            "alertes_reelles_detectees": f"{int(dev_alert[alerts].sum())}/{int(alerts.sum())}",
+            "alertes_reelles_detectees": (
+                f"{int(dev_pred['alerte'][alerts].sum())}/{int(alerts.sum())}"
+            ),
         },
     }
     y = _codes(examples, "action")
