@@ -1,0 +1,866 @@
+{
+ "recette": {
+  "epochs": 3,
+  "batch": 32,
+  "max_tokens": 256,
+  "lr_encoder": 2e-05,
+  "lr_heads": 0.001,
+  "weight_decay": 0.01,
+  "warmup": 0.1,
+  "dropout": 0.1,
+  "clip": 1.0
+ },
+ "texte": "normalise",
+ "machine": "cuda",
+ "variantes": {
+  "N": {
+   "fiche": "hybride",
+   "texte": "normalise",
+   "metiers": {
+    "action": {
+     "f1_macro": 0.8511,
+     "f1_macro_ic95": [
+      0.8451,
+      0.8571
+     ],
+     "configuration": {
+      "l2": 0.01,
+      "classes_pondérées": false
+     },
+     "par_source": {
+      "mail": 0.8343,
+      "calendar": 0.5778,
+      "task": 0.7031,
+      "file": 0.8493
+     }
+    },
+    "urgence": {
+     "f1_macro": 0.8012,
+     "f1_macro_ic95": [
+      0.7893,
+      0.8124
+     ],
+     "configuration": {
+      "l2": 0.001,
+      "classes_pondérées": false
+     },
+     "par_source": {
+      "mail": 0.7994,
+      "calendar": 1.0,
+      "task": 0.9063,
+      "file": 1.0
+     }
+    },
+    "alerte": {
+     "f1_macro": 0.9939,
+     "f1_macro_ic95": [
+      0.9901,
+      0.9975
+     ],
+     "configuration": {
+      "l2": 0.001,
+      "classes_pondérées": false
+     },
+     "par_source": {
+      "mail": 0.9939,
+      "calendar": 1.0,
+      "task": 1.0,
+      "file": 1.0
+     }
+    }
+   },
+   "alerte_rappel_095": {
+    "seuil": 0.8603,
+    "rappel": 0.95,
+    "précision": 0.998
+   },
+   "gabarits": {
+    "f1_macro": 0.7159,
+    "f1_macro_ic95": [
+     0.6966,
+     0.7337
+    ]
+   },
+   "ecrivain": {
+    "gabarits→gabarits": {
+     "f1_macro": 0.8798,
+     "f1_macro_ic95": [
+      0.8698,
+      0.889
+     ]
+    },
+    "gabarits→llm": {
+     "f1_macro": 0.6337,
+     "f1_macro_ic95": [
+      0.6197,
+      0.6464
+     ]
+    },
+    "llm→gabarits": {
+     "f1_macro": 0.6792,
+     "f1_macro_ic95": [
+      0.6645,
+      0.6933
+     ]
+    },
+    "llm→llm": {
+     "f1_macro": 0.822,
+     "f1_macro_ic95": [
+      0.8091,
+      0.8342
+     ]
+    }
+   },
+   "reel": {
+    "action": {
+     "f1_macro": 0.4448,
+     "f1_macro_ic95": [
+      0.3626,
+      0.5175
+     ],
+     "par_source": {
+      "mail": 0.3197,
+      "calendar": 0.7374,
+      "task": 1.0,
+      "file": 0.25
+     }
+    },
+    "urgence": {
+     "f1_macro": 0.3715,
+     "f1_macro_ic95": [
+      0.3018,
+      0.4882
+     ],
+     "par_source": {
+      "mail": 0.3714,
+      "calendar": 1.0,
+      "task": 0.4286,
+      "file": 1.0
+     }
+    },
+    "alerte": {
+     "f1_macro": 0.4976,
+     "f1_macro_ic95": [
+      0.4927,
+      1.0
+     ],
+     "par_source": {
+      "mail": 0.4967,
+      "calendar": 1.0,
+      "task": 1.0,
+      "file": 1.0
+     }
+    },
+    "action_par_origine": {
+     "claire": 0.3141,
+     "david": 0.4723
+    },
+    "action_classes": {
+     "repondre": {
+      "précision": 0.8,
+      "rappel": 0.571,
+      "f1": 0.667,
+      "n": 21
+     },
+     "faire": {
+      "précision": 0.556,
+      "rappel": 0.417,
+      "f1": 0.476,
+      "n": 12
+     },
+     "decider": {
+      "précision": 0.0,
+      "rappel": 0.0,
+      "f1": 0.0,
+      "n": 3
+     },
+     "preparer": {
+      "précision": 0.417,
+      "rappel": 0.833,
+      "f1": 0.556,
+      "n": 6
+     },
+     "relire": {
+      "précision": 0.0,
+      "rappel": 0.0,
+      "f1": 0.0,
+      "n": 0
+     },
+     "informer": {
+      "précision": 0.889,
+      "rappel": 0.516,
+      "f1": 0.653,
+      "n": 31
+     },
+     "rien": {
+      "précision": 0.75,
+      "rappel": 0.774,
+      "f1": 0.762,
+      "n": 31
+     }
+    },
+    "action_confusion": [
+     [
+      12,
+      0,
+      3,
+      0,
+      1,
+      2,
+      3
+     ],
+     [
+      2,
+      5,
+      1,
+      0,
+      4,
+      0,
+      0
+     ],
+     [
+      0,
+      2,
+      0,
+      0,
+      0,
+      0,
+      1
+     ],
+     [
+      0,
+      0,
+      0,
+      5,
+      0,
+      0,
+      1
+     ],
+     [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      1,
+      2,
+      4,
+      2,
+      3,
+      16,
+      3
+     ],
+     [
+      0,
+      0,
+      1,
+      5,
+      1,
+      0,
+      24
+     ]
+    ],
+    "alertes_reelles_detectees": "0/1"
+   }
+  },
+  "E0": {
+   "fiche": "hybride",
+   "texte": "normalise",
+   "metiers": {
+    "action": {
+     "f1_macro": 0.9445,
+     "f1_macro_ic95": [
+      0.9414,
+      0.9475
+     ],
+     "configuration": {
+      "l2": 0.0,
+      "classes_pondérées": false
+     },
+     "par_source": {
+      "mail": 0.9495,
+      "calendar": 0.9901,
+      "task": 1.0,
+      "file": 0.7648
+     }
+    },
+    "urgence": {
+     "f1_macro": 0.9978,
+     "f1_macro_ic95": [
+      0.9964,
+      0.9989
+     ],
+     "configuration": {
+      "l2": 0.0,
+      "classes_pondérées": false
+     },
+     "par_source": {
+      "mail": 0.9977,
+      "calendar": 1.0,
+      "task": 1.0,
+      "file": 1.0
+     }
+    },
+    "alerte": {
+     "f1_macro": 1.0,
+     "f1_macro_ic95": [
+      1.0,
+      1.0
+     ],
+     "configuration": {
+      "l2": 0.0,
+      "classes_pondérées": false
+     },
+     "par_source": {
+      "mail": 1.0,
+      "calendar": 1.0,
+      "task": 1.0,
+      "file": 1.0
+     }
+    }
+   },
+   "alerte_rappel_095": {
+    "seuil": 0.9834,
+    "rappel": 0.95,
+    "précision": 1.0
+   },
+   "gabarits": {
+    "f1_macro": 0.772,
+    "f1_macro_ic95": [
+     0.7553,
+     0.7873
+    ]
+   },
+   "ecrivain": {
+    "gabarits→gabarits": {
+     "f1_macro": 0.7992,
+     "f1_macro_ic95": [
+      0.7908,
+      0.8081
+     ]
+    },
+    "gabarits→llm": {
+     "f1_macro": 0.5668,
+     "f1_macro_ic95": [
+      0.5505,
+      0.5827
+     ]
+    },
+    "llm→gabarits": {
+     "f1_macro": 0.6631,
+     "f1_macro_ic95": [
+      0.6477,
+      0.6781
+     ]
+    },
+    "llm→llm": {
+     "f1_macro": 0.8125,
+     "f1_macro_ic95": [
+      0.802,
+      0.8231
+     ]
+    }
+   },
+   "reel": {
+    "action": {
+     "f1_macro": 0.299,
+     "f1_macro_ic95": [
+      0.2309,
+      0.388
+     ],
+     "par_source": {
+      "mail": 0.2234,
+      "calendar": 0.3421,
+      "task": 1.0,
+      "file": 0.1111
+     }
+    },
+    "urgence": {
+     "f1_macro": 0.3769,
+     "f1_macro_ic95": [
+      0.3092,
+      0.6641
+     ],
+     "par_source": {
+      "mail": 0.3705,
+      "calendar": 1.0,
+      "task": 1.0,
+      "file": 1.0
+     }
+    },
+    "alerte": {
+     "f1_macro": 0.4976,
+     "f1_macro_ic95": [
+      0.4927,
+      1.0
+     ],
+     "par_source": {
+      "mail": 0.4967,
+      "calendar": 1.0,
+      "task": 1.0,
+      "file": 1.0
+     }
+    },
+    "action_par_origine": {
+     "claire": 0.2894,
+     "david": 0.3113
+    },
+    "action_classes": {
+     "repondre": {
+      "précision": 0.5,
+      "rappel": 0.381,
+      "f1": 0.432,
+      "n": 21
+     },
+     "faire": {
+      "précision": 0.438,
+      "rappel": 0.583,
+      "f1": 0.5,
+      "n": 12
+     },
+     "decider": {
+      "précision": 0.0,
+      "rappel": 0.0,
+      "f1": 0.0,
+      "n": 3
+     },
+     "preparer": {
+      "précision": 0.188,
+      "rappel": 0.5,
+      "f1": 0.273,
+      "n": 6
+     },
+     "relire": {
+      "précision": 0.0,
+      "rappel": 0.0,
+      "f1": 0.0,
+      "n": 0
+     },
+     "informer": {
+      "précision": 0.833,
+      "rappel": 0.484,
+      "f1": 0.612,
+      "n": 31
+     },
+     "rien": {
+      "précision": 0.296,
+      "rappel": 0.258,
+      "f1": 0.276,
+      "n": 31
+     }
+    },
+    "action_confusion": [
+     [
+      8,
+      0,
+      2,
+      1,
+      0,
+      2,
+      8
+     ],
+     [
+      1,
+      7,
+      1,
+      0,
+      1,
+      0,
+      2
+     ],
+     [
+      0,
+      1,
+      0,
+      2,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      3,
+      0,
+      0,
+      3
+     ],
+     [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      3,
+      1,
+      5,
+      1,
+      15,
+      6
+     ],
+     [
+      7,
+      5,
+      5,
+      5,
+      0,
+      1,
+      8
+     ]
+    ],
+    "alertes_reelles_detectees": "0/1"
+   },
+   "apprentissages": 17,
+   "minutes": 27.0
+  },
+  "E1": {
+   "fiche": "hybride",
+   "texte": "normalise",
+   "metiers": {
+    "action": {
+     "f1_macro": 0.9459,
+     "f1_macro_ic95": [
+      0.943,
+      0.9489
+     ],
+     "configuration": {
+      "l2": 0.0,
+      "classes_pondérées": false
+     },
+     "par_source": {
+      "mail": 0.9513,
+      "calendar": 0.9949,
+      "task": 1.0,
+      "file": 0.6156
+     }
+    },
+    "urgence": {
+     "f1_macro": 0.9992,
+     "f1_macro_ic95": [
+      0.9983,
+      0.9998
+     ],
+     "configuration": {
+      "l2": 0.0,
+      "classes_pondérées": false
+     },
+     "par_source": {
+      "mail": 0.9992,
+      "calendar": 1.0,
+      "task": 1.0,
+      "file": 1.0
+     }
+    },
+    "alerte": {
+     "f1_macro": 1.0,
+     "f1_macro_ic95": [
+      1.0,
+      1.0
+     ],
+     "configuration": {
+      "l2": 0.0,
+      "classes_pondérées": false
+     },
+     "par_source": {
+      "mail": 1.0,
+      "calendar": 1.0,
+      "task": 1.0,
+      "file": 1.0
+     }
+    }
+   },
+   "alerte_rappel_095": {
+    "seuil": 0.9882,
+    "rappel": 0.95,
+    "précision": 1.0
+   },
+   "gabarits": {
+    "f1_macro": 0.7307,
+    "f1_macro_ic95": [
+     0.7134,
+     0.7463
+    ]
+   },
+   "ecrivain": {
+    "gabarits→gabarits": {
+     "f1_macro": 0.812,
+     "f1_macro_ic95": [
+      0.8029,
+      0.8216
+     ]
+    },
+    "gabarits→llm": {
+     "f1_macro": 0.5437,
+     "f1_macro_ic95": [
+      0.5276,
+      0.5588
+     ]
+    },
+    "llm→gabarits": {
+     "f1_macro": 0.6845,
+     "f1_macro_ic95": [
+      0.6701,
+      0.6987
+     ]
+    },
+    "llm→llm": {
+     "f1_macro": 0.8127,
+     "f1_macro_ic95": [
+      0.802,
+      0.8234
+     ]
+    }
+   },
+   "reel": {
+    "action": {
+     "f1_macro": 0.3411,
+     "f1_macro_ic95": [
+      0.2522,
+      0.4296
+     ],
+     "par_source": {
+      "mail": 0.2773,
+      "calendar": 0.3772,
+      "task": 1.0,
+      "file": 0.0
+     }
+    },
+    "urgence": {
+     "f1_macro": 0.3922,
+     "f1_macro_ic95": [
+      0.3093,
+      0.6568
+     ],
+     "par_source": {
+      "mail": 0.3864,
+      "calendar": 1.0,
+      "task": 1.0,
+      "file": 1.0
+     }
+    },
+    "alerte": {
+     "f1_macro": 0.4976,
+     "f1_macro_ic95": [
+      0.4927,
+      1.0
+     ],
+     "par_source": {
+      "mail": 0.4967,
+      "calendar": 1.0,
+      "task": 1.0,
+      "file": 1.0
+     }
+    },
+    "action_par_origine": {
+     "claire": 0.3162,
+     "david": 0.3784
+    },
+    "action_classes": {
+     "repondre": {
+      "précision": 0.833,
+      "rappel": 0.476,
+      "f1": 0.606,
+      "n": 21
+     },
+     "faire": {
+      "précision": 0.261,
+      "rappel": 0.5,
+      "f1": 0.343,
+      "n": 12
+     },
+     "decider": {
+      "précision": 0.167,
+      "rappel": 0.333,
+      "f1": 0.222,
+      "n": 3
+     },
+     "preparer": {
+      "précision": 0.176,
+      "rappel": 0.5,
+      "f1": 0.261,
+      "n": 6
+     },
+     "relire": {
+      "précision": 0.0,
+      "rappel": 0.0,
+      "f1": 0.0,
+      "n": 0
+     },
+     "informer": {
+      "précision": 0.81,
+      "rappel": 0.548,
+      "f1": 0.654,
+      "n": 31
+     },
+     "rien": {
+      "précision": 0.364,
+      "rappel": 0.258,
+      "f1": 0.302,
+      "n": 31
+     }
+    },
+    "action_confusion": [
+     [
+      10,
+      0,
+      0,
+      2,
+      0,
+      4,
+      5
+     ],
+     [
+      1,
+      6,
+      1,
+      0,
+      2,
+      0,
+      2
+     ],
+     [
+      0,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      3,
+      0,
+      0,
+      3
+     ],
+     [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      3,
+      0,
+      6,
+      1,
+      17,
+      4
+     ],
+     [
+      1,
+      13,
+      4,
+      5,
+      0,
+      0,
+      8
+     ]
+    ],
+    "alertes_reelles_detectees": "0/1"
+   },
+   "apprentissages": 17,
+   "minutes": 26.7
+  }
+ },
+ "ecarts_apparies_action": {
+  "E0-N": {
+   "metiers": {
+    "ecart": 0.0934,
+    "ic95": [
+     0.0867,
+     0.0998
+    ]
+   },
+   "reel": {
+    "ecart": -0.1457,
+    "ic95": [
+     -0.2247,
+     -0.0418
+    ]
+   },
+   "gabarits": {
+    "ecart": 0.0561,
+    "ic95": [
+     0.0342,
+     0.0795
+    ]
+   },
+   "gabarits→llm": {
+    "ecart": -0.0669,
+    "ic95": [
+     -0.0855,
+     -0.0498
+    ]
+   },
+   "llm→gabarits": {
+    "ecart": -0.0162,
+    "ic95": [
+     -0.0331,
+     0.0019
+    ]
+   }
+  },
+  "E1-N": {
+   "metiers": {
+    "ecart": 0.0948,
+    "ic95": [
+     0.0882,
+     0.1014
+    ]
+   },
+   "reel": {
+    "ecart": -0.1037,
+    "ic95": [
+     -0.1963,
+     0.0034
+    ]
+   },
+   "gabarits": {
+    "ecart": 0.0148,
+    "ic95": [
+     -0.0069,
+     0.0381
+    ]
+   },
+   "gabarits→llm": {
+    "ecart": -0.09,
+    "ic95": [
+     -0.1076,
+     -0.0716
+    ]
+   },
+   "llm→gabarits": {
+    "ecart": 0.0053,
+    "ic95": [
+     -0.0125,
+     0.0232
+    ]
+   }
+  }
+ },
+ "decision": {
+  "graines_calculees": 2,
+  "arret_anticipe": true,
+  "E_bat_N": false,
+  "veto_alertes": false,
+  "retenue": "N"
+ }
+}
