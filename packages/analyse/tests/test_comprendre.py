@@ -367,3 +367,119 @@ def test_les_vrais_jeux_gelés_sont_prets_a_mesurer():
     for name in comprendre.FROZEN_SETS.values():
         texts, sources, truth = comprendre.series_truth(name)
         assert len(texts) == len(sources) == len(truth["action"]) > 0
+
+
+# --- validation dure -----------------------------------------------------------------------------
+
+
+def test_le_choix_garde_le_plus_simple_a_egalite_au_sens_de_g2():
+    rng = np.random.default_rng(0)
+    truth = rng.integers(0, 3, 300)
+    simple = np.where(rng.random(300) < 0.3, (truth + 1) % 3, truth)
+    almost = simple.copy()
+    almost[np.flatnonzero(simple != truth)[0]] = truth[np.flatnonzero(simple != truth)[0]]
+    rank, tried = comprendre.select("action", [simple, almost], truth)
+    assert tried[1]["score"] > tried[0]["score"]  # meilleur strict, mais dans le bruit
+    assert rank == 0 and tried[0]["ecart_au_meilleur_ic95"][0] <= 0
+    bad = np.where(rng.random(300) < 0.6, (truth + 1) % 3, truth)
+    assert comprendre.select("action", [bad, truth], truth)[0] == 1  # gain réel : retenu
+    assert comprendre.select("action", [truth, truth], truth) == (0, [{"score": 1.0}] * 2)
+
+
+def test_les_plis_de_metiers_partagent_les_metiers_et_sont_deterministes():
+    metiers = [f"m{n}" for n in range(12)] * 3
+    folds = comprendre.metier_folds(metiers, 4)
+    assert sorted(m for f in folds for m in f) == sorted(set(metiers))
+    assert [len(f) for f in folds] == [3] * 4 and folds == comprendre.metier_folds(metiers, 4)
+    assert folds != comprendre.metier_folds(metiers, 4, seed=1)
+    with pytest.raises(ValueError):
+        comprendre.metier_folds(["a", "b"], 3)
+
+
+def test_les_variantes_tenues_laissent_toujours_une_variante_par_famille():
+    templates = [f"mail.decider.question.{n}" for n in range(9)]
+    templates += ["task.faire.0", "task.faire.1", "teams.0", "llm:mail-v8", "lecture:avis"]
+    assert comprendre.template_family("mail.decider.question.7") == "mail.decider.question"
+    assert comprendre.template_family("llm:mail-v8") is None
+    folds = comprendre.template_folds(templates, 4)
+    held = set().union(*folds)
+    assert sum(map(len, folds)) == len(held) == 11  # chaque variante dans un seul pli
+    assert "teams.0" not in held  # famille d'une seule variante : jamais tenue
+    for fold in folds:
+        for family in ("mail.decider.question", "task.faire"):
+            kept = [t for t in templates if t.startswith(family) and t not in fold]
+            assert kept
+    assert folds == comprendre.template_folds(reversed(templates), 4)
+
+
+@pytest.fixture(scope="module")
+def hard(corpora, tmp_path_factory):
+    """La validation dure sur le petit corpus (3 métiers, 3 plis), apprentissages raccourcis ;
+    les plis passés à `out_of_fold` sont gardés pour vérifier les découpages."""
+    calls = []
+    out_of_fold = comprendre.out_of_fold
+    fit = comprendre.fit_softmax
+
+    def spy(target, X, y, folds, log=lambda _: None):
+        calls.append((target, folds))
+        return out_of_fold(target, X, y, folds, log)
+
+    path = tmp_path_factory.mktemp("dur") / "dur.json"
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(comprendre, "out_of_fold", spy)
+        mp.setattr(comprendre, "fit_softmax", lambda X, y, k, c: fit(X, y, k, c, steps=60))
+        report = comprendre.valider_dur(corpora, HashEmbedder(), VectorCache(None), path, 3)
+    return report, path, calls
+
+
+def test_la_validation_dure_tient_des_metiers_entiers_a_l_ecart(examples, hard):
+    report, _, calls = hard
+    assert [c[0] for c in calls] == ["action", "urgence", "alerte", "action", "action", "action"]
+    measured = []
+    for fold in calls[0][1]:
+        train, val = fold.train, fold.measured["v"]
+        assert not {examples[n].metier for n in train} & {examples[n].metier for n in val}
+        assert not {examples[n].case_id for n in train} & {examples[n].case_id for n in val}
+        measured += val
+    assert sorted(measured) == list(range(len(examples)))  # chaque carte mesurée une fois
+    assert report["metiers"]["exemples"] == len(examples)
+    assert set(report["metiers"]["cibles"]) == set(comprendre.TARGETS)
+    assert len(report["metiers"]["cibles"]["action"]["par_pli"]) == 3
+
+
+def test_les_variantes_tenues_ne_sont_jamais_vues_a_l_entrainement(examples, hard):
+    report, _, calls = hard
+    held = comprendre.template_folds((t for e in examples for t in e.templates), 3)
+    base = calls[0][1]
+    for fold, base_fold, h in zip(calls[3][1], base, held, strict=True):
+        assert not any(h & set(examples[n].templates) for n in fold.train)
+        assert all(h & set(examples[n].templates) for n in fold.measured["v"])
+        assert set(fold.train) <= set(base_fold.train)
+        assert set(fold.measured["v"]) <= set(base_fold.measured["v"])
+    second = report["gabarits"]
+    assert second["action"]["exemples"] == sum(len(f.measured["v"]) for f in calls[3][1]) > 0
+    assert second["familles_jamais_tenues"] < second["familles"]
+
+
+def test_l_ecrivain_croise_mesure_les_memes_mails_dans_les_deux_sens(examples, hard):
+    report, _, calls = hard
+    for g, w in zip(calls[4][1], calls[5][1], strict=True):
+        assert {examples[n].writer for n in g.train} == {"gabarits"}
+        assert {examples[n].writer for n in w.train} == {"llm"}
+        assert g.measured == w.measured
+        ids = {m: sorted(examples[n].item_id for n in g.measured[m]) for m in g.measured}
+        assert ids["gabarits"] == ids["llm"]
+        assert all(examples[n].source == "mail" for n in g.train + w.train)
+    third = report["ecrivain"]
+    assert set(third["cellules"]) == {
+        f"{a}→{b}" for a in ("gabarits", "llm") for b in ("gabarits", "llm")
+    }
+    assert set(third["ecarts"]) == {"mesuré sur gabarits", "mesuré sur llm"}
+
+
+def test_le_rapport_de_validation_dure_est_relisible_et_sans_texte(hard):
+    report, path, _ = hard
+    assert json.loads(path.read_text("utf-8")) == report
+    assert "Texte" not in json.dumps(report)
+    summary = comprendre.hard_summary(report)
+    assert "1. métiers" in summary and "2. gabarits" in summary and "3. écrivain" in summary
