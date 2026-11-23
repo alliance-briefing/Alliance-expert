@@ -439,7 +439,33 @@ appris sur le style du simulateur. C'est la cible des leviers suivants (augmenta
 encodeur réajusté), à mesurer contre H. R est ici réentraînée sur tout l'entraînement : 0,220 sur
 le jeu réel, contre 0,229 pour la référence commitée (autre réglage, sans la validation).
 
+**Levier 2, augmentation du texte** (`--levier-texte`, règles écrites le 23/11 avant la mesure,
+plan §11). Toutes les variantes ont la fiche ; grille réduite à l2 ∈ {1e-2, 1e-3, 1e-4} pour
+toutes, H comprise (d'où 0,596 au lieu de 0,620 pour H en LLM → gabarits). N : l'encodeur lit
+l'objet et le texte nettoyé (sans date, champs, bloc Teams, désabonnement ni signature ;
+chiffres, dates, liens et adresses masqués). A : une copie perturbée de chaque carte à
+l'entraînement. Un groupe doit gagner avec chacune de ses 3 graines : une graine 0 perdante
+arrête son groupe (même décision, moins de calcul).
+
+| F1 macro de l'action | H | **N, normalisé** | A0, copies | N+A0 |
+|---|---|---|---|---|
+| métiers | 0,804 | **0,851** | 0,810 | 0,857 |
+| gabarits tenus à l'écart | 0,683 | **0,716** | 0,681 | 0,726 |
+| gabarits → LLM / LLM → gabarits | 0,571 / 0,596 | **0,634 / 0,679** | 0,575 / 0,605 | 0,630 / 0,684 |
+| jeu réel | 0,382 | **0,445** | 0,445 | 0,440 |
+| précision des alertes au rappel 0,95 | 0,911 | **0,998** | 0,870 | 0,995 |
+
+**Décision de la règle : N est retenue.** N − H est significatif sur les découpages 2 et 3
+(+0,033 à +0,084) et sur le découpage 1 (+0,048) ; sur le jeu réel, +0,062 [−0,022 ; 0,147],
+dans le bruit. A0 (gabarits et réel meilleurs que H) ne bat pas N : A − N est significatif à la
+baisse sur la validation dure, nul sur le jeu réel. N+A0 − N n'est significatif que sur le
+découpage 1 (+0,006), pas sur une mesure décisive : N reste (G3). A et N+A sont arrêtés à la
+graine 0. Limites : 30 % des copies perturbées sont identiques à l'original (une seule phrase,
+perturbation sans effet) ; la fiche seule (0,495 au levier 1, autre grille) n'a pas été remesurée
+contre N. Le candidat devient N : MiniLM gelé sur le texte normalisé, fiche, régression.
+
 ```bash
+uv run python -m packages.analyse.scoring.ml.comprendre --levier-texte  # H, N, A, N+A comparées
 uv run python -m packages.analyse.scoring.ml.comprendre --levier-fiche  # R, H, F comparées
 uv run python -m packages.analyse.scoring.ml.jeux_m5 --reste            # réponses manquantes
 uv run python -m packages.analyse.scoring.ml.comprendre --entrainer     # référence + rapport
