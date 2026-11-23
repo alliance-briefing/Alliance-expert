@@ -1990,11 +1990,17 @@ def levier_texte(
     F = np.array([card_features(e.card) for e in examples])
     dev = _dev_set(series)
     F_dev = design(dev[0], embedder, "seule")
-    variants: list[tuple[str, str, int | None]] = [("H", "brut", None), ("N", "normalise", None)]
-    variants += [(f"A{s}", "brut", s) for s in seeds] + [(f"NA{s}", "normalise", s) for s in seeds]
+    specs: dict[str, tuple[str, int | None]] = {"H": ("brut", None), "N": ("normalise", None)}
+    specs |= {f"A{s}": ("brut", s) for s in seeds} | {f"NA{s}": ("normalise", s) for s in seeds}
     report: dict = {"grille": [c.as_dict() for c in TEXT_GRID], "variantes": {}}
-    preds, recall, base = {}, {}, {}
-    for name, texte, seed in variants:
+    preds: dict = {}
+    recall: dict[str, float] = {}
+    base: dict[str, np.ndarray] = {}
+    measures = ("metiers", *DECISIVE)
+    gaps: dict[str, dict] = {}
+
+    def run(name: str) -> None:
+        texte, seed = specs[name]
         log(f"variante {name} (texte {texte}, graine {seed})")
         if texte not in base:
             texts = [encoder_text(e.card, texte) for e in examples]
@@ -2002,10 +2008,8 @@ def levier_texte(
         X, used = base[texte], list(examples)
         if seed is not None:
             extra = augmented_examples(examples, seed, texte)
-            X = np.vstack(
-                [X, embed_with_progress(cache, embedder, [e.text for e in extra], log=log)]
-            )
-            used += extra
+            vectors = embed_with_progress(cache, embedder, [e.text for e in extra], log=log)
+            X, used = np.vstack([X, vectors]), used + extra
         Fv = np.vstack([F] * (len(used) // len(examples)))
         Xd = np.hstack([design(dev[0], embedder, "aucune", cache, texte), F_dev])
         entry, preds[name], recall[name] = run_variant(
@@ -2020,15 +2024,44 @@ def levier_texte(
                 for c, e in zip(copies, examples, strict=False)
             ),
         }
-    names = [v[0] for v in variants]
-    pairs = [(n, "H") for n in names if n != "H"]
-    pairs += [(n, "N") for n in names if n[0] in "AN" and n != "N"]
-    pairs += [(f"NA{s}", f"A{s}") for s in seeds]
-    measures = ("metiers", *DECISIVE)
-    gaps = {
-        f"{a}-{b}": {m: _gap(preds[a][m][0], preds[a][m][1], preds[b][m][1]) for m in measures}
-        for a, b in dict.fromkeys(pairs)
-    }
+
+    def gap(a: str, b: str) -> dict:
+        key = f"{a}-{b}"
+        if key not in gaps:
+            gaps[key] = {m: _gap(preds[a][m][0], preds[a][m][1], preds[b][m][1]) for m in measures}
+        return gaps[key]
+
+    # Règle du 23/11, appliquée au fil du calcul : un groupe doit gagner avec chacune de ses
+    # graines, donc une graine perdante (ou sous le veto) l'élimine et les suivantes ne sont pas
+    # calculées. La décision est la même que si toutes l'avaient été (`decide_text`).
+    run("H")
+    retained, steps = "H", {}
+    for group, names in text_groups(seeds).items():
+        wins, veto, ran = True, False, 0
+        for n in names:
+            run(n)
+            ran += 1
+            veto = veto or recall[n] < ALERT_RECALL
+            if veto or not _beats([gap(n, _paired_name(n, retained))]):
+                wins = False
+                break
+        steps[group] = {
+            "contre": retained,
+            "bat": wins,
+            "veto_alertes": veto,
+            "graines_calculees": ran,
+            "arret_anticipe": ran < len(names),
+        }
+        if wins:
+            retained = group
+    done = list(preds)
+    for n in done:  # tous les écarts utiles entre variantes calculées
+        if n != "H":
+            gap(n, "H")
+        if n[0] in "AN" and n != "N":
+            gap(n, "N")
+        if n.startswith("NA") and f"A{n[2:]}" in preds:
+            gap(n, f"A{n[2:]}")
     report["ecarts_apparies_action"] = gaps
     report["moyennes_par_graine"] = {
         group: {
@@ -2036,13 +2069,15 @@ def levier_texte(
             for m in measures
         }
         | {
+            "graines": len(members),
             "ecart_type_reel": round(
                 float(np.std([gaps[f"{n}-H"]["reel"]["ecart"] for n in members])), 4
-            )
+            ),
         }
-        for group, members in (("A", [f"A{s}" for s in seeds]), ("NA", [f"NA{s}" for s in seeds]))
+        for group in ("A", "NA")
+        if (members := [n for n in done if n[:-1] == group])
     }
-    report["decision"] = decide_text(gaps, recall, seeds)
+    report["decision"] = {"etapes": steps, "retenue": retained}
     out_report.write_text(
         json.dumps(report, ensure_ascii=False, indent=1) + "\n", encoding="utf-8", newline="\n"
     )

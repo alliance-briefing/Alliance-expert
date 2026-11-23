@@ -816,7 +816,7 @@ def test_la_decision_du_levier_2_va_du_plus_simple_au_plus_complexe():
     win = {m: {"ecart": 0.05, "ic95": [0.01, 0.09]} for m in ("metiers", *comprendre.DECISIVE)}
     tie = {m: {"ecart": 0.0, "ic95": [-0.01, 0.01]} for m in ("metiers", *comprendre.DECISIVE)}
     seeds = (0, 1)
-    names = ["N", "A0", "A1", "NA0", "NA1"]
+    names = ["N", "A0", "A1", "NA0", "NA1"]  # au fil du calcul : voir le test du levier 2
     ok = dict.fromkeys(names, 0.96)
 
     def gaps(**over):
@@ -851,9 +851,44 @@ def test_le_levier_2_compare_les_variantes(corpora, dev, tmp_path):
         )
     assert set(report["variantes"]) == {"H", "N", "A0", "NA0"}
     assert report["variantes"]["A0"]["copies"] > 0 and report["variantes"]["H"]["copies"] == 0
-    assert {"N-H", "A0-H", "NA0-H", "A0-N", "NA0-N", "NA0-A0"} == set(
+    assert {"N-H", "A0-H", "NA0-H", "A0-N", "NA0-N", "NA0-A0"} <= set(
         report["ecarts_apparies_action"]
     )
-    assert report["decision"]["retenue"] in ("H", "N", "A", "NA")
+    decision = report["decision"]
+    assert decision["retenue"] in ("H", "N", "A", "NA")
+    # la décision au fil du calcul est celle de la règle complète
+    gaps, recall = (
+        report["ecarts_apparies_action"],
+        {n: v["alerte_rappel_095"]["rappel"] for n, v in report["variantes"].items()},
+    )
+    assert comprendre.decide_text(gaps, recall, (0,))["retenue"] == decision["retenue"]
     assert json.loads((tmp_path / "t.json").read_text("utf-8")) == report
     assert "décision" in comprendre.texte_summary(report)
+
+
+def test_une_graine_perdante_arrete_son_groupe(corpora, dev, tmp_path):
+    """A0 et NA0 ne battent pas H : A1 et NA1 ne sont pas calculées, H reste."""
+    source, _, _ = dev
+    for path in source.iterdir():
+        (tmp_path / path.name).write_bytes(path.read_bytes())
+    claude = annoter.AnswerStore(annoter.answers_path(comprendre.DEV_SERIES, "claude", tmp_path))
+    for t in annoter.load_series(tmp_path / f"{comprendre.DEV_SERIES}.jsonl"):
+        claude.record(t["task_id"], False, _answer("informer"))
+    comprendre.freeze_dev(tmp_path)
+    truth = np.arange(60) % 3
+    ran = []
+
+    def fake(used, Xv, Xd, dev, fiche, n_folds, log, grid, texte):
+        ran.append((texte, len(used)))
+        same = {m: (truth, truth) for m in ("metiers", *comprendre.DECISIVE)}
+        return {"alerte_rappel_095": {"rappel": 0.96}}, same, 0.96
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(comprendre, "run_variant", fake)
+        report = comprendre.levier_texte(
+            corpora, HashEmbedder(), VectorCache(None), tmp_path, tmp_path / "t.json", 3, (0, 1)
+        )
+    assert list(report["variantes"]) == ["H", "N", "A0", "NA0"]
+    steps = report["decision"]["etapes"]
+    assert steps["A"]["arret_anticipe"] and steps["NA"]["graines_calculees"] == 1
+    assert report["decision"]["retenue"] == "H"
