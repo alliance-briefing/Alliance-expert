@@ -420,9 +420,9 @@ def hard(corpora, tmp_path_factory):
     out_of_fold = comprendre.out_of_fold
     fit = comprendre.fit_softmax
 
-    def spy(target, X, y, folds, log=lambda _: None):
+    def spy(target, X, y, folds, log=lambda _: None, **options):
         calls.append((target, folds))
-        return out_of_fold(target, X, y, folds, log)
+        return out_of_fold(target, X, y, folds, log, **options)
 
     path = tmp_path_factory.mktemp("dur") / "dur.json"
     with pytest.MonkeyPatch.context() as mp:
@@ -727,3 +727,133 @@ def test_le_levier_compare_les_trois_variantes(corpora, dev, tmp_path):
     assert report["decision"]["retenue"] in ("R", "H", "F")
     assert json.loads((tmp_path / "l.json").read_text("utf-8")) == report
     assert "décision" in comprendre.levier_summary(report)
+
+
+# --- levier 2 : augmentation du texte ------------------------------------------------------------
+
+TEAMS = (
+    "Bonjour,\nVoici l'ordre du jour.\n_________________________\nRéunion Microsoft Teams\n"
+    "Rejoindre : https://teams.microsoft.com/meet/123\nNuméro de réunion : 123 456\n"
+    "Code secret : AB12CD"
+)
+
+
+def test_la_normalisation_retire_le_decor_et_masque_le_variable():
+    c = _card(
+        "mail",
+        "Facture 2026-118 du 14 novembre",
+        [["De", "Victor, client"]],
+        "Pouvez-vous renvoyer le bon de commande à compta@altair.example avant jeudi ?\n"
+        "Voir https://portail.example/f/118\nCordialement,\nVictor Mabe\nDAF",
+        when="hier à 10:00",
+    )
+    assert comprendre.encoder_text(c, "normalise") == (
+        "mail : Facture #-# du # #\n"
+        "Pouvez-vous renvoyer le bon de commande à [adresse] avant # ?\nVoir [lien]"
+    )
+    assert comprendre.clean_body(TEAMS) == "Bonjour,\nVoici l'ordre du jour."
+    assert comprendre.clean_body("Merci de saisir vos temps.") == "Merci de saisir vos temps."
+    assert comprendre.clean_body("Finalisation. Bien à vous, Claire Fontaine") == "Finalisation."
+    bulk = "Les nouvelles du mois\nVous recevez cet e-mail car vous êtes abonné(e). Se désabonner"
+    assert comprendre.clean_body(bulk) == "Les nouvelles du mois"
+    assert comprendre.encoder_text(c) == comprendre.card_text(c)
+    with pytest.raises(ValueError):
+        comprendre.encoder_text(c, "autre")
+
+
+def test_la_copie_perturbee_garde_les_champs_et_est_reproductible():
+    import random
+
+    c = _card(
+        "mail",
+        "Devis à valider",
+        [["De", "Léa, votre équipe"], ["À", "vous (destinataire direct)"]],
+        "Bonjour Paul. Voici le devis. Peux-tu le valider ? Merci d'avance. Bonne journée",
+    )
+    seen = set()
+    for seed in range(30):
+        text = comprendre.perturbed_text(c, random.Random(seed))
+        assert text == comprendre.perturbed_text(c, random.Random(seed))
+        assert "De : Léa, votre équipe" in text and "À : vous (destinataire direct)" in text
+        seen.add(text)
+    assert len(seen) > 5  # des copies variées
+    normalized = comprendre.perturbed_text(c, random.Random(0), "normalise")
+    assert normalized.startswith("mail :") and "De :" not in normalized
+
+
+def test_les_copies_sont_apprises_jamais_mesurees(examples, tmp_path):
+    extra = comprendre.augmented_examples(examples, 0, "brut")
+    assert all(e.augmented for e in extra) and len(extra) == len(examples)
+    assert [(e.item_id, e.persona, e.labels, e.templates) for e in extra] == [
+        (e.item_id, e.persona, e.labels, e.templates) for e in examples
+    ]
+    assert extra == comprendre.augmented_examples(examples, 0, "brut")
+    used = list(examples) + extra
+    X = HashEmbedder().embed([e.text for e in used])
+    calls = []
+    out_of_fold, fit = comprendre.out_of_fold, comprendre.fit_softmax
+
+    def spy(target, X, y, folds, log=lambda _: None, **options):
+        calls.append(folds)
+        return out_of_fold(target, X, y, folds, log, **options)
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(comprendre, "out_of_fold", spy)
+        mp.setattr(comprendre, "fit_softmax", lambda X, y, k, c: fit(X, y, k, c, steps=30))
+        report = comprendre.hard_validation(used, X, 3, grid=comprendre.TEXT_GRID[:1])
+    assert report["metiers"]["exemples"] == len(examples)
+    for folds in calls:
+        for fold in folds:
+            measured = [n for v in fold.measured.values() for n in v]
+            assert all(n < len(examples) for n in measured)  # aucune copie mesurée
+            held = {used[n].persona for n in measured}
+            assert not held & {used[n].persona for n in fold.train}
+    assert any(n >= len(examples) for fold in calls[0] for n in fold.train)  # copies apprises
+    assert len(report["metiers"]["cibles"]["action"]["essais"]) == 1
+
+
+def test_la_decision_du_levier_2_va_du_plus_simple_au_plus_complexe():
+    win = {m: {"ecart": 0.05, "ic95": [0.01, 0.09]} for m in ("metiers", *comprendre.DECISIVE)}
+    tie = {m: {"ecart": 0.0, "ic95": [-0.01, 0.01]} for m in ("metiers", *comprendre.DECISIVE)}
+    seeds = (0, 1)
+    names = ["N", "A0", "A1", "NA0", "NA1"]
+    ok = dict.fromkeys(names, 0.96)
+
+    def gaps(**over):
+        out = {f"{n}-{b}": tie for n in names for b in ("H", "N")}
+        out |= {f"NA{s}-A{s}": tie for s in seeds}
+        return out | {k.replace("_", "-"): v for k, v in over.items()}
+
+    assert comprendre.decide_text(gaps(), ok, seeds)["retenue"] == "H"
+    assert comprendre.decide_text(gaps(N_H=win), ok, seeds)["retenue"] == "N"
+    # A gagne contre H, mais pas contre N déjà retenue : N reste (G3)
+    assert comprendre.decide_text(gaps(N_H=win, A0_H=win, A1_H=win), ok, seeds)["retenue"] == "N"
+    # une seule graine gagnante ne suffit pas
+    assert comprendre.decide_text(gaps(A0_H=win), ok, seeds)["retenue"] == "H"
+    both = gaps(A0_H=win, A1_H=win)
+    assert comprendre.decide_text(both, ok, seeds)["retenue"] == "A"
+    assert comprendre.decide_text(both, ok | {"A1": 0.9}, seeds)["retenue"] == "H"  # veto
+
+
+def test_le_levier_2_compare_les_variantes(corpora, dev, tmp_path):
+    source, _, _ = dev
+    for path in source.iterdir():
+        (tmp_path / path.name).write_bytes(path.read_bytes())
+    claude = annoter.AnswerStore(annoter.answers_path(comprendre.DEV_SERIES, "claude", tmp_path))
+    for n, t in enumerate(annoter.load_series(tmp_path / f"{comprendre.DEV_SERIES}.jsonl")):
+        claude.record(t["task_id"], False, _answer(("informer", "faire", "rien")[n % 3]))
+    comprendre.freeze_dev(tmp_path)
+    fit = comprendre.fit_softmax
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(comprendre, "fit_softmax", lambda X, y, k, c: fit(X, y, k, c, steps=30))
+        report = comprendre.levier_texte(
+            corpora, HashEmbedder(), VectorCache(None), tmp_path, tmp_path / "t.json", 3, (0,)
+        )
+    assert set(report["variantes"]) == {"H", "N", "A0", "NA0"}
+    assert report["variantes"]["A0"]["copies"] > 0 and report["variantes"]["H"]["copies"] == 0
+    assert {"N-H", "A0-H", "NA0-H", "A0-N", "NA0-N", "NA0-A0"} == set(
+        report["ecarts_apparies_action"]
+    )
+    assert report["decision"]["retenue"] in ("H", "N", "A", "NA")
+    assert json.loads((tmp_path / "t.json").read_text("utf-8")) == report
+    assert "décision" in comprendre.texte_summary(report)

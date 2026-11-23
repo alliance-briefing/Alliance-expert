@@ -74,7 +74,7 @@ import time
 import unicodedata
 from collections import Counter
 from collections.abc import Callable, Iterable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
@@ -277,6 +277,7 @@ class Example:
     labels: dict[str, str]  # une valeur de TARGETS par cible
     templates: tuple[str, ...] = ()  # gabarits utilisés par le texte de cette carte
     card: dict = field(default_factory=dict, compare=False, repr=False)  # pour la fiche
+    augmented: bool = False  # copie perturbée (levier 2) : apprise, jamais mesurée
 
     @property
     def metier(self) -> str:
@@ -549,6 +550,7 @@ class Reference:
     alert_threshold: float
     embedder_name: str
     fiche: str = "aucune"  # entrée du modèle : FICHES (levier 1)
+    texte: str = "brut"  # texte lu par l'encodeur : TEXTES (levier 2)
 
     def predict(self, X: np.ndarray) -> dict[str, list[str]]:
         out = {}
@@ -568,6 +570,7 @@ class Reference:
             "seuil_alerte": self.alert_threshold,
             "classes": {t: list(c) for t, c in TARGETS.items()},
         } | ({"fiche": self.fiche} if self.fiche != "aucune" else {})
+        meta |= {"texte": self.texte} if self.texte != "brut" else {}
         np.savez(path, meta=np.array(json.dumps(meta, ensure_ascii=False)), **arrays)
 
     @classmethod
@@ -578,7 +581,13 @@ class Reference:
                 t: Softmax(*(data[f"{part}_{t}"] for part in ("W", "b", "mean", "scale")))
                 for t in TARGETS
             }
-        return cls(models, meta["seuil_alerte"], meta["embedder"], meta.get("fiche", "aucune"))
+        return cls(
+            models,
+            meta["seuil_alerte"],
+            meta["embedder"],
+            meta.get("fiche", "aucune"),
+            meta.get("texte", "brut"),
+        )
 
 
 # --- entraînement et rapport ------------------------------------------------------------------
@@ -915,10 +924,11 @@ def out_of_fold(
     y: np.ndarray,
     folds: Sequence[Fold],
     log: Callable[[str], None] = lambda _: None,
+    grid: Sequence[Config] | None = None,
 ) -> dict[str, OutOfFold]:
     """Chaque réglage appris sur l'entraînement de chaque pli, appliqué à ses jeux mesurés :
     un seul apprentissage par pli et par réglage, quel que soit le nombre de jeux mesurés."""
-    k, grid = len(TARGETS[target]), configs()
+    k, grid = len(TARGETS[target]), list(grid or configs())
     names = list(folds[0].measured)
     idx = {n: [np.asarray(f.measured[n], dtype=int) for f in folds] for n in names}
     proba: dict[str, list[list[np.ndarray]]] = {n: [[] for _ in grid] for n in names}
@@ -961,14 +971,18 @@ def _entry(target: str, pred: np.ndarray, y: np.ndarray, sources: Sequence[str])
 
 
 def judge(
-    target: str, oof: OutOfFold, y: np.ndarray, examples: Sequence[Example]
+    target: str,
+    oof: OutOfFold,
+    y: np.ndarray,
+    examples: Sequence[Example],
+    grid: Sequence[Config] | None = None,
 ) -> tuple[dict, np.ndarray]:
     """Le réglage retenu (G2 puis G3) sur l'ensemble des prédictions hors pli, et ses chiffres.
     Un seul réglage par découpage, comme un levier qu'on fixerait, et non un par pli."""
     truth, k = y[oof.index], len(TARGETS[target])
     preds = [p.argmax(axis=1) for p in oof.proba]
     rank, tried = select(target, preds, truth)
-    pred, grid = preds[rank], configs()
+    pred, grid = preds[rank], list(grid or configs())
     entry = {
         "configuration": grid[rank].as_dict(),
         "essais": [c.as_dict() | t for c, t in zip(grid, tried, strict=True)],
@@ -1002,6 +1016,7 @@ def hard_validation(
     seed: int = 0,
     log: Callable[[str], None] = lambda _: None,
     keep: dict | None = None,
+    grid: Sequence[Config] | None = None,
 ) -> dict:
     """Les trois découpages de la validation dure, tous sur des métiers jamais vus :
     1. métiers : `n_folds` plis de métiers entiers, les trois cibles ;
@@ -1012,7 +1027,8 @@ def hard_validation(
     base: list[tuple[list[int], list[int]]] = []
     for held in plis:
         personas = sorted({e.persona for e in examples if e.metier in held})
-        base.append(split(examples, personas))  # vérifie aussi que les affaires sont disjointes
+        tr, va = split(examples, personas)  # vérifie aussi que les affaires sont disjointes
+        base.append((tr, [n for n in va if not examples[n].augmented]))  # copies : apprises
     report: dict = {
         "plis_metiers": plis,
         "graine": seed,
@@ -1020,12 +1036,14 @@ def hard_validation(
     }
 
     log("1. métiers tenus à l'écart")
-    first: dict = {"exemples": len(examples), "cibles": {}}
+    originals = np.array([n for n, e in enumerate(examples) if not e.augmented], dtype=int)
+    first: dict = {"exemples": len(originals), "cibles": {}}
     action_pred = np.full(len(examples), -1)
     for target, classes in TARGETS.items():
         y = _codes(examples, target)
-        oof = out_of_fold(target, X, y, [Fold(tr, {"v": va}) for tr, va in base], log)["v"]
-        entry, pred = judge(target, oof, y, examples)
+        folds = [Fold(tr, {"v": va}) for tr, va in base]
+        oof = out_of_fold(target, X, y, folds, log, grid=grid)["v"]
+        entry, pred = judge(target, oof, y, examples, grid)
         k = len(classes)
         entry["par_ecrivain"] = {
             w: round(f1_macro(pred[m], y[oof.index][m], k), 4)
@@ -1037,7 +1055,7 @@ def hard_validation(
             action_pred[oof.index] = pred
     report["metiers"] = first
     keep = {} if keep is None else keep  # prédictions de l'action, pour les écarts appariés
-    keep["metiers"] = (np.arange(len(examples)), action_pred)
+    keep["metiers"] = (originals, action_pred[originals])
 
     log("2. gabarits tenus à l'écart")
     y = _codes(examples, "action")
@@ -1049,8 +1067,8 @@ def hard_validation(
         )
         for (tr, va), held in zip(base, held_templates, strict=True)
     ]
-    oof = out_of_fold("action", X, y, folds, log)["v"]
-    entry, pred = judge("action", oof, y, examples)
+    oof = out_of_fold("action", X, y, folds, log, grid=grid)["v"]
+    entry, pred = judge("action", oof, y, examples, grid)
     keep["gabarits"] = (oof.index, pred)
     truth, same = y[oof.index], action_pred[oof.index]
     low, high = paired_diff_ci(_f1_action, pred, same, truth)
@@ -1084,8 +1102,8 @@ def hard_validation(
             )
             for tr, va in base
         ]
-        for measure, oof in out_of_fold("action", X, y, folds, log).items():
-            entry, pred = judge("action", oof, y, examples)
+        for measure, oof in out_of_fold("action", X, y, folds, log, grid=grid).items():
+            entry, pred = judge("action", oof, y, examples, grid)
             cells[f"{learn}→{measure}"] = (entry, pred, oof)
             keep[f"{learn}→{measure}"] = (oof.index, pred)
     keys = ("configuration", "exemples", "f1_macro", "f1_macro_ic95", "par_pli", "classes")
@@ -1406,7 +1424,7 @@ def valider_reel(
     cards, origins, truth = _dev_set(series)
     reference = Reference.load(model_path)
     embedder = embedder or FastEmbedder(reference.embedder_name)
-    X = design(cards, embedder, reference.fiche)
+    X = design(cards, embedder, reference.fiche, texte=reference.texte)
     sources = [c["source"] for c in cards]
     result = evaluate(reference, X, sources, truth)
     pred = predict(reference.models["action"], X)
@@ -1593,13 +1611,15 @@ def design(
     embedder: Embedder,
     fiche: str = "aucune",
     cache: VectorCache | None = None,
+    texte: str = "brut",
 ) -> np.ndarray:
-    """L'entrée du modèle : vecteur de la carte, fiche, ou les deux bout à bout."""
+    """L'entrée du modèle : vecteur de la carte (texte brut ou normalisé), fiche, ou les deux
+    bout à bout."""
     if fiche not in FICHES:
         raise ValueError(f"fiche inconnue : {fiche!r}")
     parts = []
     if fiche != "seule":
-        texts = [card_text(c) for c in cards]
+        texts = [encoder_text(c, texte) for c in cards]
         parts.append(cache.embed(embedder, texts) if cache else embedder.embed(texts))
     if fiche != "aucune":
         parts.append(np.array([card_features(c) for c in cards]).reshape(len(cards), -1))
@@ -1677,6 +1697,69 @@ def decide(gaps: dict, recall: dict) -> dict:
     }
 
 
+def run_variant(
+    examples: list[Example],
+    Xv: np.ndarray,
+    Xd: np.ndarray,
+    dev: tuple[list[dict], list[str], dict],
+    fiche: str,
+    n_folds: int = HARD_FOLDS,
+    log: Callable[[str], None] = lambda _: None,
+    grid: Sequence[Config] | None = None,
+    texte: str = "brut",
+) -> tuple[dict, dict[str, tuple[np.ndarray, np.ndarray]], float]:
+    """Une variante : validation dure, puis modèle appris sur tout l'entraînement (réglages du
+    découpage 1) et mesuré sur le jeu réel. Rend les chiffres, les prédictions de l'action par
+    mesure (vérité, prédiction) pour les écarts appariés, et le rappel des alertes (veto G5)."""
+    dev_cards, origins, dev_truth_codes = dev
+    y_dev = dev_truth_codes["action"]
+    keep: dict = {}
+    hard = hard_validation(examples, Xv, n_folds, log=log, keep=keep, grid=grid)
+    first = hard["metiers"]
+    reference = fit_from_report(examples, Xv, first, "", fiche)
+    reference.texte = texte
+    result = evaluate(reference, Xd, [c["source"] for c in dev_cards], dev_truth_codes)
+    keep["reel"] = (np.arange(len(y_dev)), predict(reference.models["action"], Xd))
+    alerts = dev_truth_codes["alerte"] == 1
+    dev_alert = predict(reference.models["alerte"], Xd, reference.alert_threshold)
+    entry = {
+        "fiche": fiche,
+        "texte": texte,
+        "metiers": {
+            t: {
+                "f1_macro": e["f1_macro"],
+                "f1_macro_ic95": e["f1_macro_ic95"],
+                "configuration": e["configuration"],
+                "par_source": e["par_source"],
+            }
+            for t, e in first["cibles"].items()
+        },
+        "alerte_rappel_095": first["cibles"]["alerte"]["seuil_rappel_095"],
+        "gabarits": {k: hard["gabarits"]["action"][k] for k in ("f1_macro", "f1_macro_ic95")},
+        "ecrivain": {
+            c: {k: e[k] for k in ("f1_macro", "f1_macro_ic95")}
+            for c, e in hard["ecrivain"]["cellules"].items()
+        },
+        "reel": {
+            t: {k: result[t][k] for k in ("f1_macro", "f1_macro_ic95", "par_source")}
+            for t in TARGETS
+        }
+        | {
+            "action_par_origine": {
+                o: round(_f1_action(keep["reel"][1][m], y_dev[m]), 4)
+                for o in ("claire", "david")
+                if (m := np.array([x == o for x in origins])).any()
+            },
+            "action_classes": result["action"]["classes"],
+            "action_confusion": result["action"]["confusion"],
+            "alertes_reelles_detectees": f"{int(dev_alert[alerts].sum())}/{int(alerts.sum())}",
+        },
+    }
+    y = _codes(examples, "action")
+    preds = {m: (y[idx], p) if m != "reel" else (y_dev, p) for m, (idx, p) in keep.items()}
+    return entry, preds, first["cibles"]["alerte"]["seuil_rappel_095"]["rappel"]
+
+
 def levier_fiche(
     corpora: dict[str, Path] = CORPORA,
     embedder: Embedder | None = None,
@@ -1697,7 +1780,6 @@ def levier_fiche(
     dev_cards, origins, dev_truth_codes = _dev_set(series)
     X_dev = design(dev_cards, embedder, "aucune", cache)
     F_dev = design(dev_cards, embedder, "seule")
-    y_dev = dev_truth_codes["action"]
     report: dict = {
         "fiche": list(FEATURE_NAMES),
         "fiche_frequence": {
@@ -1705,62 +1787,14 @@ def levier_fiche(
         },
         "variantes": {},
     }
-    preds: dict[str, dict[str, np.ndarray]] = {}
+    preds: dict[str, dict[str, tuple[np.ndarray, np.ndarray]]] = {}
     recall = {}
+    dev = (dev_cards, origins, dev_truth_codes)
     for name, fiche in VARIANTS.items():
         log(f"variante {name} ({fiche})")
-        keep: dict = {}
-        Xv = _variant_input(X, F, fiche)
-        hard = hard_validation(examples, Xv, n_folds, log=log, keep=keep)
-        first = hard["metiers"]
-        reference = fit_from_report(examples, Xv, first, embedder.name, fiche)
-        Xd = _variant_input(X_dev, F_dev, fiche)
-        dev = evaluate(reference, Xd, [c["source"] for c in dev_cards], dev_truth_codes)
-        keep["reel"] = (np.arange(len(y_dev)), predict(reference.models["action"], Xd))
-        alerts = dev_truth_codes["alerte"] == 1
-        dev_alert = predict(reference.models["alerte"], Xd, reference.alert_threshold)
-        recall[name] = first["cibles"]["alerte"]["seuil_rappel_095"]["rappel"]
-        report["variantes"][name] = {
-            "fiche": fiche,
-            "metiers": {
-                t: {
-                    "f1_macro": e["f1_macro"],
-                    "f1_macro_ic95": e["f1_macro_ic95"],
-                    "configuration": e["configuration"],
-                    "par_source": e["par_source"],
-                }
-                for t, e in first["cibles"].items()
-            },
-            "alerte_rappel_095": first["cibles"]["alerte"]["seuil_rappel_095"],
-            "gabarits": {
-                k2: hard["gabarits"]["action"][k2] for k2 in ("f1_macro", "f1_macro_ic95")
-            },
-            "ecrivain": {
-                c: {k2: e[k2] for k2 in ("f1_macro", "f1_macro_ic95")}
-                for c, e in hard["ecrivain"]["cellules"].items()
-            },
-            "reel": {
-                t: {k2: dev[t][k2] for k2 in ("f1_macro", "f1_macro_ic95", "par_source")}
-                for t in TARGETS
-            }
-            | {
-                "action_par_origine": {
-                    o: round(
-                        _f1_action(keep["reel"][1][m], y_dev[m]),
-                        4,
-                    )
-                    for o in ("claire", "david")
-                    if (m := np.array([x == o for x in origins])).any()
-                },
-                "action_classes": dev["action"]["classes"],
-                "action_confusion": dev["action"]["confusion"],
-                "alertes_reelles_detectees": f"{int(dev_alert[alerts].sum())}/{int(alerts.sum())}",
-            },
-        }
-        y = _codes(examples, "action")
-        preds[name] = {
-            m: (y[idx], p) if m != "reel" else (y_dev, p) for m, (idx, p) in keep.items()
-        }
+        Xv, Xd = _variant_input(X, F, fiche), _variant_input(X_dev, F_dev, fiche)
+        entry, preds[name], recall[name] = run_variant(examples, Xv, Xd, dev, fiche, n_folds, log)
+        report["variantes"][name] = entry
     measures = ("metiers", *DECISIVE)
     gaps = {
         f"{a}-{b}": {m: _gap(preds[a][m][0], preds[a][m][1], preds[b][m][1]) for m in measures}
@@ -1792,6 +1826,245 @@ def levier_summary(report: dict) -> str:
         lines.append(
             f"{pair} : " + " ; ".join(f"{m} {g['ecart']:+.3f} {g['ic95']}" for m, g in gaps.items())
         )
+    lines.append(f"décision : {report['decision']}")
+    return "\n".join(lines)
+
+
+# --- levier 2 : augmentation du texte --------------------------------------------------------
+#
+# Au levier 1, la fiche seule bat l'hybride sur le jeu réel : le vecteur lit encore le décor
+# propre à chaque générateur. Règles écrites le 23/11 avant la mesure (plan, §11), fixées
+# d'après le simulateur et le guide, pas d'après les erreurs du jeu réel.
+
+TEXTES = ("brut", "normalise")
+TEXT_REPORT_PATH = Path(__file__).with_name("comprendre_levier_texte.json")
+SEEDS = (0, 1, 2)  # G4
+TEXT_GRID = tuple(Config(l2, False) for l2 in (1e-2, 1e-3, 1e-4))  # plan, §11, 23/11
+_TEAMS_BLOCK = re.compile(r"_{8,}\s*Réunion Microsoft Teams.*?Code secret\s*:\s*\S+", re.DOTALL)
+_TEAMS_LINE = re.compile(
+    r"^\s*(_{8,}|Réunion Microsoft Teams|Rejoindre\s*:|Numéro de réunion|Code secret).*$",
+    re.MULTILINE | re.IGNORECASE,
+)
+_UNSUBSCRIBE = re.compile(r"^[^\n]*(désabonn|unsubscribe)[^\n]*$", re.MULTILINE | re.IGNORECASE)
+_CLOSING_LINE = re.compile(
+    r"^\s*(cdt|cordialement|bien cordialement|bien à vous|bonne journée|belle journée|merci)"
+    r"[\s,.!]*$",
+    re.IGNORECASE,
+)
+_CLOSING_INLINE = re.compile(r"\s(?:Cordialement|Bien à vous|Bien cordialement|Cdt),.*$", re.DOTALL)
+_SALUTATION = re.compile(
+    r"^(bonjour|bonsoir|salut|hello|madame|monsieur|cher|chère)\b|^\w+,$", re.IGNORECASE
+)
+_URL = re.compile(r"https?://\S+")
+_EMAIL = re.compile(r"\S+@\S+\.\w+")
+_DATE_WORDS = re.compile(
+    r"\b(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|janvier|février|mars|avril|mai|"
+    r"juin|juillet|août|septembre|octobre|novembre|décembre)\b",
+    re.IGNORECASE,
+)
+_SENTENCE = re.compile(r"(?<=[.!?])\s+|\n+")
+PERTURBATIONS = ("objet", "phrase", "ordre", "coupe", "politesse")
+
+
+def mask(text: str) -> str:
+    """Liens, adresses, chiffres, jours et mois masqués : le décor variable, pas la demande."""
+    text = _URL.sub("[lien]", text)
+    text = _EMAIL.sub("[adresse]", text)
+    text = _DATE_WORDS.sub("#", text)
+    return re.sub(r"\d+", "#", text)
+
+
+def drop_signature(text: str) -> str:
+    """Le texte avant la formule de fin (seule sur sa ligne, ou en ligne suivie d'une virgule)."""
+    lines = text.split("\n")
+    cut = next((n for n, line in enumerate(lines) if _CLOSING_LINE.match(line)), len(lines))
+    return _CLOSING_INLINE.sub("", "\n".join(lines[:cut]))
+
+
+def clean_body(text: str) -> str:
+    """Le texte sans bloc de réunion Teams, pied de désabonnement ni signature, masqué."""
+    text = _TEAMS_LINE.sub("", _TEAMS_BLOCK.sub("", text))
+    text = drop_signature(_UNSUBSCRIBE.sub("", text))
+    lines = [re.sub(r"[ \t]+", " ", line).strip() for line in mask(text).split("\n")]
+    return "\n".join(line for line in lines if line)
+
+
+def encoder_text(c: dict, texte: str = "brut") -> str:
+    """Ce que lit l'encodeur : la carte entière (brut), ou « source : objet » et le texte
+    nettoyé (normalisé : la date et les champs sont déjà dans la fiche)."""
+    if texte == "brut":
+        return card_text(c)
+    if texte != "normalise":
+        raise ValueError(f"texte inconnu : {texte!r}")
+    return f"{SOURCE_NAMES[c['source']]} : {mask(c['title'])}\n{clean_body(c['text'])}".strip()
+
+
+def perturbed_text(c: dict, rng: random.Random, texte: str = "brut") -> str:
+    """Une copie perturbée de la carte, même étiquette : une ou deux perturbations tirées
+    parmi PERTURBATIONS, sur l'objet et le texte (les champs ne bougent pas)."""
+    title, body = c["title"], c["text"]
+    if texte == "normalise":
+        title, body = mask(title), clean_body(body)
+    sentences = [x for x in _SENTENCE.split(body) if x.strip()]
+    for op in rng.sample(PERTURBATIONS, rng.choice((1, 2))):
+        if op == "objet":
+            title = ""
+        elif op == "phrase" and len(sentences) >= 2:
+            del sentences[rng.randrange(len(sentences))]
+        elif op == "ordre":
+            rng.shuffle(sentences)
+        elif op == "coupe" and len(sentences) >= 2:
+            sentences = sentences[: rng.randint(1, len(sentences) - 1)]
+        elif op == "politesse":
+            if sentences and _SALUTATION.match(sentences[0].strip()):
+                sentences = sentences[1:]
+            sentences = [x for x in drop_signature("\n".join(sentences)).split("\n") if x.strip()]
+    body = " ".join(x.strip() for x in sentences)
+    if texte == "normalise":
+        return f"{SOURCE_NAMES[c['source']]} : {title}\n{body}".strip()
+    return card_text(c | {"title": title, "text": body})
+
+
+def augmented_examples(examples: Sequence[Example], seed: int, texte: str) -> list[Example]:
+    """Une copie perturbée de chaque exemple, tirée par carte (graine, élément, écrivain) :
+    le même exemple donne la même copie quel que soit l'ordre."""
+    out = []
+    for e in examples:
+        rng = random.Random(f"m6:augmentation:{seed}:{texte}:{e.item_id}:{e.writer}")
+        text = perturbed_text(e.card, rng, texte)
+        out.append(replace(e, text=text, augmented=True))
+    return out
+
+
+def text_groups(seeds: Sequence[int] = SEEDS) -> dict[str, tuple[str, ...]]:
+    """Les groupes de variantes, du plus simple au plus complexe (G3)."""
+    return {"N": ("N",), "A": tuple(f"A{s}" for s in seeds), "NA": tuple(f"NA{s}" for s in seeds)}
+
+
+def _beats(gaps: Sequence[dict]) -> bool:
+    """Gain significatif sur une mesure décisive et aucune perte sur le découpage 1, pour
+    chaque graine."""
+    return all(
+        any(g[m]["ic95"][0] > 0 for m in DECISIVE) and g["metiers"]["ic95"][1] >= 0 for g in gaps
+    )
+
+
+def decide_text(gaps: dict, recall: dict, seeds: Sequence[int] = SEEDS) -> dict:
+    """La règle du 23/11 : une variante remplace la retenue si elle la bat (`_beats`) avec
+    chacune de ses graines, sous le veto des alertes ; de la plus simple à la plus complexe
+    (N, A, N+A), une variante plus complexe doit battre la plus simple déjà retenue (G3)."""
+    retained, steps = "H", {}
+    for group, names in text_groups(seeds).items():
+        veto = any(recall[n] < ALERT_RECALL for n in names)
+        pairs = [f"{n}-{_paired_name(n, retained)}" for n in names]
+        wins = _beats([gaps[p] for p in pairs])
+        steps[group] = {"contre": retained, "bat": wins, "veto_alertes": veto}
+        if wins and not veto:
+            retained = group
+    return {"etapes": steps, "retenue": retained}
+
+
+def _paired_name(name: str, group: str) -> str:
+    """La variante du groupe `group` à comparer à `name` : même graine si elle en a."""
+    if group in ("H", "N"):
+        return group
+    return f"{group}{name[-1]}"
+
+
+def levier_texte(
+    corpora: dict[str, Path] = CORPORA,
+    embedder: Embedder | None = None,
+    cache: VectorCache | None = None,
+    series: Path = SERIES,
+    out_report: Path = TEXT_REPORT_PATH,
+    n_folds: int = HARD_FOLDS,
+    seeds: Sequence[int] = SEEDS,
+    log: Callable[[str], None] = lambda _: None,
+) -> dict:
+    """Le levier 2 : H, N, A et N+A (3 graines), toutes avec la fiche, sur la validation dure
+    et le jeu réel ; écarts appariés et décision par la règle écrite d'avance."""
+    embedder = embedder or FastEmbedder(DEFAULT_MODEL)
+    cache = cache or VectorCache(cache_path(embedder))
+    log("cartes des personas « train »…")
+    examples, _ = training_examples(corpora)
+    F = np.array([card_features(e.card) for e in examples])
+    dev = _dev_set(series)
+    F_dev = design(dev[0], embedder, "seule")
+    variants: list[tuple[str, str, int | None]] = [("H", "brut", None), ("N", "normalise", None)]
+    variants += [(f"A{s}", "brut", s) for s in seeds] + [(f"NA{s}", "normalise", s) for s in seeds]
+    report: dict = {"grille": [c.as_dict() for c in TEXT_GRID], "variantes": {}}
+    preds, recall, base = {}, {}, {}
+    for name, texte, seed in variants:
+        log(f"variante {name} (texte {texte}, graine {seed})")
+        if texte not in base:
+            texts = [encoder_text(e.card, texte) for e in examples]
+            base[texte] = embed_with_progress(cache, embedder, texts, log=log)
+        X, used = base[texte], list(examples)
+        if seed is not None:
+            extra = augmented_examples(examples, seed, texte)
+            X = np.vstack(
+                [X, embed_with_progress(cache, embedder, [e.text for e in extra], log=log)]
+            )
+            used += extra
+        Fv = np.vstack([F] * (len(used) // len(examples)))
+        Xd = np.hstack([design(dev[0], embedder, "aucune", cache, texte), F_dev])
+        entry, preds[name], recall[name] = run_variant(
+            used, np.hstack([X, Fv]), Xd, dev, "hybride", n_folds, log, TEXT_GRID, texte
+        )
+        copies = used[len(examples) :]
+        report["variantes"][name] = entry | {
+            "graine": seed,
+            "copies": len(copies),
+            "copies_identiques": sum(
+                c.text == encoder_text(e.card, texte)
+                for c, e in zip(copies, examples, strict=False)
+            ),
+        }
+    names = [v[0] for v in variants]
+    pairs = [(n, "H") for n in names if n != "H"]
+    pairs += [(n, "N") for n in names if n[0] in "AN" and n != "N"]
+    pairs += [(f"NA{s}", f"A{s}") for s in seeds]
+    measures = ("metiers", *DECISIVE)
+    gaps = {
+        f"{a}-{b}": {m: _gap(preds[a][m][0], preds[a][m][1], preds[b][m][1]) for m in measures}
+        for a, b in dict.fromkeys(pairs)
+    }
+    report["ecarts_apparies_action"] = gaps
+    report["moyennes_par_graine"] = {
+        group: {
+            m: round(float(np.mean([gaps[f"{n}-H"][m]["ecart"] for n in members])), 4)
+            for m in measures
+        }
+        | {
+            "ecart_type_reel": round(
+                float(np.std([gaps[f"{n}-H"]["reel"]["ecart"] for n in members])), 4
+            )
+        }
+        for group, members in (("A", [f"A{s}" for s in seeds]), ("NA", [f"NA{s}" for s in seeds]))
+    }
+    report["decision"] = decide_text(gaps, recall, seeds)
+    out_report.write_text(
+        json.dumps(report, ensure_ascii=False, indent=1) + "\n", encoding="utf-8", newline="\n"
+    )
+    return report
+
+
+def texte_summary(report: dict) -> str:
+    lines = []
+    for name, v in report["variantes"].items():
+        cells = ", ".join(f"{c} {e['f1_macro']:.3f}" for c, e in v["ecrivain"].items())
+        lines.append(
+            f"{name:<4} métiers {v['metiers']['action']['f1_macro']:.3f} ; gabarits "
+            f"{v['gabarits']['f1_macro']:.3f} ; {cells} ; réel {v['reel']['action']['f1_macro']:.3f}"
+            f" (alertes réelles {v['reel']['alertes_reelles_detectees']})"
+        )
+    for pair, gaps in report["ecarts_apparies_action"].items():
+        if pair.endswith("-H"):
+            lines.append(
+                f"{pair} : "
+                + " ; ".join(f"{m} {g['ecart']:+.3f} {g['ic95']}" for m, g in gaps.items())
+            )
+    lines.append(f"moyennes sur les graines (écart à H) : {report['moyennes_par_graine']}")
     lines.append(f"décision : {report['decision']}")
     return "\n".join(lines)
 
@@ -1909,7 +2182,7 @@ def mesurer(
     results = {}
     for label, name in sets.items():
         _, sources, truth = series_truth(name, series)
-        X = design(series_cards(name, series), embedder, reference.fiche)
+        X = design(series_cards(name, series), embedder, reference.fiche, texte=reference.texte)
         results[label] = {"serie": name} | evaluate(reference, X, sources, truth)
         results[label]["coherence_annotateur"] = self_agreement(name, series)
     entry = {
@@ -1972,6 +2245,10 @@ def main(argv: list[str]) -> int:
         print(levier_summary(levier_fiche(log=lambda line: print(line, flush=True))))
         print(f"→ {LEVIER_REPORT_PATH.name}")
         return 0
+    if argv == ["--levier-texte"]:
+        print(texte_summary(levier_texte(log=lambda line: print(line, flush=True))))
+        print(f"→ {TEXT_REPORT_PATH.name}")
+        return 0
     if argv == ["--valider-reel"]:
         print(dev_summary(valider_reel()))
         print(f"→ {DEV_REPORT_PATH.name}")
@@ -2000,7 +2277,7 @@ def main(argv: list[str]) -> int:
         return 0
     print(
         "usage : comprendre --entrainer | --valider-dur | --tirer-dev <data David> | "
-        "--geler-dev | --valider-reel | --levier-fiche | --mesurer | --tirer-demo | --reste-demo | --geler-demo"
+        "--geler-dev | --valider-reel | --levier-fiche | --levier-texte | --mesurer | --tirer-demo | --reste-demo | --geler-demo"
     )
     return 2
 
