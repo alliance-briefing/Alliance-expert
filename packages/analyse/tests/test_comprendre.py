@@ -362,6 +362,93 @@ def test_la_mesure_refuse_une_verite_non_gelee_ou_modifiee(trained, tmp_path):
     assert not (tmp_path / "j.jsonl").exists()  # rien n'a été lu ni journalisé
 
 
+def test_le_candidat_se_mesure_apres_la_reference_avec_l_ecart_apparie(trained, tmp_path):
+    _frozen_series(tmp_path, ANSWERS)
+    journal = tmp_path / "journal.jsonl"
+    reference = comprendre.Reference.load(trained)
+    candidate = tmp_path / "candidat.npz"
+    reference.alert_threshold = 0.01  # un autre modèle, de même entrée
+    reference.save(candidate)
+
+    def measure(model, compare=None):
+        return comprendre.mesurer(
+            tmp_path,
+            model,
+            HashEmbedder(),
+            journal,
+            lambda: "abc1234",
+            {"T-essai": "essai-m6"},
+            tache="M6, candidat",
+            compare=compare,
+        )
+
+    with pytest.raises(ValueError, match="pas encore été mesuré"):
+        measure(candidate, trained)
+    assert not journal.exists()
+    _measure(tmp_path, trained, journal)
+    entry = measure(candidate, trained)
+    gaps = entry["jeux"]["T-essai"]["ecart_apparie"]
+    assert gaps["contre"] == trained.name and gaps["action"]["ecart"] == 0.0  # même action
+    assert gaps["alerte"]["ic95"][0] <= gaps["alerte"]["ecart"] <= gaps["alerte"]["ic95"][1]
+    assert entry["tache"] == "M6, candidat" and len(journal.read_text("utf-8").splitlines()) == 2
+    assert "écart apparié" in comprendre.measure_summary(entry)
+
+
+def test_le_candidat_fige_redonne_le_jeu_reel_publie(corpora, dev, tmp_path):
+    source, _, _ = dev
+    for path in source.iterdir():
+        (tmp_path / path.name).write_bytes(path.read_bytes())
+    claude = annoter.AnswerStore(annoter.answers_path(comprendre.DEV_SERIES, "claude", tmp_path))
+    for n, t in enumerate(annoter.load_series(tmp_path / f"{comprendre.DEV_SERIES}.jsonl")):
+        claude.record(t["task_id"], False, _answer(("informer", "faire", "rien")[n % 3]))
+    comprendre.freeze_dev(tmp_path)
+    configs = {"action": 1e-2, "urgence": 1e-3, "alerte": 1e-3}
+    fit = comprendre.fit_softmax
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(comprendre, "fit_softmax", lambda X, y, k, c: fit(X, y, k, c, steps=30))
+        # le F1 réel qu'aurait publié le levier, recalculé à la main
+        embedder, cache = HashEmbedder(), VectorCache(None)
+        examples, _ = comprendre.training_examples(corpora)
+        X = comprendre.design([e.card for e in examples], embedder, "hybride", cache, "normalise")
+        y = comprendre._codes(examples, "action")
+        k = len(comprendre.TARGETS["action"])
+        action = comprendre.fit_softmax(X, y, k, comprendre.Config(1e-2, False))
+        cards, _, truth = comprendre._dev_set(tmp_path)
+        Xd = comprendre.design(cards, embedder, "hybride", cache, "normalise")
+        f1 = round(comprendre._f1_action(comprendre.predict(action, Xd), truth["action"]), 4)
+        report = tmp_path / "levier.json"
+
+        def write(real):
+            variant = {
+                "fiche": "hybride",
+                "texte": "normalise",
+                "metiers": {
+                    t: {"configuration": {"l2": v, "classes_pondérées": False}}
+                    for t, v in configs.items()
+                },
+                "alerte_rappel_095": {"seuil": 0.7},
+                "reel": {"action": {"f1_macro": real}},
+            }
+            report.write_text(json.dumps({"variantes": {"N": variant}}), encoding="utf-8")
+
+        def freeze():
+            return comprendre.figer_candidat(
+                corpora, embedder, cache, tmp_path, report, "N", tmp_path / "c.npz"
+            )
+
+        write(round(f1 + 0.01, 4))
+        with pytest.raises(ValueError, match="ne redonne pas"):
+            freeze()
+        assert not (tmp_path / "c.npz").exists()
+        write(f1)
+        info = freeze()
+    assert info["reel_action"] == f1 and info["modele_sha256"] == comprendre._sha(
+        tmp_path / "c.npz"
+    )
+    model = comprendre.Reference.load(tmp_path / "c.npz")
+    assert (model.fiche, model.texte, model.alert_threshold) == ("hybride", "normalise", 0.7)
+
+
 def test_les_vrais_jeux_gelés_sont_prets_a_mesurer():
     comprendre.check_frozen()
     for name in comprendre.FROZEN_SETS.values():
