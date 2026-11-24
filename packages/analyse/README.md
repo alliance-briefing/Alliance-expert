@@ -489,6 +489,24 @@ uv run python -m packages.analyse.scoring.ml.encodeur --exporter        # ONNX i
 Puis, sur le portable : `uv run python -m packages.analyse.scoring.ml.encodeur --latence <dossier
 onnx copié>` (taille, latence par élément, écart int8 − float32 sur le jeu réel).
 
+Mesure du 23/11 (RTX 4060, 27 minutes par graine) :
+
+| F1 macro de l'action | **N, retenue** | E0 | E1 |
+|---|---|---|---|
+| métiers | **0,851** | 0,945 | 0,946 |
+| gabarits tenus à l'écart | **0,716** | 0,772 | 0,731 |
+| gabarits → LLM / LLM → gabarits | **0,634 / 0,679** | 0,567 / 0,663 | 0,544 / 0,685 |
+| jeu réel | **0,445** | 0,299 | 0,341 |
+| précision des alertes au rappel 0,95 | **0,998** | 1,000 | 1,000 |
+
+**Décision de la règle : N reste.** E0 passe la règle (gabarits +0,056 [0,034 ; 0,080]), E1 non
+(+0,015 [−0,007 ; 0,038], rien de significatif ailleurs) : arrêt après 2 graines, ni export ni
+latence à mesurer. Lecture : le réajustement apprend la formulation du simulateur (+0,09 sur les
+métiers, alertes parfaites) et transfère moins bien : gabarits → LLM −0,067 et −0,090, jeu réel
+−0,146 [−0,225 ; −0,042] pour E0 et −0,104 [−0,196 ; 0,003] pour E1. Limite de la règle : elle
+ne mettait pas de veto sur une perte significative du jeu réel, si bien qu'E0 a « gagné » malgré
+elle ; la décision n'en dépend pas ici, mais la règle des prochains leviers doit l'ajouter.
+
 ```bash
 uv run python -m packages.analyse.scoring.ml.comprendre --levier-texte  # H, N, A, N+A comparées
 uv run python -m packages.analyse.scoring.ml.comprendre --levier-fiche  # R, H, F comparées
