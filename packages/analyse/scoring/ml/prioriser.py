@@ -546,6 +546,7 @@ MODEL_PATH = Path(__file__).with_name("prioriser_modele.json")
 FINAL_REPORT_PATH = Path(__file__).with_name("prioriser_comparaison.json")
 FROZEN_PAIRS = {"T-gen": jeux_m5.NAMES["paires"], "T-démo": jeux_m5.NAMES["demo"]}
 ACCEPT_AGREEMENT, ACCEPT_GAP = 0.80, 0.15  # acceptation de M8 sur T-gen
+ELEMENT_TASK, CASE_TASK = "M8, priorité des éléments", "M8, score d'affaire"
 
 
 @dataclass(frozen=True)
@@ -746,6 +747,18 @@ def measure_pairs(pairs: Sequence[Pair], model: dict, understanding: Understandi
     }
 
 
+def _refuse_reading(journal: Path, model_sha: str, task: str) -> None:
+    """Un jeu gelé ne se lit qu'une fois par modèle et par tâche (G1) : le même modèle figé
+    peut être mesuré sur les paires d'éléments, puis sur les paires d'affaires."""
+    if not journal.exists():
+        return
+    for line in journal.read_text(encoding="utf-8").splitlines():
+        if line:
+            entry = json.loads(line)
+            if entry["modele_sha256"] == model_sha and entry["tache"] == task:
+                raise ValueError(f"ce modèle a déjà été mesuré ({task}) : voir le journal")
+
+
 def mesurer(
     understanding: Understanding | None = None,
     series: Path = SERIES,
@@ -762,8 +775,7 @@ def mesurer(
     code et le modèle ne sont pas commités."""
     comprendre.check_frozen(series, freezes)
     model_sha = comprendre._sha(model_path)
-    if model_sha in comprendre._journaled(journal):
-        raise ValueError("ce modèle a déjà été mesuré sur les jeux gelés : voir le journal")
+    _refuse_reading(journal, model_sha, ELEMENT_TASK)
     revision = (commit or (lambda: comprendre.git_commit((model_path, Path(__file__)))))()
     model = json.loads(model_path.read_text(encoding="utf-8"))
     understanding = understanding or Understanding(log=log)
@@ -776,7 +788,7 @@ def mesurer(
     gen = results.get("T-gen")
     entry = {
         "date": datetime.now(UTC).isoformat(timespec="seconds"),
-        "tache": "M8, priorité des éléments",
+        "tache": ELEMENT_TASK,
         "commit": revision,
         "modele": model_path.name,
         "modele_sha256": model_sha,
@@ -790,6 +802,124 @@ def mesurer(
             "atteinte": gen["accord_appris"] >= ACCEPT_AGREEMENT
             and gen["ecart_appris_regles"] >= ACCEPT_GAP,
         }
+    with journal.open("a", encoding="utf-8", newline="\n") as file:
+        file.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    return entry
+
+
+# --- score d'affaire ---------------------------------------------------------------------------
+
+
+@dataclass
+class CasePair:
+    """Une paire d'affaires jugée : les éléments visibles de chaque affaire et leurs cartes."""
+
+    task_id: str
+    vp: Viewpoint
+    cards: tuple[list[dict], list[dict]]
+    items: tuple[list[Item], list[Item]]
+    label: str
+
+
+def frozen_case_pairs(
+    name: str = jeux_m5.NAMES["affaires"], series: Path = SERIES, corpus: Path = jeux_m5.CORPUS
+) -> list[CasePair]:
+    """Les paires d'affaires jugées par Théo : chaque affaire a les éléments de sa carte (le
+    tirage les donne, jamais une étiquette), mis en carte d'élément au moment du brief."""
+    info = json.loads((series / jeux_m5.TIRAGE.name).read_text(encoding="utf-8"))
+    behind = info["tgen"]["affaires"]
+    labels = final_labels(name, series)
+    briefs = {b[2].context: b for b in jeux_m5.briefs(corpus, "tgen")}
+    out = []
+    for task in load_series(series / f"{name}.jsonl"):
+        if task["task_id"] not in labels:
+            continue
+        _key, _day, vp, _shown, known = briefs[task["context"]]
+        by_id = {i.item_id: i for i in known}
+        sides = tuple([by_id[i] for i in ids] for ids in behind[task["task_id"]])
+        cards = tuple([card(i, vp, known) for i in side] for side in sides)
+        label = labels[task["task_id"]]["choix"]
+        out.append(CasePair(task["task_id"], vp, cards, sides, label))  # type: ignore[arg-type]
+    return out
+
+
+def case_scores(pairs: Sequence[CasePair], model: dict, understanding: Understanding) -> np.ndarray:
+    """Score de chaque affaire (colonnes A, B) : le plus haut score de ses éléments."""
+    cards = [c for p in pairs for side in p.cards for c in side]
+    scores = iter(model_score(model, understanding.features(cards, [FROZEN] * len(cards))))
+    return np.array([[max(next(scores) for _ in side) for side in p.cards] for p in pairs])
+
+
+def measure_cases(pairs: Sequence[CasePair], model: dict, understanding: Understanding) -> dict:
+    """Accord du score d'affaire et des règles (affaire entière) sur les paires départagées."""
+    s = case_scores(pairs, model, understanding)
+    margin = s[:, 0] - s[:, 1]
+    decided = np.array([p.label != "=" for p in pairs])
+    truth = np.array([p.label == "A" for p in pairs])[decided]
+    hits = ((margin[decided] > 0) == truth).astype(float)
+
+    def rules(items: list[Item], vp: Viewpoint, side: str, task_id: str) -> int:
+        return score_case(Case(f"{task_id}-{side}", tuple(items)), vp.moment, config_for(vp))[0]
+
+    diff = np.array(
+        [
+            rules(p.items[0], p.vp, "a", p.task_id) - rules(p.items[1], p.vp, "b", p.task_id)
+            for p in pairs
+        ]
+    )
+    rule_hits = np.where(diff[decided] == 0, 0.5, ((diff[decided] > 0) == truth).astype(float))
+    return {
+        "paires": len(pairs),
+        "paires_decidees": int(decided.sum()),
+        "elements_par_affaire": round(float(np.mean([len(i) for p in pairs for i in p.items])), 2),
+        "accord_appris": round(float(hits.mean()), 4),
+        "accord_appris_ic95": _ci(hits),
+        "accord_regles": round(float(rule_hits.mean()), 4),
+        "egalites_des_regles": int((diff[decided] == 0).sum()),
+        "ecart_appris_regles": round(float((hits - rule_hits).mean()), 4),
+        "ecart_appris_regles_ic95": _ci(hits - rule_hits),
+    }
+
+
+def mesurer_affaires(
+    understanding: Understanding | None = None,
+    series: Path = SERIES,
+    corpus: Path = jeux_m5.CORPUS,
+    model_path: Path = MODEL_PATH,
+    journal: Path = comprendre.JOURNAL,
+    commit: Callable[[], str] | None = None,
+    freezes: Sequence[str] = comprendre.FREEZES,
+    pairs: Sequence[CasePair] | None = None,
+    log: Callable[[str], None] = lambda _: None,
+) -> dict:
+    """La mesure unique du score d'affaire sur les paires d'affaires de T-gen (règle du 24/11) :
+    le score appris reste le défaut du brief sauf écart aux règles significativement négatif."""
+    comprendre.check_frozen(series, freezes)
+    model_sha = comprendre._sha(model_path)
+    _refuse_reading(journal, model_sha, CASE_TASK)
+    revision = (commit or (lambda: comprendre.git_commit((model_path, Path(__file__)))))()
+    model = json.loads(model_path.read_text(encoding="utf-8"))
+    understanding = understanding or Understanding(log=log)
+    log("paires d'affaires de T-gen…")
+    result = measure_cases(
+        pairs if pairs is not None else frozen_case_pairs(series=series, corpus=corpus),
+        model,
+        understanding,
+    )
+    entry = {
+        "date": datetime.now(UTC).isoformat(timespec="seconds"),
+        "tache": CASE_TASK,
+        "commit": revision,
+        "modele": model_path.name,
+        "modele_sha256": model_sha,
+        "type": model["modele"],
+        "jeux": {"T-gen": {"serie": jeux_m5.NAMES["affaires"]} | result},
+        "decision": (
+            "règles par défaut"
+            if result["ecart_appris_regles_ic95"][1] < 0
+            else "score appris par défaut"
+        ),
+    }
     with journal.open("a", encoding="utf-8", newline="\n") as file:
         file.write(json.dumps(entry, ensure_ascii=False) + "\n")
     return entry
@@ -829,13 +959,18 @@ def main(argv: list[str]) -> int:
         print(json.dumps(entry, ensure_ascii=False, indent=1))
         print(f"→ {comprendre.JOURNAL.name}")
         return 0
+    if argv == ["--mesurer-affaires"]:
+        entry = mesurer_affaires(log=lambda line: print(line, flush=True))
+        print(json.dumps(entry, ensure_ascii=False, indent=1))
+        print(f"→ {comprendre.JOURNAL.name}")
+        return 0
     if len(argv) == 2 and argv[0] == "--tirer-incertain":
         info = draw_uncertain_round(int(argv[1]), log=lambda line: print(line, flush=True))
         print(f"{round_name(info['tour'])} : {len(info['paires'])} paires ({info['selection']})")
         return 0
     print(
         "usage : prioriser --tirer <tour> | --tirer-incertain <tour> | --montrer <tour> "
-        "[début fin] | --reste | --valider | --figer | --mesurer"
+        "[début fin] | --reste | --valider | --figer | --mesurer | --mesurer-affaires"
     )
     return 2
 

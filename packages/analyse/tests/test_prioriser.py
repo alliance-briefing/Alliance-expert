@@ -179,6 +179,36 @@ def test_bradley_terry_valide_par_metier_puis_choisit_les_paires_incertaines(cor
         assert json.loads(journal.read_text("utf-8")) == entry
         with pytest.raises(ValueError, match="déjà été mesuré"):
             measure()
+        # le même modèle se mesure une fois sur les paires d'affaires (autre tâche du journal)
+        cases = [
+            prioriser.CasePair(
+                p.task_id,
+                p.vp,
+                ([p.cards[0]], [p.cards[1], p.cards[0]]),
+                ([p.items[0]], [p.items[1], p.items[0]]),
+                p.label,
+            )
+            for p in prioriser.round_pairs(1, root, folder)
+        ]
+
+        def measure_cases():
+            return prioriser.mesurer_affaires(
+                understanding,
+                folder,
+                root,
+                folder / "m.json",
+                journal,
+                lambda: "abc1234",
+                freezes=(),
+                pairs=cases,
+            )
+
+        case_entry = measure_cases()
+        assert case_entry["tache"] == prioriser.CASE_TASK
+        assert case_entry["jeux"]["T-gen"]["elements_par_affaire"] == 1.5
+        assert case_entry["decision"] in ("règles par défaut", "score appris par défaut")
+        with pytest.raises(ValueError, match="score d'affaire"):
+            measure_cases()
 
 
 def test_le_boosting_apprend_un_ordre_simple():
