@@ -566,6 +566,15 @@ le modèle apprend le jugement de Claude, mesuré sur celui de Théo ; l2 = 0,1 
 grille. Le modèle reste utilisable : à accord égal ou meilleur que les règles partout sauf
 mail / tâche, et nettement meilleur sur le vrai domaine.
 
+**Score d'affaire** (`--mesurer-affaires`, règle écrite le 24/11 avant la lecture) : une affaire
+prend le plus haut score de ses éléments visibles (2,2 en moyenne), le même modèle figé, sans
+réapprentissage ; les règles notent l'affaire entière (`score_case`). Mesure unique sur les 50
+paires d'affaires de T-gen (45 départagées par Théo, journal, commit a91d73f) : **0,600**
+[0,467 ; 0,733] contre 0,533 pour les règles, écart +0,067 [−0,100 ; 0,222]. Égalité au sens de
+G2 ; l'écart n'étant pas significativement négatif, la règle fait du **score appris le défaut des
+affaires du brief**. Limite : les deux sont faibles sur les affaires (à peine au-dessus du
+hasard, 45 paires seulement) ; juger une affaire entière demande plus que son meilleur élément.
+
 ```bash
 uv run python -m packages.analyse.scoring.ml.comprendre --levier-texte  # H, N, A, N+A comparées
 uv run python -m packages.analyse.scoring.ml.comprendre --levier-fiche  # R, H, F comparées
