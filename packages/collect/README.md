@@ -40,7 +40,6 @@ Un connecteur qui échoue ne bloque pas les autres : il devient un `WARNING` (L1
 | `calendar_graph` | Calendrier Outlook (L1.4) | 48 prochaines heures + événement en cours ; récurrences dépliées | `Calendars.Read` | `CALENDAR_SOURCE=graph` |
 | `tasks_graph` | Microsoft To Do (L1.4) | en retard (50 au plus) + dues dans les 24 h ; sans échéance = jamais collectée | `Tasks.Read` | `TASKS_SOURCE=graph` |
 | `files_graph` | OneDrive (L1.5) | créés ou modifiés dans les 48 h ; 100 au plus ; extrait pour txt, md, csv, docx (< 2 Mo), métadonnées seules sinon | `Files.Read` | `FILES_SOURCE=graph` |
-| `files_graph` | OneDrive (L1.5) | créés ou modifiés dans les 48 h ; 100 au plus ; métadonnées seules | `Files.Read` | `FILES_SOURCE=graph` |
 | `demo` | fixtures `contracts/fixtures/demo` (L1.0) | journées générées, toutes sources | aucun | — |
 | `notes_demo` | notes Markdown factices (source n°5, L1.1) | notes écrites dans la fenêtre | aucun | — |
 
@@ -49,6 +48,17 @@ servies au seul utilisateur `u_demo_graph` : aucun réseau, aucun compte nécess
 variables `MAIL_GRAPH_DIR`, `CALENDAR_GRAPH_DIR`, `TASKS_GRAPH_DIR` et `FILES_GRAPH_DIR`
 pointent vers un autre jeu au même format (par exemple le jeu complet
 `alliance-graph-synth/data` pour les mails).
+
+### Écart au guide : pas de fournisseur Google
+
+Le guide (L1.10) demande deux fournisseurs, Microsoft et Google, pour le mail et le
+calendrier. **Le rendu ne couvre que Microsoft** : le client travaille sous Microsoft 365, et
+Google a été reporté après la v0.9.0 pour consacrer la fin du projet à la relecture et à la
+robustesse des connecteurs Microsoft. Décision, options écartées et chemin pour ajouter Google
+plus tard : [ADR-0004](../../docs/adr/0004-google-reporte.md).
+
+Rien n'est à reprendre dans le reste du projet pour l'ajouter : le contrat A accepte déjà
+`provider: "google"`, et un connecteur est un simple dossier de `connectors/`.
 
 ## Configurer
 

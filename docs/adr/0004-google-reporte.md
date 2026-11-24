@@ -1,5 +1,5 @@
 # ADR-0004 : fournisseur Google (Gmail, Google Agenda) reporté après la v0.9.0
-Date : 2026-11-18 · Statut : proposé
+Date : 2026-11-18 · Statut : accepté (24/11/2026, référent lot 1)
 Décideurs : référents lot 1, 2, 3 · à communiquer à David avant le statut du 20/11 (issue #90)
 
 ## Contexte (3 lignes)
