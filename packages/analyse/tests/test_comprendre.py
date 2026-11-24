@@ -588,3 +588,142 @@ def test_le_vrai_jeu_reel_est_gele_et_complet():
         comprendre.DAVID_QUOTA
     )
     assert len(comprendre.dev_labels()) == len(origins)
+
+
+# --- levier 1 : fiche hybride --------------------------------------------------------------------
+
+
+def _card(source, title="Objet", fields=(), text="", when="hier à 10:00"):
+    return {"source": source, "title": title, "when": when, "fields": list(fields), "text": text}
+
+
+def _on(c):
+    on = {n for n, v in zip(comprendre.FEATURE_NAMES, comprendre.card_features(c)) if v}
+    assert sum(n.startswith("source=") for n in on) == 1  # chaque source a sa case
+    return on
+
+
+def test_la_fiche_lit_la_relation_quel_que_soit_le_monde():
+    for sender, expected in [
+        ("Hugo Bernard, Client, Groupe Belfroid", "client"),  # simulateur
+        ("Paul Marchetti, client", "client"),  # démo, David
+        ("Titouan Synayoko, associé", "interne"),  # Claire
+        ("Lucie Martin, Directrice financière (votre pair)", "direction"),
+        ("Isabelle GARNIER, comité de direction", "direction"),
+        ("Bruno LEFÈVRE, votre N+1", "hierarchie"),
+        ("Garage Martin, partenaire", "fournisseur"),
+        ("portail RH (envoi automatique)", "automate"),
+        ("Service facturation <facturation@exemple.test>", "inconnu"),
+    ]:
+        assert comprendre.relation(sender) == expected, sender
+    mine = _card("mail", fields=[["De", "vous"], ["À", "Paul, client"]])
+    assert _on(mine) == {"source=mail", "mail:de_vous"}
+
+
+def test_la_fiche_d_un_mail_en_copie_et_d_un_envoi_en_masse():
+    copy = _card(
+        "mail",
+        "RE : Commande",
+        [["De", "Léa, votre équipe"], ["À", "Hugo"], ["Copie", "vous"], ["Statut", "non lu"]],
+        "Tu peux déposer la commande ?",
+    )
+    assert _on(copy) == {
+        "source=mail",
+        "mail:en_copie",
+        "mail:expediteur=interne",
+        "mail:reponse",
+        "mail:non_lu",
+    }
+    bulk = _card(
+        "mail",
+        "TR: Lettre du mois",
+        [["De", "Veille, envoi automatique"], ["À", "vous (destinataire direct)"]],
+        "Vous recevez cet e-mail car vous êtes abonné(e). Se désabonner",
+    )
+    assert {"mail:transfert", "mail:desabonnement", "mail:destinataire_direct"} <= _on(bulk)
+
+
+def test_la_fiche_des_reunions_taches_et_fichiers():
+    meeting = _card(
+        "calendar",
+        fields=[["Votre réponse", "pas encore répondu"], ["Statut", "annulée"]],
+        when="aujourd'hui à 15:00 – 16:00",
+    )
+    assert _on(meeting) == {
+        "source=calendar",
+        "reunion:pas_repondu",
+        "reunion:annulee",
+        "reunion:aujourd_hui",
+    }
+    task = _card(
+        "task",
+        "URGENT – Répondre à l'avocat avant 12 h",
+        [["Échéance", "hier à 23:59 (en retard)"], ["Statut", "à faire"], ["Liste", "To Do"]],
+    )
+    assert _on(task) == {
+        "source=task",
+        "tache:echeance",
+        "tache:en_retard",
+        "tache:verbe=repondre",
+    }
+    assert comprendre.task_verb("Signer le bon de commande") == "decider"
+    assert comprendre.task_verb("Point sur le budget") is None
+    file = _card("file", fields=[["Modifié par", "vous"], ["Cité dans", "mail « Budget »"]])
+    assert _on(file) == {"source=file", "fichier:modifie_par_vous", "fichier:cite"}
+
+
+def test_l_entree_du_modele_selon_la_fiche_et_le_modele_s_en_souvient(trained, tmp_path):
+    cards = [_card("mail", text="Merci de valider le devis."), _card("task", "Appeler Paul")]
+    width = len(comprendre.FEATURE_NAMES)
+    vec = comprendre.design(cards, HashEmbedder(), "aucune")
+    assert comprendre.design(cards, HashEmbedder(), "seule").shape == (2, width)
+    assert comprendre.design(cards, HashEmbedder(), "hybride").shape == (2, vec.shape[1] + width)
+    with pytest.raises(ValueError):
+        comprendre.design(cards, HashEmbedder(), "autre")
+    assert comprendre.Reference.load(trained).fiche == "aucune"  # modèle d'avant le levier
+    reference = comprendre.Reference.load(trained)
+    reference.fiche = "hybride"
+    reference.save(tmp_path / "h.npz")
+    assert comprendre.Reference.load(tmp_path / "h.npz").fiche == "hybride"
+
+
+def test_la_decision_suit_la_regle_ecrite_d_avance():
+    def gaps(hr_low, fh_low, loss=False):
+        g = {m: {"ecart": 0.0, "ic95": [-0.01, 0.01]} for m in ("metiers", *comprendre.DECISIVE)}
+        hr = {m: dict(v) for m, v in g.items()} | {"reel": {"ecart": 0.1, "ic95": [hr_low, 0.2]}}
+        if loss:
+            hr["metiers"] = {"ecart": -0.05, "ic95": [-0.08, -0.02]}
+        fh = {m: dict(v) for m, v in g.items()} | {"reel": {"ecart": -0.1, "ic95": [-0.2, fh_low]}}
+        return {"H-R": hr, "F-H": fh}
+
+    ok = {"H": 0.95}
+    assert comprendre.decide(gaps(0.02, -0.01), ok)["retenue"] == "H"  # F nettement moins bon
+    assert comprendre.decide(gaps(0.02, 0.01), ok)["retenue"] == "F"  # égalité F / H : G3
+    assert comprendre.decide(gaps(-0.01, -0.01), ok)["retenue"] == "R"  # aucun gain sûr
+    assert comprendre.decide(gaps(0.02, -0.01, loss=True), ok)["retenue"] == "R"
+    assert comprendre.decide(gaps(0.02, -0.01), {"H": 0.9})["veto_alertes"]
+
+
+def test_le_levier_compare_les_trois_variantes(corpora, dev, tmp_path):
+    source, _, _ = dev
+    for path in source.iterdir():
+        (tmp_path / path.name).write_bytes(path.read_bytes())
+    claude = annoter.AnswerStore(annoter.answers_path(comprendre.DEV_SERIES, "claude", tmp_path))
+    for n, t in enumerate(annoter.load_series(tmp_path / f"{comprendre.DEV_SERIES}.jsonl")):
+        claude.record(t["task_id"], False, _answer(("informer", "faire", "rien")[n % 3]))
+    comprendre.freeze_dev(tmp_path)
+    fit = comprendre.fit_softmax
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(comprendre, "fit_softmax", lambda X, y, k, c: fit(X, y, k, c, steps=40))
+        report = comprendre.levier_fiche(
+            corpora, HashEmbedder(), VectorCache(None), tmp_path, tmp_path / "l.json", 3
+        )
+    assert set(report["variantes"]) == {"R", "H", "F"}
+    assert set(report["ecarts_apparies_action"]) == {"H-R", "F-H", "F-R"}
+    assert all(
+        set(g) == {"metiers", *comprendre.DECISIVE}
+        for g in report["ecarts_apparies_action"].values()
+    )
+    assert report["decision"]["retenue"] in ("R", "H", "F")
+    assert json.loads((tmp_path / "l.json").read_text("utf-8")) == report
+    assert "décision" in comprendre.levier_summary(report)

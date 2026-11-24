@@ -71,9 +71,10 @@ import random
 import re
 import sys
 import time
+import unicodedata
 from collections import Counter
 from collections.abc import Callable, Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
@@ -275,6 +276,7 @@ class Example:
     text: str
     labels: dict[str, str]  # une valeur de TARGETS par cible
     templates: tuple[str, ...] = ()  # gabarits utilisés par le texte de cette carte
+    card: dict = field(default_factory=dict, compare=False, repr=False)  # pour la fiche
 
     @property
     def metier(self) -> str:
@@ -353,7 +355,8 @@ def persona_examples(
                     for i in items.values()
                     if datetime.fromisoformat(rows[i.item_id]["visible_from"]) <= vp.moment
                 ]
-            text = card_text(card(items[item_id], vp, known[writer, day]))
+            shown = card(items[item_id], vp, known[writer, day])
+            text = card_text(shown)
             if text in texts:  # même carte qu'avec l'autre écrivain : une seule fois
                 continue
             texts.add(text)
@@ -368,6 +371,7 @@ def persona_examples(
                     text,
                     labels_of(own),
                     tuple(own.get("templates", ())),
+                    shown,
                 )
             )
     return out, excluded
@@ -544,6 +548,7 @@ class Reference:
     models: dict[str, Softmax]
     alert_threshold: float
     embedder_name: str
+    fiche: str = "aucune"  # entrée du modèle : FICHES (levier 1)
 
     def predict(self, X: np.ndarray) -> dict[str, list[str]]:
         out = {}
@@ -562,7 +567,7 @@ class Reference:
             "embedder": self.embedder_name,
             "seuil_alerte": self.alert_threshold,
             "classes": {t: list(c) for t, c in TARGETS.items()},
-        }
+        } | ({"fiche": self.fiche} if self.fiche != "aucune" else {})
         np.savez(path, meta=np.array(json.dumps(meta, ensure_ascii=False)), **arrays)
 
     @classmethod
@@ -573,7 +578,7 @@ class Reference:
                 t: Softmax(*(data[f"{part}_{t}"] for part in ("W", "b", "mean", "scale")))
                 for t in TARGETS
             }
-        return cls(models, meta["seuil_alerte"], meta["embedder"])
+        return cls(models, meta["seuil_alerte"], meta["embedder"], meta.get("fiche", "aucune"))
 
 
 # --- entraînement et rapport ------------------------------------------------------------------
@@ -996,6 +1001,7 @@ def hard_validation(
     n_folds: int = HARD_FOLDS,
     seed: int = 0,
     log: Callable[[str], None] = lambda _: None,
+    keep: dict | None = None,
 ) -> dict:
     """Les trois découpages de la validation dure, tous sur des métiers jamais vus :
     1. métiers : `n_folds` plis de métiers entiers, les trois cibles ;
@@ -1030,6 +1036,8 @@ def hard_validation(
         if target == "action":
             action_pred[oof.index] = pred
     report["metiers"] = first
+    keep = {} if keep is None else keep  # prédictions de l'action, pour les écarts appariés
+    keep["metiers"] = (np.arange(len(examples)), action_pred)
 
     log("2. gabarits tenus à l'écart")
     y = _codes(examples, "action")
@@ -1043,6 +1051,7 @@ def hard_validation(
     ]
     oof = out_of_fold("action", X, y, folds, log)["v"]
     entry, pred = judge("action", oof, y, examples)
+    keep["gabarits"] = (oof.index, pred)
     truth, same = y[oof.index], action_pred[oof.index]
     low, high = paired_diff_ci(_f1_action, pred, same, truth)
     families = {template_family(t) for e in examples for t in e.templates} - {None}
@@ -1078,6 +1087,7 @@ def hard_validation(
         for measure, oof in out_of_fold("action", X, y, folds, log).items():
             entry, pred = judge("action", oof, y, examples)
             cells[f"{learn}→{measure}"] = (entry, pred, oof)
+            keep[f"{learn}→{measure}"] = (oof.index, pred)
     keys = ("configuration", "exemples", "f1_macro", "f1_macro_ic95", "par_pli", "classes")
     third: dict = {
         "elements_aux_deux_textes": len(both),
@@ -1393,39 +1403,18 @@ def valider_reel(
 ) -> dict:
     """La mesure d'un modèle sur le jeu de développement réel, refusée si les étiquettes ont
     changé depuis leur gel : on ne corrige pas une étiquette après avoir vu une erreur."""
-    changed = dev_changed(series)
-    if changed:
-        raise ValueError(f"jeu de développement non gelé ou modifié : {changed}")
-    info = json.loads((series / DEV_TIRAGE).read_text(encoding="utf-8"))
-    labels = dev_truth(series)
-    tasks = [t for t in load_series(series / f"{DEV_SERIES}.jsonl") if t["task_id"] in labels]
+    cards, origins, truth = _dev_set(series)
     reference = Reference.load(model_path)
     embedder = embedder or FastEmbedder(reference.embedder_name)
-    X = embedder.embed([card_text(t["card"]) for t in tasks])
-    sources = [t["card"]["source"] for t in tasks]
-    truth = {
-        target: np.array(
-            [
-                TARGETS[target].index(
-                    ("oui" if labels[t["task_id"]]["alerte"] else "non")
-                    if target == "alerte"
-                    else labels[t["task_id"]][target]
-                )
-                for t in tasks
-            ],
-            dtype=int,
-        )
-        for target in TARGETS
-    }
+    X = design(cards, embedder, reference.fiche)
+    sources = [c["source"] for c in cards]
     result = evaluate(reference, X, sources, truth)
     pred = predict(reference.models["action"], X)
     k = len(ACTIONS)
     result["action"]["par_origine"] = {
         origin: round(f1_macro(pred[m], truth["action"][m], k), 4)
         for origin in ("claire", "david")
-        if (
-            m := np.array([info["elements"][t["task_id"]]["origine"] == origin for t in tasks])
-        ).any()
+        if (m := np.array([o == origin for o in origins])).any()
     }
     report = {
         "modele": model_path.name,
@@ -1450,6 +1439,360 @@ def dev_summary(report: dict) -> str:
             f"par source {e['par_source']}"
         )
     lines.append(f"  action par origine {report['action']['par_origine']}")
+    return "\n".join(lines)
+
+
+# --- levier 1 : fiche hybride ----------------------------------------------------------------
+#
+# Le vecteur MiniLM lit le style de la carte ; la fiche donne à la régression, telles quelles,
+# les informations que le guide utilise : place du manager, relation de l'expéditeur, réponse à
+# une invitation, échéance… Elle est lue sur la carte, comme l'annotateur la voit : la même
+# fonction sert au simulateur, au jeu réel et aux jeux gelés, sans rien de caché du simulateur.
+
+FICHES = ("aucune", "hybride", "seule")  # vecteur seul, vecteur + fiche, fiche seule
+VARIANTS = {"R": "aucune", "H": "hybride", "F": "seule"}
+LEVIER_REPORT_PATH = Path(__file__).with_name("comprendre_levier_fiche.json")
+
+# Relation de l'expéditeur, par mots-clés dans le champ « De » : les mondes l'écrivent
+# différemment (« Client, Groupe Belfroid », « client », « associé », « votre pair »).
+# L'ordre compte : « Client, Direction régionale » est un client.
+RELATIONS = (
+    ("automate", ("automatique",)),
+    ("client", ("client",)),
+    ("fournisseur", ("fournisseur", "partenaire", "prestataire")),
+    ("hierarchie", ("n+1",)),
+    ("direction", ("pair", "direction", "comite")),
+    ("interne", ("equipe", "collegue", "associe")),
+)
+# Verbe de l'intitulé d'une tâche (guide : « le verbe de l'intitulé donne l'action »).
+TASK_VERBS = {
+    "repondre": ("repondre", "donner"),
+    "faire": (
+        "appeler", "transmettre", "envoyer", "mettre", "relancer", "renvoyer", "rappeler",
+        "faire", "completer", "traiter", "deposer", "organiser", "reserver", "contacter",
+        "saisir", "finaliser", "commander", "payer",
+    ),
+    "decider": ("signer", "approuver", "valider", "arbitrer", "choisir", "decider"),
+    "preparer": ("preparer",),
+    "relire": ("relire", "verifier", "revoir", "corriger"),
+}  # fmt: skip
+FEATURE_NAMES = (
+    *(f"source={s}" for s in SOURCE_NAMES),
+    "mail:destinataire_direct",
+    "mail:en_copie",
+    *(f"mail:expediteur={r}" for r, _ in RELATIONS),
+    "mail:expediteur=inconnu",
+    "mail:de_vous",
+    "mail:reponse",
+    "mail:transfert",
+    "mail:importance_haute",
+    "mail:non_lu",
+    "mail:desabonnement",
+    "reunion:organise",
+    "reunion:pas_repondu",
+    "reunion:acceptee",
+    "reunion:refusee",
+    "reunion:annulee",
+    "reunion:aujourd_hui",
+    "reunion:demain",
+    "reunion:hier",
+    "tache:echeance",
+    "tache:en_retard",
+    "tache:terminee",
+    "tache:planner",
+    *(f"tache:verbe={v}" for v in TASK_VERBS),
+    "fichier:modifie_par_vous",
+    "fichier:cite",
+)
+_PREFIX_RE = re.compile(r"^\s*(re|tr|fw|fwd)\s?:", re.IGNORECASE)
+
+
+def _ascii(text: str) -> str:
+    """Minuscules sans accents : « Comité » et « comite » se rejoignent."""
+    return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode().lower()
+
+
+def relation(sender: str) -> str:
+    """La relation lue dans le champ « De » ; « inconnu » pour une adresse brute."""
+    if "<" in sender:
+        return "inconnu"
+    plain = _ascii(sender)
+    return next((r for r, words in RELATIONS if any(w in plain for w in words)), "inconnu")
+
+
+def task_verb(title: str) -> str | None:
+    """Le groupe du premier verbe de l'intitulé, après un éventuel « URGENT – »."""
+    words = [w for w in re.findall(r"[a-z+]+", _ascii(title)) if w != "urgent"]
+    return next((g for g, verbs in TASK_VERBS.items() if words and words[0] in verbs), None)
+
+
+def card_features(c: dict) -> np.ndarray:
+    """La fiche d'une carte : un vecteur de 0 et de 1 dans l'ordre de FEATURE_NAMES."""
+    fields = {label: value for label, value in c["fields"]}
+    on: set[str] = {f"source={c['source']}"}
+    if c["source"] == "mail":
+        if fields.get("À", "").startswith("vous"):
+            on.add("mail:destinataire_direct")
+        if fields.get("Copie") == "vous":
+            on.add("mail:en_copie")
+        if fields.get("De") == "vous":  # mail envoyé par le manager lui-même
+            on.add("mail:de_vous")
+        elif "De" in fields:
+            on.add(f"mail:expediteur={relation(fields['De'])}")
+        prefix = _PREFIX_RE.match(c["title"])
+        if prefix:
+            on.add("mail:reponse" if prefix.group(1).lower() == "re" else "mail:transfert")
+        if fields.get("Importance") == "haute":
+            on.add("mail:importance_haute")
+        if fields.get("Statut") == "non lu":
+            on.add("mail:non_lu")
+        plain = _ascii(c["text"])
+        if "desabonn" in plain or "unsubscribe" in plain:
+            on.add("mail:desabonnement")
+    elif c["source"] == "calendar":
+        answer = fields.get("Votre réponse", "")
+        on |= {
+            name
+            for name, hit in (
+                ("reunion:organise", answer == "vous organisez"),
+                ("reunion:pas_repondu", answer == "pas encore répondu"),
+                ("reunion:acceptee", answer in ("acceptée", "provisoire")),
+                ("reunion:refusee", answer == "refusée"),
+                ("reunion:annulee", fields.get("Statut") == "annulée"),
+                ("reunion:aujourd_hui", c["when"].startswith("aujourd'hui")),
+                ("reunion:demain", c["when"].startswith("demain")),
+                ("reunion:hier", c["when"].startswith("hier")),
+            )
+            if hit
+        }
+    elif c["source"] == "task":
+        due = fields.get("Échéance", "")
+        on |= {
+            name
+            for name, hit in (
+                ("tache:echeance", bool(due)),
+                ("tache:en_retard", "en retard" in due),
+                ("tache:terminee", fields.get("Statut") == "terminée"),
+                ("tache:planner", fields.get("Liste", "").startswith("Planner")),
+            )
+            if hit
+        }
+        verb = task_verb(c["title"])
+        if verb:
+            on.add(f"tache:verbe={verb}")
+    else:
+        if fields.get("Modifié par") == "vous":
+            on.add("fichier:modifie_par_vous")
+        if "Cité dans" in fields:
+            on.add("fichier:cite")
+    return np.array([float(name in on) for name in FEATURE_NAMES])
+
+
+def design(
+    cards: Sequence[dict],
+    embedder: Embedder,
+    fiche: str = "aucune",
+    cache: VectorCache | None = None,
+) -> np.ndarray:
+    """L'entrée du modèle : vecteur de la carte, fiche, ou les deux bout à bout."""
+    if fiche not in FICHES:
+        raise ValueError(f"fiche inconnue : {fiche!r}")
+    parts = []
+    if fiche != "seule":
+        texts = [card_text(c) for c in cards]
+        parts.append(cache.embed(embedder, texts) if cache else embedder.embed(texts))
+    if fiche != "aucune":
+        parts.append(np.array([card_features(c) for c in cards]).reshape(len(cards), -1))
+    return np.hstack(parts)
+
+
+def _variant_input(X: np.ndarray, F: np.ndarray, fiche: str) -> np.ndarray:
+    return {"aucune": X, "hybride": np.hstack([X, F]), "seule": F}[fiche]
+
+
+def _dev_set(series: Path = SERIES) -> tuple[list[dict], list[str], dict]:
+    """Cartes, origines et vérité (codes) du jeu de développement réel, gelé."""
+    changed = dev_changed(series)
+    if changed:
+        raise ValueError(f"jeu de développement non gelé ou modifié : {changed}")
+    info = json.loads((series / DEV_TIRAGE).read_text(encoding="utf-8"))
+    labels = dev_truth(series)
+    tasks = [t for t in load_series(series / f"{DEV_SERIES}.jsonl") if t["task_id"] in labels]
+    truth = {
+        target: np.array(
+            [
+                TARGETS[target].index(
+                    ("oui" if labels[t["task_id"]]["alerte"] else "non")
+                    if target == "alerte"
+                    else labels[t["task_id"]][target]
+                )
+                for t in tasks
+            ],
+            dtype=int,
+        )
+        for target in TARGETS
+    }
+    origins = [info["elements"][t["task_id"]]["origine"] for t in tasks]
+    return [t["card"] for t in tasks], origins, truth
+
+
+def fit_from_report(
+    examples: Sequence[Example], X: np.ndarray, first: dict, name: str, fiche: str
+) -> Reference:
+    """Le modèle d'une variante appris sur tout l'entraînement, avec les réglages et le seuil
+    d'alerte choisis sur le découpage 1 de la validation dure (G1)."""
+    models = {}
+    for target, classes in TARGETS.items():
+        cfg = first["cibles"][target]["configuration"]
+        config = Config(cfg["l2"], cfg["classes_pondérées"])
+        models[target] = fit_softmax(X, _codes(examples, target), len(classes), config)
+    threshold = first["cibles"]["alerte"]["seuil_rappel_095"]["seuil"]
+    return Reference(models, threshold, name, fiche)
+
+
+def _gap(truth: np.ndarray, a: np.ndarray, b: np.ndarray) -> dict:
+    low, high = paired_diff_ci(_f1_action, a, b, truth)
+    diff = _f1_action(a, truth) - _f1_action(b, truth)
+    return {"ecart": round(diff, 4), "ic95": [round(low, 4), round(high, 4)]}
+
+
+DECISIVE = ("reel", "gabarits", "gabarits→llm", "llm→gabarits")
+
+
+def decide(gaps: dict, recall: dict) -> dict:
+    """La règle écrite le 22/11 avant la mesure (plan, §11) : H retenue si un gain significatif
+    sur une mesure décisive, sans perte significative sur le découpage 1, veto des alertes ;
+    F la remplace si F − H n'est significatif nulle part (G3)."""
+    hr, fh = gaps["H-R"], gaps["F-H"]
+    gain = [m for m in DECISIVE if hr[m]["ic95"][0] > 0]
+    loss = hr["metiers"]["ic95"][1] < 0
+    veto = recall["H"] < ALERT_RECALL
+    adopt = bool(gain) and not loss and not veto
+    tie = all(fh[m]["ic95"][0] <= 0 <= fh[m]["ic95"][1] for m in (*DECISIVE, "metiers"))
+    return {
+        "gains_significatifs_de_H": gain,
+        "perte_significative_decoupage_1": loss,
+        "veto_alertes": veto,
+        "retenue": ("F" if tie else "H") if adopt else "R",
+    }
+
+
+def levier_fiche(
+    corpora: dict[str, Path] = CORPORA,
+    embedder: Embedder | None = None,
+    cache: VectorCache | None = None,
+    series: Path = SERIES,
+    out_report: Path = LEVIER_REPORT_PATH,
+    n_folds: int = HARD_FOLDS,
+    log: Callable[[str], None] = lambda _: None,
+) -> dict:
+    """Le levier 1 : R, H et F sur la validation dure et le jeu réel, écarts appariés, décision
+    par la règle écrite d'avance. Aucun jeu gelé n'est lu."""
+    embedder = embedder or FastEmbedder(DEFAULT_MODEL)
+    cache = cache or VectorCache(cache_path(embedder))
+    log("cartes des personas « train »…")
+    examples, _ = training_examples(corpora)
+    X = embed_with_progress(cache, embedder, [e.text for e in examples], log=log)
+    F = np.array([card_features(e.card) for e in examples])
+    dev_cards, origins, dev_truth_codes = _dev_set(series)
+    X_dev = design(dev_cards, embedder, "aucune", cache)
+    F_dev = design(dev_cards, embedder, "seule")
+    y_dev = dev_truth_codes["action"]
+    report: dict = {
+        "fiche": list(FEATURE_NAMES),
+        "fiche_frequence": {
+            n: round(float(v), 4) for n, v in zip(FEATURE_NAMES, F.mean(axis=0), strict=True)
+        },
+        "variantes": {},
+    }
+    preds: dict[str, dict[str, np.ndarray]] = {}
+    recall = {}
+    for name, fiche in VARIANTS.items():
+        log(f"variante {name} ({fiche})")
+        keep: dict = {}
+        Xv = _variant_input(X, F, fiche)
+        hard = hard_validation(examples, Xv, n_folds, log=log, keep=keep)
+        first = hard["metiers"]
+        reference = fit_from_report(examples, Xv, first, embedder.name, fiche)
+        Xd = _variant_input(X_dev, F_dev, fiche)
+        dev = evaluate(reference, Xd, [c["source"] for c in dev_cards], dev_truth_codes)
+        keep["reel"] = (np.arange(len(y_dev)), predict(reference.models["action"], Xd))
+        alerts = dev_truth_codes["alerte"] == 1
+        dev_alert = predict(reference.models["alerte"], Xd, reference.alert_threshold)
+        recall[name] = first["cibles"]["alerte"]["seuil_rappel_095"]["rappel"]
+        report["variantes"][name] = {
+            "fiche": fiche,
+            "metiers": {
+                t: {
+                    "f1_macro": e["f1_macro"],
+                    "f1_macro_ic95": e["f1_macro_ic95"],
+                    "configuration": e["configuration"],
+                    "par_source": e["par_source"],
+                }
+                for t, e in first["cibles"].items()
+            },
+            "alerte_rappel_095": first["cibles"]["alerte"]["seuil_rappel_095"],
+            "gabarits": {
+                k2: hard["gabarits"]["action"][k2] for k2 in ("f1_macro", "f1_macro_ic95")
+            },
+            "ecrivain": {
+                c: {k2: e[k2] for k2 in ("f1_macro", "f1_macro_ic95")}
+                for c, e in hard["ecrivain"]["cellules"].items()
+            },
+            "reel": {
+                t: {k2: dev[t][k2] for k2 in ("f1_macro", "f1_macro_ic95", "par_source")}
+                for t in TARGETS
+            }
+            | {
+                "action_par_origine": {
+                    o: round(
+                        _f1_action(keep["reel"][1][m], y_dev[m]),
+                        4,
+                    )
+                    for o in ("claire", "david")
+                    if (m := np.array([x == o for x in origins])).any()
+                },
+                "action_classes": dev["action"]["classes"],
+                "action_confusion": dev["action"]["confusion"],
+                "alertes_reelles_detectees": f"{int(dev_alert[alerts].sum())}/{int(alerts.sum())}",
+            },
+        }
+        y = _codes(examples, "action")
+        preds[name] = {
+            m: (y[idx], p) if m != "reel" else (y_dev, p) for m, (idx, p) in keep.items()
+        }
+    measures = ("metiers", *DECISIVE)
+    gaps = {
+        f"{a}-{b}": {m: _gap(preds[a][m][0], preds[a][m][1], preds[b][m][1]) for m in measures}
+        for a, b in (("H", "R"), ("F", "H"), ("F", "R"))
+    }
+    report["ecarts_apparies_action"] = gaps
+    report["decision"] = decide(gaps, recall)
+    out_report.write_text(
+        json.dumps(report, ensure_ascii=False, indent=1) + "\n", encoding="utf-8", newline="\n"
+    )
+    return report
+
+
+def levier_summary(report: dict) -> str:
+    def f1(e: dict) -> str:
+        low, high = e["f1_macro_ic95"]
+        return f"{e['f1_macro']:.3f} [{low:.3f} ; {high:.3f}]"
+
+    lines = []
+    for name, v in report["variantes"].items():
+        cells = ", ".join(f"{c} {e['f1_macro']:.3f}" for c, e in v["ecrivain"].items())
+        lines.append(
+            f"{name} ({v['fiche']}) : métiers {f1(v['metiers']['action'])} ; gabarits "
+            f"{f1(v['gabarits'])} ; {cells} ; réel {f1(v['reel']['action'])} "
+            f"(alertes réelles {v['reel']['alertes_reelles_detectees']}, précision des "
+            f"alertes au rappel 0,95 : {v['alerte_rappel_095']['précision']})"
+        )
+    for pair, gaps in report["ecarts_apparies_action"].items():
+        lines.append(
+            f"{pair} : " + " ; ".join(f"{m} {g['ecart']:+.3f} {g['ic95']}" for m, g in gaps.items())
+        )
+    lines.append(f"décision : {report['decision']}")
     return "\n".join(lines)
 
 
@@ -1487,6 +1830,12 @@ def git_commit(paths: Sequence[Path] = (MODEL_PATH, Path(__file__))) -> str:
     if git("status", "--porcelain", "--", *(str(p) for p in paths)):
         raise ValueError("code ou modèle modifiés depuis le dernier commit : commiter d'abord")
     return git("rev-parse", "HEAD")
+
+
+def series_cards(name: str, series: Path = SERIES) -> list[dict]:
+    """Les cartes jugées d'une série, dans l'ordre de `series_truth`."""
+    labels = final_labels(name, series)
+    return [t["card"] for t in load_series(series / f"{name}.jsonl") if t["task_id"] in labels]
 
 
 def series_truth(name: str, series: Path = SERIES) -> tuple[list[str], list[str], dict]:
@@ -1559,8 +1908,8 @@ def mesurer(
     embedder = embedder or FastEmbedder(reference.embedder_name)
     results = {}
     for label, name in sets.items():
-        texts, sources, truth = series_truth(name, series)
-        X = embedder.embed(texts)
+        _, sources, truth = series_truth(name, series)
+        X = design(series_cards(name, series), embedder, reference.fiche)
         results[label] = {"serie": name} | evaluate(reference, X, sources, truth)
         results[label]["coherence_annotateur"] = self_agreement(name, series)
     entry = {
@@ -1619,6 +1968,10 @@ def main(argv: list[str]) -> int:
     if argv == ["--geler-dev"]:
         print(f"Gelés : {', '.join(freeze_dev()['fichiers'])}")
         return 0
+    if argv == ["--levier-fiche"]:
+        print(levier_summary(levier_fiche(log=lambda line: print(line, flush=True))))
+        print(f"→ {LEVIER_REPORT_PATH.name}")
+        return 0
     if argv == ["--valider-reel"]:
         print(dev_summary(valider_reel()))
         print(f"→ {DEV_REPORT_PATH.name}")
@@ -1647,7 +2000,7 @@ def main(argv: list[str]) -> int:
         return 0
     print(
         "usage : comprendre --entrainer | --valider-dur | --tirer-dev <data David> | "
-        "--geler-dev | --valider-reel | --mesurer | --tirer-demo | --reste-demo | --geler-demo"
+        "--geler-dev | --valider-reel | --levier-fiche | --mesurer | --tirer-demo | --reste-demo | --geler-demo"
     )
     return 2
 
