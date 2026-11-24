@@ -25,6 +25,7 @@ import random
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import numpy as np
@@ -40,6 +41,7 @@ from packages.analyse.scoring.ml.annoter import (
     answers_path,
     card,
     check_answer,
+    final_labels,
     load_series,
     order,
     swap,
@@ -209,6 +211,7 @@ REPORT_PATH = Path(__file__).with_name("prioriser_validation.json")
 L2_GRID = (10.0, 1.0, 0.1)  # du plus régularisé au moins : ordre de simplicité (G3)
 PRIORITY_FOLDS = 4  # plis par métier, comme la validation dure de M6
 POOL = 1000  # réservoir des tours 2 et 3 (règle du 24/11)
+FROZEN = "*N figé*"  # « métier » des jeux gelés : la fiche prend le modèle N figé
 _N_ACTIONS = tuple(a for a in comprendre.TARGETS["action"] if a != "rien")
 PRIORITY_NAMES = (
     *comprendre.FEATURE_NAMES,
@@ -274,7 +277,9 @@ class Understanding:
         name: str = comprendre.CANDIDATE,
         n_folds: int = PRIORITY_FOLDS,
         log: Callable[[str], None] = lambda _: None,
+        candidate_path: Path = comprendre.CANDIDATE_PATH,
     ) -> None:
+        self.candidate_path = candidate_path
         variant = json.loads(report_path.read_text(encoding="utf-8"))["variantes"][name]
         self.fiche, self.texte, self.n_folds = variant["fiche"], variant["texte"], n_folds
         self.embedder = embedder or FastEmbedder(DEFAULT_MODEL)
@@ -302,14 +307,19 @@ class Understanding:
         return comprendre.design(cards, self.embedder, self.fiche, self.cache, self.texte)
 
     def features(self, cards: Sequence[dict], metiers: Sequence[str]) -> np.ndarray:
-        """La fiche de priorité de chaque carte (ordre de PRIORITY_NAMES), hors pli."""
+        """La fiche de priorité de chaque carte (ordre de PRIORITY_NAMES), hors pli ; le métier
+        FROZEN prend le modèle N figé (jeux gelés : métiers jamais vus de toute façon)."""
         X = self.design(cards)
         out = np.zeros((len(cards), len(PRIORITY_NAMES)))
         for m in set(metiers):
             rows = [n for n, x in enumerate(metiers) if x == m]
             signals = np.array([card_signals(cards[n]) for n in rows])
-            out[rows] = np.hstack([signals, n_columns(self.by_metier[m], X[rows])])
+            models = self.frozen() if m == FROZEN else self.by_metier[m]
+            out[rows] = np.hstack([signals, n_columns(models, X[rows])])
         return out
+
+    def frozen(self) -> dict[str, comprendre.Softmax]:
+        return comprendre.Reference.load(self.candidate_path).models
 
 
 def config_for(vp: Viewpoint) -> ScoringConfig:
@@ -343,12 +353,20 @@ def round_pairs(n: int, corpus: Path = jeux_m5.CORPUS, series: Path = SERIES) ->
     return out
 
 
+def side_features(
+    pairs: Sequence[Pair], understanding: Understanding, frozen: bool = False
+) -> tuple[np.ndarray, np.ndarray]:
+    """Fiches de priorité des cartes A et des cartes B, une ligne par paire."""
+    cards = [c for p in pairs for c in p.cards]
+    metiers = [FROZEN if frozen else p.metier for p in pairs for _ in range(2)]
+    F = understanding.features(cards, metiers)
+    return F[0::2], F[1::2]
+
+
 def pair_features(pairs: Sequence[Pair], understanding: Understanding) -> np.ndarray:
     """Différences de fiches A − B, une ligne par paire."""
-    cards = [c for p in pairs for c in p.cards]
-    metiers = [p.metier for p in pairs for _ in range(2)]
-    F = understanding.features(cards, metiers)
-    return F[0::2] - F[1::2]
+    Fa, Fb = side_features(pairs, understanding)
+    return Fa - Fb
 
 
 def bt_rows(diffs: np.ndarray, labels: Sequence[str]) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -519,6 +537,264 @@ def draw_uncertain_round(
     )
 
 
+# --- étape 3 : boosting comparé, modèle figé, mesure finale ------------------------------------
+
+BOOST_ROUNDS = 200  # recette fixée le 24/11, sans grille
+BOOST_STEP = 0.1
+BOOST_MARGIN = 0.03  # gain d'accord exigé du boosting (plan, §6.1)
+MODEL_PATH = Path(__file__).with_name("prioriser_modele.json")
+FINAL_REPORT_PATH = Path(__file__).with_name("prioriser_comparaison.json")
+FROZEN_PAIRS = {"T-gen": jeux_m5.NAMES["paires"], "T-démo": jeux_m5.NAMES["demo"]}
+ACCEPT_AGREEMENT, ACCEPT_GAP = 0.80, 0.15  # acceptation de M8 sur T-gen
+
+
+@dataclass(frozen=True)
+class Stump:
+    """Une souche : `left` si la valeur `feature` est ≤ `threshold`, sinon `right`."""
+
+    feature: int
+    threshold: float
+    left: float
+    right: float
+
+    def __call__(self, F: np.ndarray) -> np.ndarray:
+        return np.where(F[:, self.feature] <= self.threshold, self.left, self.right)
+
+
+def _thresholds(column: np.ndarray) -> np.ndarray:
+    """Seuils candidats : les déciles distincts de la valeur, sauf le maximum."""
+    cuts = np.unique(np.percentile(column, np.arange(10, 100, 10)))
+    return cuts[cuts < column.max()]
+
+
+def _best_stump(F: np.ndarray, target: np.ndarray) -> Stump:
+    """La souche des moindres carrés sur la cible (le gradient négatif)."""
+    best, found = -1.0, Stump(0, np.inf, 0.0, 0.0)
+    total, n = target.sum(), len(target)
+    for j in range(F.shape[1]):
+        for t in _thresholds(F[:, j]):
+            left = F[:, j] <= t
+            k = int(left.sum())
+            s = float(target[left].sum())
+            gain = s * s / k + (total - s) ** 2 / (n - k)
+            if gain > best:
+                best, found = gain, Stump(j, float(t), s / k, float((total - s) / (n - k)))
+    return found
+
+
+def fit_boosting(
+    Fa: np.ndarray, Fb: np.ndarray, labels: Sequence[str], rounds: int = BOOST_ROUNDS
+) -> list[Stump]:
+    """Boosting par paires : le score d'un élément est une somme de souches, appris sur la
+    perte logistique de l'écart des deux scores (une égalité = deux demi-comparaisons)."""
+    n = len(Fa)
+    F = np.vstack([Fa, Fb])
+    ia, y, w = [], [], []  # la carte B de la paire k est la ligne n + k
+    for k, label in enumerate(labels):
+        rows = [(1.0, 0.5), (-1.0, 0.5)] if label == "=" else [(1.0 if label == "A" else -1.0, 1.0)]
+        for sign, weight in rows:
+            ia.append(k)
+            y.append(sign)
+            w.append(weight)
+    ia_, y_, w_ = np.array(ia), np.array(y), np.array(w)
+    ib_ = ia_ + n
+    score = np.zeros(2 * n)
+    stumps = []
+    for _ in range(rounds):
+        margin = score[ia_] - score[ib_]
+        g = -y_ * w_ / (1 + np.exp(y_ * margin))  # dérivée de la perte par rapport à l'écart
+        grad = np.zeros(2 * n)
+        np.add.at(grad, ia_, g)
+        np.add.at(grad, ib_, -g)
+        stump = _best_stump(F, -grad)
+        stumps.append(stump)
+        score += BOOST_STEP * stump(F)
+    return stumps
+
+
+def boost_score(stumps: Sequence[Stump], F: np.ndarray) -> np.ndarray:
+    return BOOST_STEP * sum((s(F) for s in stumps), np.zeros(len(F)))
+
+
+def compare(pairs: Sequence[Pair], Fa: np.ndarray, Fb: np.ndarray, l2: float, n_folds: int) -> dict:
+    """Boosting contre Bradley-Terry (l2 retenu), hors pli par métier, sur les paires
+    décidées : le boosting ne remplace Bradley-Terry que s'il gagne au moins BOOST_MARGIN avec
+    un intervalle apparié qui exclut zéro (règle du 24/11)."""
+    labels = [p.label for p in pairs]
+    decided = np.array([lab != "=" for lab in labels])
+    truth = np.array([lab == "A" for lab in labels])[decided].astype(int)
+    bt, boost = np.zeros(len(pairs)), np.zeros(len(pairs))
+    for held in comprendre.metier_folds({p.metier for p in pairs}, n_folds):
+        train = [n for n, p in enumerate(pairs) if p.metier not in held]
+        test = [n for n, p in enumerate(pairs) if p.metier in held]
+        sub = [labels[n] for n in train]
+        beta = fit_priority(Fa[train] - Fb[train], sub, l2)
+        bt[test] = (Fa[test] - Fb[test]) @ beta
+        stumps = fit_boosting(Fa[train], Fb[train], sub)
+        boost[test] = boost_score(stumps, Fa[test]) - boost_score(stumps, Fb[test])
+    p_bt, p_boost = ((m[decided] > 0).astype(int) for m in (bt, boost))
+    low, high = comprendre.paired_diff_ci(_accuracy, p_boost, p_bt, truth)
+    gain = _accuracy(p_boost, truth) - _accuracy(p_bt, truth)
+    wins = gain >= BOOST_MARGIN and low > 0
+    return {
+        "accord_bradley_terry": round(_accuracy(p_bt, truth), 4),
+        "accord_boosting": round(_accuracy(p_boost, truth), 4),
+        "ecart_boosting_bt": round(gain, 4),
+        "ecart_boosting_bt_ic95": [round(low, 4), round(high, 4)],
+        "retenu": "boosting" if wins else "bradley-terry",
+    }
+
+
+def figer(
+    understanding: Understanding | None = None,
+    corpus: Path = jeux_m5.CORPUS,
+    series: Path = SERIES,
+    model_path: Path = MODEL_PATH,
+    report_path: Path | None = FINAL_REPORT_PATH,
+    log: Callable[[str], None] = lambda _: None,
+) -> dict:
+    """La validation finale (Bradley-Terry, règles, boosting comparé), puis le modèle retenu
+    appris sur toutes les paires et écrit avec ses poids : c'est ce fichier qu'on mesure."""
+    understanding = understanding or Understanding(log=log)
+    pairs = labeled_pairs(corpus, series)
+    Fa, Fb = side_features(pairs, understanding)
+    log(f"{len(pairs)} paires : Bradley-Terry, règles…")
+    report, l2, beta = validate(pairs, Fa - Fb, understanding.n_folds)
+    log("boosting comparé…")
+    report["boosting"] = compare(pairs, Fa, Fb, l2, understanding.n_folds)
+    labels = [p.label for p in pairs]
+    model: dict = {
+        "noms": list(PRIORITY_NAMES),
+        "paires": len(pairs),
+        "tours": drawn_rounds(series),
+        "candidat_n_sha256": comprendre._sha(understanding.candidate_path),
+    }
+    if report["boosting"]["retenu"] == "boosting":
+        stumps = fit_boosting(Fa, Fb, labels)
+        model |= {"modele": "boosting", "souches": [s.__dict__ for s in stumps]}
+    else:
+        model |= {"modele": "bradley-terry", "l2": l2, "poids": [float(x) for x in beta]}
+    model_path.write_text(
+        json.dumps(model, ensure_ascii=False, indent=1) + "\n", encoding="utf-8", newline="\n"
+    )
+    report["modele"] = model_path.name
+    if report_path:
+        report_path.write_text(
+            json.dumps(report, ensure_ascii=False, indent=1) + "\n", encoding="utf-8", newline="\n"
+        )
+    return report
+
+
+def model_score(model: dict, F: np.ndarray) -> np.ndarray:
+    """Le score de priorité d'éléments, d'après le modèle figé."""
+    if model["modele"] == "boosting":
+        return boost_score([Stump(**s) for s in model["souches"]], F)
+    return F @ np.array(model["poids"])
+
+
+def frozen_pairs(name: str, series: Path = SERIES, corpus: Path = jeux_m5.CORPUS) -> list[Pair]:
+    """Les paires jugées par Théo d'un jeu gelé, avec leurs éléments et leur brief (retrouvés
+    par le contexte affiché). Le tirage ne donne que les éléments, jamais une étiquette."""
+    info = json.loads((series / jeux_m5.TIRAGE.name).read_text(encoding="utf-8"))
+    labels = final_labels(name, series)
+    tasks = [t for t in load_series(series / f"{name}.jsonl") if t["task_id"] in labels]
+    if name == jeux_m5.NAMES["demo"]:
+        behind = info["tdemo"]["paires"]
+        items = jeux_m5.demo_items()
+        people = jeux_m5.demo_people(items.values())
+        days = {
+            date.fromisoformat(json.loads(x)["day"])
+            for x in jeux_m5.DEMO_PAIRS.read_text(encoding="utf-8").splitlines()
+            if x
+        }
+        views = {(vp := jeux_m5.demo_viewpoint(d, people)).context: vp for d in days}
+        found = {c: ("demo", vp, items) for c, vp in views.items()}
+    else:
+        behind = info["tgen"]["paires"]
+        found = {
+            b[2].context: (b[0], b[2], {i.item_id: i for i in b[3]})
+            for b in jeux_m5.briefs(corpus, "tgen")
+        }
+    out = []
+    for task in tasks:
+        key, vp, by_id = found[task["context"]]
+        a, b = (by_id[i] for i in behind[task["task_id"]])
+        label = labels[task["task_id"]]["choix"]
+        out.append(Pair(task["task_id"], key, vp, (task["a"], task["b"]), (a, b), label))
+    return out
+
+
+def measure_pairs(pairs: Sequence[Pair], model: dict, understanding: Understanding) -> dict:
+    """Accord du modèle et des règles sur les paires départagées par l'annotateur."""
+    Fa, Fb = side_features(pairs, understanding, frozen=True)
+    margin = model_score(model, Fa) - model_score(model, Fb)
+    decided = np.array([p.label != "=" for p in pairs])
+    truth = np.array([p.label == "A" for p in pairs])[decided]
+    hits = ((margin[decided] > 0) == truth).astype(float)
+    rules = np.array([rule_score(p.items[0], p.vp) - rule_score(p.items[1], p.vp) for p in pairs])
+    rule_hits = np.where(rules[decided] == 0, 0.5, ((rules[decided] > 0) == truth).astype(float))
+    return {
+        "paires": len(pairs),
+        "paires_decidees": int(decided.sum()),
+        "accord_appris": round(float(hits.mean()), 4),
+        "accord_appris_ic95": _ci(hits),
+        "accord_regles": round(float(rule_hits.mean()), 4),
+        "egalites_des_regles": int((rules[decided] == 0).sum()),
+        "ecart_appris_regles": round(float((hits - rule_hits).mean()), 4),
+        "ecart_appris_regles_ic95": _ci(hits - rule_hits),
+        "par_sources": _by_sources(pairs, decided, hits, rule_hits),
+    }
+
+
+def mesurer(
+    understanding: Understanding | None = None,
+    series: Path = SERIES,
+    corpus: Path = jeux_m5.CORPUS,
+    model_path: Path = MODEL_PATH,
+    journal: Path = comprendre.JOURNAL,
+    commit: Callable[[], str] | None = None,
+    sets: dict[str, str] = FROZEN_PAIRS,
+    freezes: Sequence[str] = comprendre.FREEZES,
+    log: Callable[[str], None] = lambda _: None,
+) -> dict:
+    """La mesure finale de M8, une seule fois par modèle (G1), ajoutée au journal des jeux
+    gelés ; refusée si un gel manque ou a changé, si le modèle est déjà au journal, ou si le
+    code et le modèle ne sont pas commités."""
+    comprendre.check_frozen(series, freezes)
+    model_sha = comprendre._sha(model_path)
+    if model_sha in comprendre._journaled(journal):
+        raise ValueError("ce modèle a déjà été mesuré sur les jeux gelés : voir le journal")
+    revision = (commit or (lambda: comprendre.git_commit((model_path, Path(__file__)))))()
+    model = json.loads(model_path.read_text(encoding="utf-8"))
+    understanding = understanding or Understanding(log=log)
+    results = {}
+    for label, name in sets.items():
+        log(f"{label} ({name})…")
+        results[label] = {"serie": name} | measure_pairs(
+            frozen_pairs(name, series, corpus), model, understanding
+        )
+    gen = results.get("T-gen")
+    entry = {
+        "date": datetime.now(UTC).isoformat(timespec="seconds"),
+        "tache": "M8, priorité des éléments",
+        "commit": revision,
+        "modele": model_path.name,
+        "modele_sha256": model_sha,
+        "type": model["modele"],
+        "jeux": results,
+    }
+    if gen:
+        entry["acceptation"] = {
+            "accord_min": ACCEPT_AGREEMENT,
+            "ecart_regles_min": ACCEPT_GAP,
+            "atteinte": gen["accord_appris"] >= ACCEPT_AGREEMENT
+            and gen["ecart_appris_regles"] >= ACCEPT_GAP,
+        }
+    with journal.open("a", encoding="utf-8", newline="\n") as file:
+        file.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    return entry
+
+
 def main(argv: list[str]) -> int:
     sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
     if len(argv) == 2 and argv[0] == "--tirer":
@@ -543,13 +819,23 @@ def main(argv: list[str]) -> int:
         print("poids les plus forts :", dict(list(report["poids"].items())[:12]))
         print(f"→ {REPORT_PATH.name}")
         return 0
+    if argv == ["--figer"]:
+        report = figer(log=lambda line: print(line, flush=True))
+        print(json.dumps({k: v for k, v in report.items() if k != "poids"}, ensure_ascii=False))
+        print(f"→ {MODEL_PATH.name}, {FINAL_REPORT_PATH.name}")
+        return 0
+    if argv == ["--mesurer"]:
+        entry = mesurer(log=lambda line: print(line, flush=True))
+        print(json.dumps(entry, ensure_ascii=False, indent=1))
+        print(f"→ {comprendre.JOURNAL.name}")
+        return 0
     if len(argv) == 2 and argv[0] == "--tirer-incertain":
         info = draw_uncertain_round(int(argv[1]), log=lambda line: print(line, flush=True))
         print(f"{round_name(info['tour'])} : {len(info['paires'])} paires ({info['selection']})")
         return 0
     print(
         "usage : prioriser --tirer <tour> | --tirer-incertain <tour> | --montrer <tour> "
-        "[début fin] | --reste | --valider"
+        "[début fin] | --reste | --valider | --figer | --mesurer"
     )
     return 2
 

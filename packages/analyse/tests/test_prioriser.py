@@ -148,6 +148,49 @@ def test_bradley_terry_valide_par_metier_puis_choisit_les_paires_incertaines(cor
         ].values()
     }
     assert not first & {frozenset(p) for p in info["paires"].values()}
+    # le modèle figé, puis la mesure unique sur un faux jeu gelé (les paires du tour 1)
+    _answer_all(2, folder)
+    report = prioriser.figer(understanding, root, folder, folder / "m.json", folder / "c.json")
+    assert report["boosting"]["retenu"] in ("bradley-terry", "boosting")
+    model = json.loads((folder / "m.json").read_text("utf-8"))
+    assert model["paires"] == 30 and model["noms"] == list(prioriser.PRIORITY_NAMES)
+    journal = folder / "journal.jsonl"
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(understanding, "frozen", lambda: next(iter(understanding.by_metier.values())))
+        mp.setattr(
+            prioriser, "frozen_pairs", lambda name, s, c: prioriser.round_pairs(1, root, folder)
+        )
+
+        def measure():
+            return prioriser.mesurer(
+                understanding,
+                folder,
+                root,
+                folder / "m.json",
+                journal,
+                lambda: "abc1234",
+                {"T-gen": "faux"},
+                freezes=(),
+            )
+
+        entry = measure()
+        assert entry["jeux"]["T-gen"]["paires_decidees"] == 16
+        assert "atteinte" in entry["acceptation"] and entry["commit"] == "abc1234"
+        assert json.loads(journal.read_text("utf-8")) == entry
+        with pytest.raises(ValueError, match="déjà été mesuré"):
+            measure()
+
+
+def test_le_boosting_apprend_un_ordre_simple():
+    rng = np.random.default_rng(0)
+    Fa, Fb = rng.random((60, 3)), rng.random((60, 3))
+    labels = ["A" if a > b else "B" for a, b in zip(Fa[:, 1], Fb[:, 1], strict=True)]
+    labels[:5] = ["="] * 5
+    stumps = prioriser.fit_boosting(Fa, Fb, labels, rounds=50)
+    assert {s.feature for s in stumps} == {1}
+    margin = prioriser.boost_score(stumps, Fa) - prioriser.boost_score(stumps, Fb)
+    # deux valeurs du même décile restent à égalité : le seuil laisse cette marge
+    assert np.mean((margin[5:] > 0) == (np.array(labels[5:]) == "A")) > 0.75
 
 
 def test_le_choix_incertain_garde_les_plus_petits_ecarts():
