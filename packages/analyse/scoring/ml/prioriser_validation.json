@@ -1,11 +1,12 @@
 {
  "tours": [
   1,
-  2
+  2,
+  3
  ],
- "paires": 200,
- "paires_decidees": 140,
- "equivalentes": 60,
+ "paires": 300,
+ "paires_decidees": 180,
+ "equivalentes": 120,
  "plis_metiers": [
   [
    "ecole",
@@ -31,68 +32,68 @@
  "essais": [
   {
    "l2": 10.0,
-   "accord": 0.8857,
+   "accord": 0.8278,
    "ecart_au_meilleur_ic95": [
-    0.0071,
-    0.0929
+    0.05,
+    0.1611
    ]
   },
   {
    "l2": 1.0,
-   "accord": 0.9214,
+   "accord": 0.8778,
    "ecart_au_meilleur_ic95": [
-    -0.0214,
-    0.05
+    0.0111,
+    0.0944
    ]
   },
   {
    "l2": 0.1,
-   "accord": 0.9357
+   "accord": 0.9278
   }
  ],
- "l2_retenu": 1.0,
- "accord_appris": 0.9214,
+ "l2_retenu": 0.1,
+ "accord_appris": 0.9278,
  "accord_appris_ic95": [
-  0.8786,
-  0.9643
+  0.8889,
+  0.9611
  ],
- "accord_regles": 0.7679,
- "egalites_des_regles": 37,
- "ecart_appris_regles": 0.1536,
+ "accord_regles": 0.7222,
+ "egalites_des_regles": 56,
+ "ecart_appris_regles": 0.2056,
  "ecart_appris_regles_ic95": [
-  0.0964,
-  0.2179
+  0.15,
+  0.2639
  ],
  "par_sources": {
   "calendar / calendar": {
-   "paires": 2,
+   "paires": 4,
    "appris": 0.5,
    "regles": 0.5
   },
   "calendar / file": {
-   "paires": 1,
+   "paires": 2,
    "appris": 1.0,
-   "regles": 0.5
+   "regles": 0.75
   },
   "calendar / mail": {
-   "paires": 13,
-   "appris": 0.923,
-   "regles": 0.923
+   "paires": 19,
+   "appris": 0.895,
+   "regles": 0.947
   },
   "calendar / task": {
-   "paires": 3,
-   "appris": 0.667,
-   "regles": 0.667
+   "paires": 4,
+   "appris": 0.75,
+   "regles": 0.75
   },
   "file / file": {
-   "paires": 1,
+   "paires": 2,
    "appris": 1.0,
    "regles": 0.5
   },
   "file / mail": {
-   "paires": 13,
-   "appris": 1.0,
-   "regles": 0.654
+   "paires": 21,
+   "appris": 0.952,
+   "regles": 0.643
   },
   "file / task": {
    "paires": 6,
@@ -100,9 +101,9 @@
    "regles": 1.0
   },
   "mail / mail": {
-   "paires": 57,
-   "appris": 0.947,
-   "regles": 0.702
+   "paires": 69,
+   "appris": 0.928,
+   "regles": 0.63
   },
   "mail / task": {
    "paires": 24,
@@ -110,55 +111,55 @@
    "regles": 0.896
   },
   "task / task": {
-   "paires": 20,
-   "appris": 0.75,
-   "regles": 0.775
+   "paires": 29,
+   "appris": 0.931,
+   "regles": 0.69
   }
  },
  "poids": {
-  "N:decider": 1.757,
-  "tache:en_retard": 1.558,
-  "N:urgent": 1.529,
-  "N:repondre": 1.357,
-  "N:alerte": 1.339,
-  "mail:de_vous": -0.989,
-  "source=mail": -0.95,
-  "tache:echeance_aujourdhui": -0.891,
-  "mail:desabonnement": -0.873,
-  "N:faire": 0.862,
-  "mail:expediteur=automate": -0.818,
-  "tache:verbe=faire": 0.697,
-  "mail:destinataire_direct": 0.688,
-  "reunion:aujourd_hui": 0.679,
-  "source=task": 0.668,
-  "tache:echeance": 0.668,
-  "mail:en_copie": -0.649,
-  "mail:reponse": -0.597,
-  "N:preparer": 0.578,
-  "mail:expediteur=inconnu": 0.573,
-  "reunion:pas_repondu": 0.525,
-  "N:sans_urgence": 0.424,
-  "tache:verbe=preparer": -0.409,
-  "source=calendar": 0.35,
-  "mail:expediteur=fournisseur": 0.341,
-  "reunion:demain": -0.329,
-  "fichier:modifie_par_vous": -0.308,
-  "tache:verbe=decider": 0.299,
-  "N:relire": 0.277,
-  "fichier:cite": 0.259,
-  "reunion:annulee": -0.255,
-  "reunion:organise": -0.199,
-  "mail:importance_haute": 0.197,
-  "tache:verbe=repondre": 0.16,
-  "mail:expediteur=direction": -0.146,
-  "mail:non_lu": -0.146,
-  "N:informer": -0.129,
-  "mail:expediteur=hierarchie": 0.093,
-  "tache:verbe=relire": -0.08,
-  "source=file": -0.067,
-  "mail:expediteur=interne": -0.038,
-  "mail:expediteur=client": 0.034,
-  "reunion:acceptee": 0.023,
+  "N:decider": 4.558,
+  "N:preparer": 3.821,
+  "N:alerte": 3.566,
+  "N:urgent": 3.453,
+  "tache:en_retard": 3.364,
+  "N:repondre": 3.23,
+  "N:faire": 2.911,
+  "tache:echeance_aujourdhui": -2.036,
+  "fichier:modifie_par_vous": -1.974,
+  "N:relire": 1.916,
+  "mail:expediteur=inconnu": 1.614,
+  "tache:verbe=decider": 1.591,
+  "tache:verbe=faire": 1.55,
+  "source=mail": -1.399,
+  "mail:de_vous": -1.379,
+  "reunion:annulee": -1.344,
+  "source=task": 1.328,
+  "tache:echeance": 1.328,
+  "reunion:aujourd_hui": 1.276,
+  "mail:desabonnement": -1.152,
+  "mail:en_copie": -1.092,
+  "mail:destinataire_direct": 1.072,
+  "mail:expediteur=hierarchie": -1.04,
+  "tache:verbe=relire": -0.972,
+  "tache:verbe=preparer": -0.965,
+  "N:informer": 0.953,
+  "N:sans_urgence": 0.903,
+  "mail:expediteur=fournisseur": 0.9,
+  "reunion:demain": -0.818,
+  "mail:expediteur=automate": -0.724,
+  "reunion:pas_repondu": 0.56,
+  "mail:importance_haute": -0.469,
+  "source=calendar": 0.458,
+  "mail:expediteur=interne": -0.422,
+  "source=file": -0.387,
+  "mail:non_lu": -0.31,
+  "mail:expediteur=direction": -0.279,
+  "reunion:acceptee": -0.226,
+  "mail:reponse": -0.214,
+  "reunion:organise": 0.125,
+  "tache:verbe=repondre": 0.123,
+  "fichier:cite": 0.11,
+  "mail:expediteur=client": -0.068,
   "mail:transfert": 0.0,
   "reunion:refusee": 0.0,
   "reunion:hier": 0.0,
