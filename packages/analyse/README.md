@@ -507,6 +507,28 @@ métiers, alertes parfaites) et transfère moins bien : gabarits → LLM −0,06
 ne mettait pas de veto sur une perte significative du jeu réel, si bien qu'E0 a « gagné » malgré
 elle ; la décision n'en dépend pas ici, mais la règle des prochains leviers doit l'ajouter.
 
+**Mesure finale de N** (règle écrite le 24/11 avant la lecture, plan §11). `--figer-candidat`
+apprend N sur tout l'entraînement avec les réglages et le seuil du découpage 1 lus dans le
+rapport du levier 2 (`comprendre_candidat.npz`), et refuse d'écrire le modèle s'il ne redonne
+pas 0,445 sur le jeu réel. `--mesurer-candidat` lit T-gen et T-démo une seule fois (journal
+`journal-geles.jsonl`) et recalcule la référence, déjà mesurée, sur les mêmes cartes pour
+l'écart apparié. Lecture du 24/11 (commit 59833f7) :
+
+| F1 macro de l'action | référence | **N** | écart apparié N − référence |
+|---|---|---|---|
+| T-gen (150 éléments) | 0,625 | **0,769** [0,675 ; 0,845] | **+0,145** [0,072 ; 0,223] |
+| T-démo (60 éléments) | 0,164 | **0,270** [0,189 ; 0,364] | **+0,106** [0,008 ; 0,223] |
+| alertes de T-gen détectées | 2/2 | 1/2 | alerte −0,152 [−0,503 ; 0,000] |
+| alerte de T-démo détectée | 0/1 | 0/1 | 0 |
+
+N est meilleure que la référence sur les deux jeux gelés, de façon significative : la
+validation et le test vont dans le même sens. **N devient le modèle de la compréhension pour
+M8.** Limites : N manque une des deux alertes de T-gen que la référence trouvait (deux
+alertes seulement, écart non significatif, mais l'alerte est la cible qui coûte le plus quand
+elle manque : à surveiller dans M8) ; l'alerte de T-démo reste manquée par les deux modèles ;
+sur T-démo, 0,270 reste loin du simulateur (décalage de domaine, déjà diagnostiqué). Les
+fichiers des mails restent faibles (T-gen : mail 0,528, fichier 0,435).
+
 ```bash
 uv run python -m packages.analyse.scoring.ml.comprendre --levier-texte  # H, N, A, N+A comparées
 uv run python -m packages.analyse.scoring.ml.comprendre --levier-fiche  # R, H, F comparées
