@@ -1,10 +1,11 @@
 {
  "tours": [
-  1
+  1,
+  2
  ],
- "paires": 100,
- "paires_decidees": 88,
- "equivalentes": 12,
+ "paires": 200,
+ "paires_decidees": 140,
+ "equivalentes": 60,
  "plis_metiers": [
   [
    "ecole",
@@ -30,39 +31,53 @@
  "essais": [
   {
    "l2": 10.0,
-   "accord": 0.9091,
+   "accord": 0.8857,
    "ecart_au_meilleur_ic95": [
-    -0.0227,
-    0.0682
+    0.0071,
+    0.0929
    ]
   },
   {
    "l2": 1.0,
-   "accord": 0.9318
+   "accord": 0.9214,
+   "ecart_au_meilleur_ic95": [
+    -0.0214,
+    0.05
+   ]
   },
   {
    "l2": 0.1,
-   "accord": 0.9318
+   "accord": 0.9357
   }
  ],
- "l2_retenu": 10.0,
- "accord_appris": 0.9091,
+ "l2_retenu": 1.0,
+ "accord_appris": 0.9214,
  "accord_appris_ic95": [
-  0.8523,
-  0.9659
+  0.8786,
+  0.9643
  ],
- "accord_regles": 0.7955,
- "egalites_des_regles": 12,
- "ecart_appris_regles": 0.1136,
+ "accord_regles": 0.7679,
+ "egalites_des_regles": 37,
+ "ecart_appris_regles": 0.1536,
  "ecart_appris_regles_ic95": [
-  0.0227,
-  0.2045
+  0.0964,
+  0.2179
  ],
  "par_sources": {
+  "calendar / calendar": {
+   "paires": 2,
+   "appris": 0.5,
+   "regles": 0.5
+  },
+  "calendar / file": {
+   "paires": 1,
+   "appris": 1.0,
+   "regles": 0.5
+  },
   "calendar / mail": {
-   "paires": 12,
-   "appris": 0.917,
-   "regles": 0.917
+   "paires": 13,
+   "appris": 0.923,
+   "regles": 0.923
   },
   "calendar / task": {
    "paires": 3,
@@ -75,9 +90,9 @@
    "regles": 0.5
   },
   "file / mail": {
-   "paires": 7,
-   "appris": 0.714,
-   "regles": 0.357
+   "paires": 13,
+   "appris": 1.0,
+   "regles": 0.654
   },
   "file / task": {
    "paires": 6,
@@ -85,9 +100,9 @@
    "regles": 1.0
   },
   "mail / mail": {
-   "paires": 27,
-   "appris": 0.889,
-   "regles": 0.722
+   "paires": 57,
+   "appris": 0.947,
+   "regles": 0.702
   },
   "mail / task": {
    "paires": 24,
@@ -95,57 +110,57 @@
    "regles": 0.896
   },
   "task / task": {
-   "paires": 8,
-   "appris": 0.875,
-   "regles": 0.875
+   "paires": 20,
+   "appris": 0.75,
+   "regles": 0.775
   }
  },
  "poids": {
-  "source=mail": -0.482,
-  "tache:en_retard": 0.429,
-  "mail:reponse": -0.417,
-  "mail:de_vous": -0.413,
-  "N:decider": 0.403,
-  "source=task": 0.383,
-  "tache:echeance": 0.383,
-  "N:urgent": 0.319,
-  "tache:verbe=decider": 0.209,
-  "reunion:aujourd_hui": 0.199,
-  "N:preparer": 0.185,
-  "source=calendar": 0.171,
-  "mail:expediteur=automate": -0.167,
-  "N:repondre": 0.166,
-  "mail:expediteur=interne": -0.16,
-  "N:informer": -0.142,
-  "N:alerte": 0.141,
-  "mail:expediteur=direction": 0.125,
-  "N:faire": 0.116,
-  "reunion:pas_repondu": 0.097,
-  "tache:verbe=faire": 0.095,
-  "mail:en_copie": -0.093,
-  "mail:non_lu": -0.093,
-  "source=file": -0.072,
-  "mail:desabonnement": -0.062,
-  "mail:expediteur=client": 0.054,
-  "fichier:modifie_par_vous": -0.054,
-  "mail:expediteur=fournisseur": 0.053,
-  "mail:expediteur=hierarchie": 0.049,
-  "tache:verbe=relire": 0.048,
-  "tache:echeance_aujourdhui": -0.046,
-  "reunion:organise": 0.041,
-  "mail:importance_haute": 0.039,
-  "reunion:acceptee": 0.034,
-  "N:relire": 0.033,
-  "reunion:demain": -0.027,
-  "mail:destinataire_direct": 0.024,
-  "mail:expediteur=inconnu": -0.024,
-  "tache:verbe=preparer": 0.024,
-  "fichier:cite": -0.021,
-  "tache:verbe=repondre": 0.007,
-  "N:sans_urgence": 0.004,
+  "N:decider": 1.757,
+  "tache:en_retard": 1.558,
+  "N:urgent": 1.529,
+  "N:repondre": 1.357,
+  "N:alerte": 1.339,
+  "mail:de_vous": -0.989,
+  "source=mail": -0.95,
+  "tache:echeance_aujourdhui": -0.891,
+  "mail:desabonnement": -0.873,
+  "N:faire": 0.862,
+  "mail:expediteur=automate": -0.818,
+  "tache:verbe=faire": 0.697,
+  "mail:destinataire_direct": 0.688,
+  "reunion:aujourd_hui": 0.679,
+  "source=task": 0.668,
+  "tache:echeance": 0.668,
+  "mail:en_copie": -0.649,
+  "mail:reponse": -0.597,
+  "N:preparer": 0.578,
+  "mail:expediteur=inconnu": 0.573,
+  "reunion:pas_repondu": 0.525,
+  "N:sans_urgence": 0.424,
+  "tache:verbe=preparer": -0.409,
+  "source=calendar": 0.35,
+  "mail:expediteur=fournisseur": 0.341,
+  "reunion:demain": -0.329,
+  "fichier:modifie_par_vous": -0.308,
+  "tache:verbe=decider": 0.299,
+  "N:relire": 0.277,
+  "fichier:cite": 0.259,
+  "reunion:annulee": -0.255,
+  "reunion:organise": -0.199,
+  "mail:importance_haute": 0.197,
+  "tache:verbe=repondre": 0.16,
+  "mail:expediteur=direction": -0.146,
+  "mail:non_lu": -0.146,
+  "N:informer": -0.129,
+  "mail:expediteur=hierarchie": 0.093,
+  "tache:verbe=relire": -0.08,
+  "source=file": -0.067,
+  "mail:expediteur=interne": -0.038,
+  "mail:expediteur=client": 0.034,
+  "reunion:acceptee": 0.023,
   "mail:transfert": 0.0,
   "reunion:refusee": 0.0,
-  "reunion:annulee": 0.0,
   "reunion:hier": 0.0,
   "tache:terminee": 0.0,
   "tache:planner": 0.0
