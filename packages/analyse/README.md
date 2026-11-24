@@ -464,6 +464,49 @@ graine 0. Limites : 30 % des copies perturbées sont identiques à l'original (u
 perturbation sans effet) ; la fiche seule (0,495 au levier 1, autre grille) n'a pas été remesurée
 contre N. Le candidat devient N : MiniLM gelé sur le texte normalisé, fiche, régression.
 
+**Levier 3, encodeur réajusté** (`scoring/ml/encodeur.py`, règle écrite le 23/11 avant la mesure,
+plan §11). E : MiniLM réajusté de bout en bout sur le PC GPU, même entrée que N (texte normalisé
+et fiche), trois têtes, recette fixée d'avance (3 époques, AdamW 2e-5 / 1e-3, lots de 32, 256
+jetons). La validation dure est la même (l'apprenant remplace la régression, mêmes plis) ; N est
+refait dans la même commande. E doit battre N avec chacune de ses 3 graines, puis tenir ≤ 300 Mo
+et ≤ 30 ms par élément en ONNX int8 sur le portable. Dépendances : groupe uv `gpu` (torch CUDA
+13.0, transformers, onnx), en conflit avec `nli` (torch processeur) ; ni la CI ni l'image Docker
+ne l'installent, et les tests de l'encodeur (petit BERT créé sur place) sont alors sautés.
+
+Sur le PC GPU (pilote NVIDIA compatible CUDA 13, branche `l2/feat/m6-encodeur`) :
+
+```bash
+uv sync --all-packages --group gpu
+uv run python -c "import torch; print(torch.cuda.is_available())"     # doit afficher True
+uv run python -m packages.collect.trainset                             # corpus des gabarits (2 s)
+uv run python -m packages.collect.trainset --verifier
+uv run python -m packages.collect.trainset.llm_corpus --assembler       # textes du LLM
+uv run python -m packages.analyse.scoring.ml.encodeur --sonde           # temps estimé
+uv run python -m packages.analyse.scoring.ml.encodeur --levier          # N contre E
+uv run python -m packages.analyse.scoring.ml.encodeur --exporter        # ONNX int8 de E0
+```
+
+Puis, sur le portable : `uv run python -m packages.analyse.scoring.ml.encodeur --latence <dossier
+onnx copié>` (taille, latence par élément, écart int8 − float32 sur le jeu réel).
+
+Mesure du 23/11 (RTX 4060, 27 minutes par graine) :
+
+| F1 macro de l'action | **N, retenue** | E0 | E1 |
+|---|---|---|---|
+| métiers | **0,851** | 0,945 | 0,946 |
+| gabarits tenus à l'écart | **0,716** | 0,772 | 0,731 |
+| gabarits → LLM / LLM → gabarits | **0,634 / 0,679** | 0,567 / 0,663 | 0,544 / 0,685 |
+| jeu réel | **0,445** | 0,299 | 0,341 |
+| précision des alertes au rappel 0,95 | **0,998** | 1,000 | 1,000 |
+
+**Décision de la règle : N reste.** E0 passe la règle (gabarits +0,056 [0,034 ; 0,080]), E1 non
+(+0,015 [−0,007 ; 0,038], rien de significatif ailleurs) : arrêt après 2 graines, ni export ni
+latence à mesurer. Lecture : le réajustement apprend la formulation du simulateur (+0,09 sur les
+métiers, alertes parfaites) et transfère moins bien : gabarits → LLM −0,067 et −0,090, jeu réel
+−0,146 [−0,225 ; −0,042] pour E0 et −0,104 [−0,196 ; 0,003] pour E1. Limite de la règle : elle
+ne mettait pas de veto sur une perte significative du jeu réel, si bien qu'E0 a « gagné » malgré
+elle ; la décision n'en dépend pas ici, mais la règle des prochains leviers doit l'ajouter.
+
 ```bash
 uv run python -m packages.analyse.scoring.ml.comprendre --levier-texte  # H, N, A, N+A comparées
 uv run python -m packages.analyse.scoring.ml.comprendre --levier-fiche  # R, H, F comparées

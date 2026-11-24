@@ -12,18 +12,30 @@ dependencies = [
 
 [tool.uv]
 package = false
+# torch pour processeur (nli) ou pour carte graphique (gpu, réajustement de l'encodeur de M6,
+# sur le PC GPU seulement) : les deux groupes ne s'installent pas ensemble.
+conflicts = [[{ group = "nli" }, { group = "gpu" }]]
 
 [tool.uv.workspace]
 members = ["apps/api"]  # ajouter packages/collect, packages/analyse quand ils ont un pyproject.toml
 
 [tool.uv.sources]
 alliance-api = { workspace = true }
-torch = { index = "pytorch-cpu" }
+torch = [
+    { index = "pytorch-cpu", group = "nli" },
+    { index = "pytorch-cuda", group = "gpu" },
+]
 
 # torch « CPU seulement » : évite les bibliothèques GPU NVIDIA (plusieurs Go) sous Linux.
 [[tool.uv.index]]
 name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+# torch CUDA 13.0 (cartes RTX 40xx, pilote NVIDIA récent) pour le groupe gpu.
+[[tool.uv.index]]
+name = "pytorch-cuda"
+url = "https://download.pytorch.org/whl/cu130"
 explicit = true
 
 [dependency-groups]
@@ -41,6 +53,11 @@ embeddings = [
 ]
 nli = [
     "sentencepiece>=0.2.2",
+    "torch>=2.14.1",
+    "transformers>=5.20.2",
+]
+gpu = [
+    "onnx>=1.17",
     "torch>=2.14.1",
     "transformers>=5.20.2",
 ]
