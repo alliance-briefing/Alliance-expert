@@ -2216,41 +2216,70 @@ def evaluate(reference: Reference, X: np.ndarray, sources: list[str], truth: dic
     return out
 
 
+def _journaled(journal: Path) -> set[str]:
+    """Les empreintes des modèles déjà mesurés sur les jeux gelés."""
+    if not journal.exists():
+        return set()
+    lines = journal.read_text(encoding="utf-8").splitlines()
+    return {json.loads(line)["modele_sha256"] for line in lines if line}
+
+
+def _predictions(reference: Reference, X: np.ndarray) -> dict[str, np.ndarray]:
+    return {
+        t: predict(m, X, reference.alert_threshold if t == "alerte" else None)
+        for t, m in reference.models.items()
+    }
+
+
 def mesurer(
     series: Path = SERIES,
     model_path: Path = MODEL_PATH,
     embedder: Embedder | None = None,
     journal: Path = JOURNAL,
-    commit: Callable[[], str] = git_commit,
+    commit: Callable[[], str] | None = None,
     sets: dict[str, str] = FROZEN_SETS,
     freezes: Sequence[str] = FREEZES,
+    tache: str = "M6, référence",
+    compare: Path | None = None,
 ) -> dict:
-    """La mesure finale de la référence sur les jeux gelés, une seule fois par modèle (G1) :
-    chaque lecture est ajoutée au journal (date, commit, empreinte du modèle, chiffres)."""
+    """La mesure finale d'un modèle sur les jeux gelés, une seule fois par modèle (G1) :
+    chaque lecture est ajoutée au journal (date, commit, empreinte du modèle, chiffres).
+
+    `compare` : un modèle déjà mesuré (son empreinte est au journal, sinon refus) dont on
+    recalcule les prédictions sur les mêmes cartes pour l'écart apparié (G2). Ce n'est pas une
+    nouvelle lecture pour lui : ses chiffres sont déjà publiés, rien ne se règle sur cet écart."""
     check_frozen(series, freezes)
-    model_sha = _sha(model_path)
-    if journal.exists() and any(
-        json.loads(line)["modele_sha256"] == model_sha
-        for line in journal.read_text(encoding="utf-8").splitlines()
-        if line
-    ):
+    model_sha, done = _sha(model_path), _journaled(journal)
+    if model_sha in done:
         raise ValueError("ce modèle a déjà été mesuré sur les jeux gelés : voir le journal")
-    revision = commit()
+    if compare is not None and _sha(compare) not in done:
+        raise ValueError(f"{compare.name} n'a pas encore été mesuré : pas d'écart apparié")
+    revision = (commit or (lambda: git_commit((model_path, Path(__file__)))))()
     reference = Reference.load(model_path)
+    other = Reference.load(compare) if compare is not None else None
     embedder = embedder or FastEmbedder(reference.embedder_name)
     results = {}
     for label, name in sets.items():
         _, sources, truth = series_truth(name, series)
-        X = design(series_cards(name, series), embedder, reference.fiche, texte=reference.texte)
+        cards = series_cards(name, series)
+        X = design(cards, embedder, reference.fiche, texte=reference.texte)
         results[label] = {"serie": name} | evaluate(reference, X, sources, truth)
         results[label]["coherence_annotateur"] = self_agreement(name, series)
+        if other is not None:
+            mine = _predictions(reference, X)
+            theirs = _predictions(other, design(cards, embedder, other.fiche, texte=other.texte))
+            results[label]["ecart_apparie"] = {"contre": compare.name} | {
+                t: _paired_gap(t, truth[t], mine[t], theirs[t]) for t in TARGETS
+            }
     entry = {
         "date": datetime.now(UTC).isoformat(timespec="seconds"),
-        "tache": "M6, référence",
+        "tache": tache,
         "commit": revision,
         "modele": model_path.name,
         "modele_sha256": model_sha,
         "encodeur": reference.embedder_name,
+        "fiche": reference.fiche,
+        "texte": reference.texte,
         "seuil_alerte": reference.alert_threshold,
         "jeux": results,
     }
@@ -2259,8 +2288,80 @@ def mesurer(
     return entry
 
 
+def _paired_gap(target: str, truth: np.ndarray, a: np.ndarray, b: np.ndarray) -> dict:
+    """F1 macro de a − F1 macro de b, avec l'intervalle apparié à 95 % (G2)."""
+    k = len(TARGETS[target])
+
+    def score(pred: np.ndarray, y: np.ndarray) -> float:
+        return f1_macro(pred, y, k)
+
+    low, high = paired_diff_ci(score, a, b, truth)
+    diff = score(a, truth) - score(b, truth)
+    return {"ecart": round(diff, 4), "ic95": [round(low, 4), round(high, 4)]}
+
+
+# Le candidat retenu par les leviers 1 à 3 (plan, §11) : N, MiniLM gelé sur le texte normalisé,
+# fiche, régression ; ses réglages et son seuil viennent du rapport du levier 2.
+CANDIDATE_PATH = Path(__file__).with_name("comprendre_candidat.npz")
+CANDIDATE = "N"
+
+
+def figer_candidat(
+    corpora: dict[str, Path] = CORPORA,
+    embedder: Embedder | None = None,
+    cache: VectorCache | None = None,
+    series: Path = SERIES,
+    report_path: Path = TEXT_REPORT_PATH,
+    name: str = CANDIDATE,
+    model_path: Path = CANDIDATE_PATH,
+    log: Callable[[str], None] = lambda _: None,
+) -> dict:
+    """Le candidat appris sur tout l'entraînement, comme au levier : réglages et seuil d'alerte
+    du découpage 1, lus dans le rapport (rien n'est recalculé ni rechoisi). Contrôle avant
+    d'écrire le fichier : il doit redonner le F1 de l'action publié pour le jeu réel, preuve
+    que le modèle mesuré sur les jeux gelés est bien celui qu'on a décidé."""
+    variant = json.loads(report_path.read_text(encoding="utf-8"))["variantes"][name]
+    fiche, texte = variant["fiche"], variant["texte"]
+    embedder = embedder or FastEmbedder(DEFAULT_MODEL)
+    cache = cache or VectorCache(cache_path(embedder))
+    log("cartes des personas « train »…")
+    examples, _ = training_examples(corpora)
+    X = design([e.card for e in examples], embedder, fiche, cache, texte)
+    models = {}
+    for target, classes in TARGETS.items():
+        cfg = variant["metiers"][target]["configuration"]
+        config = Config(cfg["l2"], cfg["classes_pondérées"])
+        log(f"{target} : {config.as_dict()}")
+        models[target] = fit_softmax(X, _codes(examples, target), len(classes), config)
+    threshold = variant["alerte_rappel_095"]["seuil"]
+    candidate = Reference(models, threshold, embedder.name, fiche, texte)
+    cards, _, truth = _dev_set(series)
+    pred = _predictions(candidate, design(cards, embedder, fiche, cache, texte))["action"]
+    got, expected = (
+        round(_f1_action(pred, truth["action"]), 4),
+        variant["reel"]["action"]["f1_macro"],
+    )
+    if abs(got - expected) > 1e-4:
+        raise ValueError(f"le candidat ne redonne pas le jeu réel : {got} au lieu de {expected}")
+    candidate.save(model_path)
+    return {
+        "variante": name,
+        "rapport": report_path.name,
+        "fiche": fiche,
+        "texte": texte,
+        "exemples": len(examples),
+        "configurations": {t: variant["metiers"][t]["configuration"] for t in TARGETS},
+        "seuil_alerte": threshold,
+        "reel_action": got,
+        "modele": model_path.name,
+        "modele_sha256": _sha(model_path),
+    }
+
+
 def measure_summary(entry: dict) -> str:
-    lines = [f"commit {entry['commit'][:7]}, modèle {entry['modele_sha256'][:12]}"]
+    lines = [
+        f"{entry['tache']} : commit {entry['commit'][:7]}, modèle {entry['modele_sha256'][:12]}"
+    ]
     for label, result in entry["jeux"].items():
         lines.append(f"{label} ({result['serie']}, {result['elements']} éléments) :")
         for target in TARGETS:
@@ -2275,6 +2376,12 @@ def measure_summary(entry: dict) -> str:
             f"  alertes : {alert['n']}, rappel {alert['rappel']}, précision {alert['précision']}"
         )
         lines.append(f"  cohérence de l'annotateur : {result['coherence_annotateur']}")
+        if "ecart_apparie" in result:
+            gaps = result["ecart_apparie"]
+            lines.append(
+                f"  écart apparié avec {gaps['contre']} : "
+                + " ; ".join(f"{t} {gaps[t]['ecart']:+.3f} {gaps[t]['ic95']}" for t in TARGETS)
+            )
     return "\n".join(lines)
 
 
@@ -2316,6 +2423,17 @@ def main(argv: list[str]) -> int:
         print(measure_summary(mesurer()))
         print(f"→ {JOURNAL.name}")
         return 0
+    if argv == ["--figer-candidat"]:
+        info = figer_candidat(log=lambda line: print(line, flush=True))
+        print(json.dumps(info, ensure_ascii=False, indent=1))
+        return 0
+    if argv == ["--mesurer-candidat"]:
+        entry = mesurer(
+            model_path=CANDIDATE_PATH, tache=f"M6, candidat {CANDIDATE}", compare=MODEL_PATH
+        )
+        print(measure_summary(entry))
+        print(f"→ {JOURNAL.name}")
+        return 0
     if argv == ["--tirer-demo"]:
         info = draw_tdemo_elements()
         print(
@@ -2336,7 +2454,8 @@ def main(argv: list[str]) -> int:
         return 0
     print(
         "usage : comprendre --entrainer | --valider-dur | --tirer-dev <data David> | "
-        "--geler-dev | --valider-reel | --levier-fiche | --levier-texte | --mesurer | --tirer-demo | --reste-demo | --geler-demo"
+        "--geler-dev | --valider-reel | --levier-fiche | --levier-texte | --mesurer | "
+        "--figer-candidat | --mesurer-candidat | --tirer-demo | --reste-demo | --geler-demo"
     )
     return 2
 
