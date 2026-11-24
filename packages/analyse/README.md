@@ -387,10 +387,66 @@ Les découpages 2 et 3 confirment le diagnostic de M6 : une formulation jamais v
 un changement d'écrivain 0,17 à 0,23. Le découpage 1 sert à suivre le niveau, les découpages 2
 et 3 à mesurer ce que les leviers apportent contre l'apprentissage du style.
 
+**Jeu de développement réel** (étape 0 B ; règle M0 modifiée le 22/11, plan §11). 104 cartes
+de texte écrit hors de nos générateurs : les 34 éléments de la journée de Claire (écrits à la
+main par Paul) et 70 éléments du jeu de David (55 mails reçus, 15 réunions), un par modèle de
+phrase. Ces modèles sont inscrits au tirage (`m6-dev-reel.tirage.json`) et seront exclus du
+futur test de transfert sur David. Claude a jugé les 104 cartes avec le guide avant toute
+mesure ; Théo rejuge 30 cartes à l'aveugle (`m6-dev-reel-echantillon`). Sous 85 % d'accord
+sur l'action, il arbitre les désaccords de l'échantillon (`m6-dev-reel_arbitrage.jsonl`).
+Les étiquettes sont gelées (`m6-dev-reel.gel.json`) : `--valider-reel` refuse de mesurer si
+elles ont changé. Jugé surtout par un LLM : c'est un garde-fou de développement, pas une
+mesure humaine (P2).
+
+Accord de Théo avec Claude sur l'échantillon : action 25/30 (83 %, sous le seuil), urgence et
+alerte 30/30 ; 3 répétitions cachées cohérentes. Arbitrage de Théo : les 5 désaccords gardent
+l'étiquette de Claude (4 mails qui annoncent une réunion sans invitation visible, règle ajoutée
+au guide ; une tâche « Répondre à… », règle du verbe de l'intitulé). Une carte de l'échantillon
+a été jugée après que Théo a lu la convention de Claude sur ces mails : non aveugle sur ce point.
+
+| référence de M6 (MiniLM gelé + régression), jeu réel | F1 macro [IC 95 %] |
+|---|---|
+| action, 104 cartes | 0,229 [0,155 ; 0,304] (Claire 0,273, David 0,197) |
+| urgence | 0,358 [0,298 ; 0,470] |
+| alerte | 0,495 ; la seule alerte (nouvel appareil connecté) est manquée |
+
+Le jeu réel retrouve l'échec de transfert vu sur la démo (0,164), quand la validation dure suit
+plutôt T-gen : les deux parties du jeu de développement se complètent. Erreur la plus nette :
+les envois en masse de David (Rien) sont lus comme Faire ou Relire.
+
+**Levier 1, fiche hybride** (`--levier-fiche`, règle de décision écrite le 22/11 avant la mesure,
+plan §11). La fiche (39 valeurs) est lue sur la carte, comme l'annotateur la voit : source, place
+du manager, relation de l'expéditeur, mail envoyé par lui, réponse, transfert, importance, non lu,
+lien de désabonnement ; réponse à l'invitation, organisateur, annulée, jour ; échéance, retard,
+terminée, Planner, verbe de l'intitulé d'une tâche ; fichier modifié par lui, cité dans. Trois
+variantes, toutes réentraînées de la même façon (réglage par G2 puis G3 sur le découpage 1) :
+
+| F1 macro de l'action | R, vecteur | H, vecteur + fiche | F, fiche seule |
+|---|---|---|---|
+| 1. métiers | 0,728 | **0,804** | 0,542 |
+| 2. gabarits tenus à l'écart | 0,578 | **0,683** | 0,513 |
+| 3. gabarits → LLM / LLM → gabarits | 0,501 / 0,524 | **0,571 / 0,620** | 0,428 / 0,435 |
+| jeu réel (104 cartes) | 0,220 | 0,382 | **0,495** |
+| alerte réelle détectée | 0/1 | 0/1 | 1/1 |
+| précision des alertes au rappel 0,95 (découpage 1) | 0,857 | 0,911 | 0,056 |
+
+Écarts appariés H − R : +0,076 (métiers), +0,105 (gabarits), +0,070 et +0,096 (écrivain),
++0,162 [0,082 ; 0,231] (jeu réel), tous significatifs. **Décision de la règle : H est retenue**
+et devient le candidat de la compréhension. F − H est significatif dans les deux sens (−0,26 sur
+le simulateur, +0,113 [0,026 ; 0,212] sur le jeu réel) : F ne remplace pas H. Lecture : la fiche
+porte l'essentiel du transfert ; sur le texte réel, le vecteur MiniLM gêne encore, car il reste
+appris sur le style du simulateur. C'est la cible des leviers suivants (augmentation du texte,
+encodeur réajusté), à mesurer contre H. R est ici réentraînée sur tout l'entraînement : 0,220 sur
+le jeu réel, contre 0,229 pour la référence commitée (autre réglage, sans la validation).
+
 ```bash
+uv run python -m packages.analyse.scoring.ml.comprendre --levier-fiche  # R, H, F comparées
 uv run python -m packages.analyse.scoring.ml.jeux_m5 --reste            # réponses manquantes
 uv run python -m packages.analyse.scoring.ml.comprendre --entrainer     # référence + rapport
 uv run python -m packages.analyse.scoring.ml.comprendre --valider-dur   # validation dure
+uv run python -m packages.analyse.scoring.ml.annoter --serie m6-dev-reel-echantillon --annotateur theo
+uv run python -m packages.analyse.scoring.ml.comprendre --geler-dev     # après l'échantillon
+uv run python -m packages.analyse.scoring.ml.comprendre --valider-reel  # jeu de développement réel
 uv run python -m packages.analyse.scoring.ml.comprendre --mesurer       # une fois par modèle
 ```
 

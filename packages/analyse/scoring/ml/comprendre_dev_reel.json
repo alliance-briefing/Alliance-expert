@@ -1,0 +1,205 @@
+{
+ "modele": "comprendre_reference.npz",
+ "modele_sha256": "36209cb9b653857d7d1ec794a9bf56c8fd4fe6e11c0c5414ee1018dd38c76b06",
+ "accord_theo_claude": {
+  "cartes": 30,
+  "action": 0.833,
+  "urgence": 1.0,
+  "alerte": 1.0,
+  "desaccords_action": [
+   "r-e050",
+   "r-e059",
+   "r-e068",
+   "r-e069",
+   "r-e087"
+  ]
+ },
+ "etiquettes": "Claude (guide d'annotation), échantillon rejugé par Théo à l'aveugle",
+ "elements": 104,
+ "action": {
+  "f1_macro": 0.2294,
+  "f1_macro_ic95": [
+   0.1555,
+   0.3036
+  ],
+  "classes": {
+   "repondre": {
+    "précision": 0.37,
+    "rappel": 0.476,
+    "f1": 0.417,
+    "n": 21
+   },
+   "faire": {
+    "précision": 0.211,
+    "rappel": 0.333,
+    "f1": 0.258,
+    "n": 12
+   },
+   "decider": {
+    "précision": 0.0,
+    "rappel": 0.0,
+    "f1": 0.0,
+    "n": 3
+   },
+   "preparer": {
+    "précision": 0.2,
+    "rappel": 0.167,
+    "f1": 0.182,
+    "n": 6
+   },
+   "relire": {
+    "précision": 0.0,
+    "rappel": 0.0,
+    "f1": 0.0,
+    "n": 0
+   },
+   "informer": {
+    "précision": 0.692,
+    "rappel": 0.29,
+    "f1": 0.409,
+    "n": 31
+   },
+   "rien": {
+    "précision": 0.5,
+    "rappel": 0.258,
+    "f1": 0.34,
+    "n": 31
+   }
+  },
+  "par_source": {
+   "mail": 0.1816,
+   "calendar": 0.1611,
+   "task": 0.6,
+   "file": 0.375
+  },
+  "confusion": [
+   [
+    10,
+    0,
+    3,
+    1,
+    5,
+    2,
+    0
+   ],
+   [
+    0,
+    4,
+    5,
+    0,
+    0,
+    0,
+    3
+   ],
+   [
+    2,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    3,
+    0,
+    0,
+    1,
+    0,
+    1,
+    1
+   ],
+   [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    9,
+    5,
+    2,
+    0,
+    2,
+    9,
+    4
+   ],
+   [
+    3,
+    9,
+    0,
+    3,
+    7,
+    1,
+    8
+   ]
+  ],
+  "par_origine": {
+   "claire": 0.2734,
+   "david": 0.1971
+  }
+ },
+ "urgence": {
+  "f1_macro": 0.3584,
+  "f1_macro_ic95": [
+   0.2979,
+   0.4696
+  ],
+  "classes": {
+   "urgent": {
+    "précision": 0.091,
+    "rappel": 0.5,
+    "f1": 0.154,
+    "n": 2
+   },
+   "normal": {
+    "précision": 0.978,
+    "rappel": 0.871,
+    "f1": 0.921,
+    "n": 101
+   },
+   "sans_urgence": {
+    "précision": 0.0,
+    "rappel": 0.0,
+    "f1": 0.0,
+    "n": 1
+   }
+  },
+  "par_source": {
+   "mail": 0.3481,
+   "calendar": 1.0,
+   "task": 1.0,
+   "file": 1.0
+  }
+ },
+ "alerte": {
+  "f1_macro": 0.4951,
+  "f1_macro_ic95": [
+   0.4877,
+   1.0
+  ],
+  "classes": {
+   "non": {
+    "précision": 0.99,
+    "rappel": 0.99,
+    "f1": 0.99,
+    "n": 103
+   },
+   "oui": {
+    "précision": 0.0,
+    "rappel": 0.0,
+    "f1": 0.0,
+    "n": 1
+   }
+  },
+  "par_source": {
+   "mail": 0.4934,
+   "calendar": 1.0,
+   "task": 1.0,
+   "file": 1.0
+  }
+ }
+}

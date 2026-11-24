@@ -1,0 +1,530 @@
+{
+ "graine": 0,
+ "decision": "22/11 (Théo) : règle M0 modifiée, jeu de développement réel (plan, §11)",
+ "david_modeles_exclus_du_test": {
+  "mail": [
+   "Appel ImprimExpress",
+   "Appel d'offres Ville de Saint-Aubin",
+   "Atelier Tableau de bord opérations",
+   "Bilan hebdomadaire",
+   "Budget #",
+   "Comité de suivi",
+   "Commande",
+   "Compte rendu de la réunion du # # #",
+   "Confirmation de votre voyage Bordeaux",
+   "Digital Pro : Comment structurer un plan de formation à budget constant",
+   "Digital Pro : Intelligence artificielle en entreprise : trois cas d'usage mesurés",
+   "Digital Pro : Management intermédiaire : comment éviter l'épuisement",
+   "Digital Pro : Marges sous pression dans le conseil : ce que disent les chiffres du trimestre",
+   "Disponibilité # ?",
+   "Disponibilité pour un point",
+   "Entretiens annuels",
+   "Facture #-#",
+   "Finance & Co : Management intermédiaire : comment éviter l'épuisement",
+   "Finance & Co : Télétravail : où en sont les accords d'entreprise ?",
+   "Incident : accès VPN refusé pour deux collaborateurs",
+   "Info : synchronisation de la messagerie mobile",
+   "Journal du Management : Délais de paiement : le rappel des sanctions",
+   "Journal du Management : Management intermédiaire : comment éviter l'épuisement",
+   "Journal du Management : Négocier avec un grand compte : méthode et pièges",
+   "Journal du Management : Recrutement : les profils les plus recherchés en #",
+   "Journal du Management : Réussir un appel d'offres public sans y laisser sa marge",
+   "Migration de la messagerie",
+   "Nouveau catalogue #",
+   "Nouvel appareil connecté à votre compte",
+   "Offres Pro : Audit interne : les contrôles qui coûtent peu et rapportent",
+   "Offres Pro : Cybersécurité des PME : le plan en dix points",
+   "Offres Pro : Management intermédiaire : comment éviter l'épuisement",
+   "Offres Pro : Recrutement : les profils les plus recherchés en #",
+   "Offres Pro : Télétravail : où en sont les accords d'entreprise ?",
+   "Planning de livraison",
+   "Pont de l'Armistice",
+   "Programme de fidélisation clients",
+   "Proposition commerciale",
+   "Préparation du comité de direction",
+   "Présentation de l'offre",
+   "Question sur la facture #-#",
+   "Relance : facture #-#",
+   "Revue des risques",
+   "Réunion de cadrage",
+   "Salon des professionnels du conseil",
+   "Séminaire de direction",
+   "Veille Conseil : Comment structurer un plan de formation à budget constant",
+   "Veille Conseil : Les indicateurs qu'un comité de direction lit vraiment",
+   "Visio Brasserie Delacour",
+   "[INC-#] Accès VPN lent (assigné à l'équipe réseau)",
+   "[INC-#] Accès VPN lent (en attente de votre réponse)",
+   "[INC-#] Imprimante réseau (en attente de votre réponse)",
+   "[INC-#] Installation d'un poste (pris en charge)",
+   "[INC-#] Installation d'un poste (résolu)",
+   "[INC-#] Mot de passe expiré (pris en charge)"
+  ],
+  "calendar": [
+   "#:# Karim BENALI",
+   "Annulé : Point hebdo équipe projet",
+   "Annulé : Revue de Budget #",
+   "Appel Traiteur Les Saveurs",
+   "Comité de suivi",
+   "Déjeuner avec Marion",
+   "Déjeuner avec Thomas",
+   "Point avec Julie",
+   "Point avec Nadia",
+   "Point avec Sandrine",
+   "Revue de Contrat-cadre Altaïr",
+   "Réunion de cadrage",
+   "Visio Mutuelle des Trois Rives",
+   "Webinaire partenaires",
+   "Événement privé"
+  ]
+ },
+ "elements": {
+  "r-e001": {
+   "item_id": "file:70B601702CF3F38E!s227e3c963e1b476183b6f173be7cda54",
+   "origine": "claire"
+  },
+  "r-e002": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGfX0KEAAA=",
+   "origine": "david"
+  },
+  "r-e003": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGZtS2vAAA=",
+   "origine": "david"
+  },
+  "r-e004": {
+   "item_id": "mail:AQMkADAwATMwMAExLWJiADIzLTE4MmItMDACLTAwCgBGAAADqWSHJ89mKUuZ4KVQu3DScAcADAe_BM_B3kC26pFzMy9lMwAAAgEMAAAADAe_BM_B3kC26pFzMy9lMwAAAgVfAAAA",
+   "origine": "claire"
+  },
+  "r-e005": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGgJ8MQAAA=",
+   "origine": "david"
+  },
+  "r-e006": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGADdWoAAA=",
+   "origine": "david"
+  },
+  "r-e007": {
+   "item_id": "mail:AQMkADAwATMwMAExLWJiADIzLTE4MmItMDACLTAwCgBGAAADqWSHJ89mKUuZ4KVQu3DScAcADAe_BM_B3kC26pFzMy9lMwAAAgEMAAAADAe_BM_B3kC26pFzMy9lMwAAAgVbAAAA",
+   "origine": "claire"
+  },
+  "r-e008": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGSPQGaAAA=",
+   "origine": "david"
+  },
+  "r-e009": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGmtC_8AAA=",
+   "origine": "david"
+  },
+  "r-e010": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAG07pwSAAA=",
+   "origine": "david"
+  },
+  "r-e011": {
+   "item_id": "calendar:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAENAABT6-uZh-7_3Elo6M4h5X2-AAGP8C1oAAA=",
+   "origine": "david"
+  },
+  "r-e012": {
+   "item_id": "task:AQMkADAwATMwMAExLWJiADIzLTE4MmItMDACLTAwCgBGAAADqWSHJ89mKUuZ4KVQu3DScAcADAe_BM_B3kC26pFzMy9lMwAAAgESAAAADAe_BM_B3kC26pFzMy9lMwAAAvrNAAAA",
+   "origine": "claire"
+  },
+  "r-e013": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGQosxZAAA=",
+   "origine": "david"
+  },
+  "r-e014": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAG4lrDnAAA=",
+   "origine": "david"
+  },
+  "r-e015": {
+   "item_id": "calendar:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAENAABT6-uZh-7_3Elo6M4h5X2-AAGpWRVYAAA=",
+   "origine": "david"
+  },
+  "r-e016": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGbpuGeAAA=",
+   "origine": "david"
+  },
+  "r-e017": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGXg3JAAAA=",
+   "origine": "david"
+  },
+  "r-e018": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAG1njmCAAA=",
+   "origine": "david"
+  },
+  "r-e019": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAG2tOmjAAA=",
+   "origine": "david"
+  },
+  "r-e020": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGIlUGuAAA=",
+   "origine": "david"
+  },
+  "r-e021": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGYq1ZaAAA=",
+   "origine": "david"
+  },
+  "r-e022": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGXbtklAAA=",
+   "origine": "david"
+  },
+  "r-e023": {
+   "item_id": "mail:AQMkADAwATMwMAExLWJiADIzLTE4MmItMDACLTAwCgBGAAADqWSHJ89mKUuZ4KVQu3DScAcADAe_BM_B3kC26pFzMy9lMwAAAgEMAAAADAe_BM_B3kC26pFzMy9lMwAAAgV2AAAA",
+   "origine": "claire"
+  },
+  "r-e024": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAG5V6LOAAA=",
+   "origine": "david"
+  },
+  "r-e025": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGL6_V_AAA=",
+   "origine": "david"
+  },
+  "r-e026": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAG5wOVcAAA=",
+   "origine": "david"
+  },
+  "r-e027": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGB_08iAAA=",
+   "origine": "david"
+  },
+  "r-e028": {
+   "item_id": "calendar:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAENAABT6-uZh-7_3Elo6M4h5X2-AAG2aM3GAAA=",
+   "origine": "david"
+  },
+  "r-e029": {
+   "item_id": "mail:AQMkADAwATMwMAExLWJiADIzLTE4MmItMDACLTAwCgBGAAADqWSHJ89mKUuZ4KVQu3DScAcADAe_BM_B3kC26pFzMy9lMwAAAgEMAAAADAe_BM_B3kC26pFzMy9lMwAAAgVZAAAA",
+   "origine": "claire"
+  },
+  "r-e030": {
+   "item_id": "calendar:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcgFRAAgIIYBPxE1CWSA61bWLT4CRDCDa8sP1-PwTkW8o9B6XOKr-O2Uw3nNTuTdeGLEfxM-bauS8ECTs5vNKtyPgDHNf6WekfrHSbTUN6_cTaAAEA==",
+   "origine": "david"
+  },
+  "r-e031": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGCqhq3AAA=",
+   "origine": "david"
+  },
+  "r-e032": {
+   "item_id": "mail:AQMkADAwATMwMAExLWJiADIzLTE4MmItMDACLTAwCgBGAAADqWSHJ89mKUuZ4KVQu3DScAcADAe_BM_B3kC26pFzMy9lMwAAAgEMAAAADAe_BM_B3kC26pFzMy9lMwAAAgVrAAAA",
+   "origine": "claire"
+  },
+  "r-e033": {
+   "item_id": "task:AQMkADAwATMwMAExLWJiADIzLTE4MmItMDACLTAwCgBGAAADqWSHJ89mKUuZ4KVQu3DScAcADAe_BM_B3kC26pFzMy9lMwAAAgESAAAADAe_BM_B3kC26pFzMy9lMwAAAvrKAAAA",
+   "origine": "claire"
+  },
+  "r-e034": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGsxwA4AAA=",
+   "origine": "david"
+  },
+  "r-e035": {
+   "item_id": "calendar:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcgFRAAgIh0LNFkiplYI4Aqx65alsB5Xl7IBHQ3edOmI7sv0qQ1j8P3OUdE1TieRQWoqSlUA3w7Bcjkh9wFj8ZEdlgxXMdkH94NcdO1JPEPWMPAAEA==",
+   "origine": "david"
+  },
+  "r-e036": {
+   "item_id": "mail:AQMkADAwATMwMAExLWJiADIzLTE4MmItMDACLTAwCgBGAAADqWSHJ89mKUuZ4KVQu3DScAcADAe_BM_B3kC26pFzMy9lMwAAAgEMAAAADAe_BM_B3kC26pFzMy9lMwAAAgVnAAAA",
+   "origine": "claire"
+  },
+  "r-e037": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAG2tREtAAA=",
+   "origine": "david"
+  },
+  "r-e038": {
+   "item_id": "mail:AQMkADAwATMwMAExLWJiADIzLTE4MmItMDACLTAwCgBGAAADqWSHJ89mKUuZ4KVQu3DScAcADAe_BM_B3kC26pFzMy9lMwAAAgEMAAAADAe_BM_B3kC26pFzMy9lMwAAAgVcAAAA",
+   "origine": "claire"
+  },
+  "r-e039": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGN7R3vAAA=",
+   "origine": "david"
+  },
+  "r-e040": {
+   "item_id": "calendar:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAENAABT6-uZh-7_3Elo6M4h5X2-AAGcwxTzAAA=",
+   "origine": "david"
+  },
+  "r-e041": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAG2Ug-JAAA=",
+   "origine": "david"
+  },
+  "r-e042": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGgYxFzAAA=",
+   "origine": "david"
+  },
+  "r-e043": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGvolfaAAA=",
+   "origine": "david"
+  },
+  "r-e044": {
+   "item_id": "mail:AQMkADAwATMwMAExLWJiADIzLTE4MmItMDACLTAwCgBGAAADqWSHJ89mKUuZ4KVQu3DScAcADAe_BM_B3kC26pFzMy9lMwAAAgEMAAAADAe_BM_B3kC26pFzMy9lMwAAAgVzAAAA",
+   "origine": "claire"
+  },
+  "r-e045": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGkdGbhAAA=",
+   "origine": "david"
+  },
+  "r-e046": {
+   "item_id": "calendar:AQMkADAwATMwMAExLWJiADIzLTE4MmItMDACLTAwCgBGAAADqWSHJ89mKUuZ4KVQu3DScAcADAe_BM_B3kC26pFzMy9lMwAAAgENAAAADAe_BM_B3kC26pFzMy9lMwAAAiqHAAAA",
+   "origine": "claire"
+  },
+  "r-e047": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGwBd2AAAA=",
+   "origine": "david"
+  },
+  "r-e048": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGXeRhDAAA=",
+   "origine": "david"
+  },
+  "r-e049": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGj_x7DAAA=",
+   "origine": "david"
+  },
+  "r-e050": {
+   "item_id": "mail:AQMkADAwATMwMAExLWJiADIzLTE4MmItMDACLTAwCgBGAAADqWSHJ89mKUuZ4KVQu3DScAcADAe_BM_B3kC26pFzMy9lMwAAAgEMAAAADAe_BM_B3kC26pFzMy9lMwAAAgV1AAAA",
+   "origine": "claire"
+  },
+  "r-e051": {
+   "item_id": "file:70B601702CF3F38E!s621ad3ac075a4947823b70de55b4e735",
+   "origine": "claire"
+  },
+  "r-e052": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGU42XdAAA=",
+   "origine": "david"
+  },
+  "r-e053": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGzMQxJAAA=",
+   "origine": "david"
+  },
+  "r-e054": {
+   "item_id": "mail:AQMkADAwATMwMAExLWJiADIzLTE4MmItMDACLTAwCgBGAAADqWSHJ89mKUuZ4KVQu3DScAcADAe_BM_B3kC26pFzMy9lMwAAAgEMAAAADAe_BM_B3kC26pFzMy9lMwAAAgViAAAA",
+   "origine": "claire"
+  },
+  "r-e055": {
+   "item_id": "mail:AQMkADAwATMwMAExLWJiADIzLTE4MmItMDACLTAwCgBGAAADqWSHJ89mKUuZ4KVQu3DScAcADAe_BM_B3kC26pFzMy9lMwAAAgEMAAAADAe_BM_B3kC26pFzMy9lMwAAAgVjAAAA",
+   "origine": "claire"
+  },
+  "r-e056": {
+   "item_id": "calendar:AQMkADAwATMwMAExLWJiADIzLTE4MmItMDACLTAwCgBGAAADqWSHJ89mKUuZ4KVQu3DScAcADAe_BM_B3kC26pFzMy9lMwAAAgENAAAADAe_BM_B3kC26pFzMy9lMwAAAiqFAAAA",
+   "origine": "claire"
+  },
+  "r-e057": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGijbB2AAA=",
+   "origine": "david"
+  },
+  "r-e058": {
+   "item_id": "mail:AQMkADAwATMwMAExLWJiADIzLTE4MmItMDACLTAwCgBGAAADqWSHJ89mKUuZ4KVQu3DScAcADAe_BM_B3kC26pFzMy9lMwAAAgEMAAAADAe_BM_B3kC26pFzMy9lMwAAAgVoAAAA",
+   "origine": "claire"
+  },
+  "r-e059": {
+   "item_id": "task:AQMkADAwATMwMAExLWJiADIzLTE4MmItMDACLTAwCgBGAAADqWSHJ89mKUuZ4KVQu3DScAcADAe_BM_B3kC26pFzMy9lMwAAAgESAAAADAe_BM_B3kC26pFzMy9lMwAAAvrLAAAA",
+   "origine": "claire"
+  },
+  "r-e060": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAG9GCviAAA=",
+   "origine": "david"
+  },
+  "r-e061": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGOtaLnAAA=",
+   "origine": "david"
+  },
+  "r-e062": {
+   "item_id": "calendar:AQMkADAwATMwMAExLWJiADIzLTE4MmItMDACLTAwCgBGAAADqWSHJ89mKUuZ4KVQu3DScAcADAe_BM_B3kC26pFzMy9lMwAAAgENAAAADAe_BM_B3kC26pFzMy9lMwAAAiqGAAAA",
+   "origine": "claire"
+  },
+  "r-e063": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAG2kpBVAAA=",
+   "origine": "david"
+  },
+  "r-e064": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGhz62XAAA=",
+   "origine": "david"
+  },
+  "r-e065": {
+   "item_id": "calendar:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAENAABT6-uZh-7_3Elo6M4h5X2-AAGqU7HoAAA=",
+   "origine": "david"
+  },
+  "r-e066": {
+   "item_id": "mail:AQMkADAwATMwMAExLWJiADIzLTE4MmItMDACLTAwCgBGAAADqWSHJ89mKUuZ4KVQu3DScAcADAe_BM_B3kC26pFzMy9lMwAAAgEMAAAADAe_BM_B3kC26pFzMy9lMwAAAgVYAAAA",
+   "origine": "claire"
+  },
+  "r-e067": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAG4eWKnAAA=",
+   "origine": "david"
+  },
+  "r-e068": {
+   "item_id": "mail:AQMkADAwATMwMAExLWJiADIzLTE4MmItMDACLTAwCgBGAAADqWSHJ89mKUuZ4KVQu3DScAcADAe_BM_B3kC26pFzMy9lMwAAAgEMAAAADAe_BM_B3kC26pFzMy9lMwAAAgVyAAAA",
+   "origine": "claire"
+  },
+  "r-e069": {
+   "item_id": "mail:AQMkADAwATMwMAExLWJiADIzLTE4MmItMDACLTAwCgBGAAADqWSHJ89mKUuZ4KVQu3DScAcADAe_BM_B3kC26pFzMy9lMwAAAgEMAAAADAe_BM_B3kC26pFzMy9lMwAAAgVxAAAA",
+   "origine": "claire"
+  },
+  "r-e070": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGSBGpqAAA=",
+   "origine": "david"
+  },
+  "r-e071": {
+   "item_id": "calendar:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAENAABT6-uZh-7_3Elo6M4h5X2-AAGyfSrYAAA=",
+   "origine": "david"
+  },
+  "r-e072": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGf79d5AAA=",
+   "origine": "david"
+  },
+  "r-e073": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGAwqguAAA=",
+   "origine": "david"
+  },
+  "r-e074": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGZh4uMAAA=",
+   "origine": "david"
+  },
+  "r-e075": {
+   "item_id": "mail:AQMkADAwATMwMAExLWJiADIzLTE4MmItMDACLTAwCgBGAAADqWSHJ89mKUuZ4KVQu3DScAcADAe_BM_B3kC26pFzMy9lMwAAAgEMAAAADAe_BM_B3kC26pFzMy9lMwAAAgVmAAAA",
+   "origine": "claire"
+  },
+  "r-e076": {
+   "item_id": "file:70B601702CF3F38E!s59b8371d78b94f4b9f03ddc9a3081858",
+   "origine": "claire"
+  },
+  "r-e077": {
+   "item_id": "calendar:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAENAABT6-uZh-7_3Elo6M4h5X2-AAG2rBHDAAA=",
+   "origine": "david"
+  },
+  "r-e078": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAG2jVPoAAA=",
+   "origine": "david"
+  },
+  "r-e079": {
+   "item_id": "calendar:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAENAABT6-uZh-7_3Elo6M4h5X2-AAGXC75YAAA=",
+   "origine": "david"
+  },
+  "r-e080": {
+   "item_id": "calendar:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAENAABT6-uZh-7_3Elo6M4h5X2-AAGOn5YTAAA=",
+   "origine": "david"
+  },
+  "r-e081": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGrwtBwAAA=",
+   "origine": "david"
+  },
+  "r-e082": {
+   "item_id": "calendar:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAENAABT6-uZh-7_3Elo6M4h5X2-AAGWn21CAAA=",
+   "origine": "david"
+  },
+  "r-e083": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGyKB9UAAA=",
+   "origine": "david"
+  },
+  "r-e084": {
+   "item_id": "file:70B601702CF3F38E!sf14df387790b4658998ab5caa66b1812",
+   "origine": "claire"
+  },
+  "r-e085": {
+   "item_id": "mail:AQMkADAwATMwMAExLWJiADIzLTE4MmItMDACLTAwCgBGAAADqWSHJ89mKUuZ4KVQu3DScAcADAe_BM_B3kC26pFzMy9lMwAAAgEMAAAADAe_BM_B3kC26pFzMy9lMwAAAgVaAAAA",
+   "origine": "claire"
+  },
+  "r-e086": {
+   "item_id": "calendar:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAENAABT6-uZh-7_3Elo6M4h5X2-AAGVu-nhAAA=",
+   "origine": "david"
+  },
+  "r-e087": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGqrJ61AAA=",
+   "origine": "david"
+  },
+  "r-e088": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGz7GtPAAA=",
+   "origine": "david"
+  },
+  "r-e089": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAG6OIUTAAA=",
+   "origine": "david"
+  },
+  "r-e090": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGhzdYyAAA=",
+   "origine": "david"
+  },
+  "r-e091": {
+   "item_id": "calendar:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAENAABT6-uZh-7_3Elo6M4h5X2-AAG-IlXFAAA=",
+   "origine": "david"
+  },
+  "r-e092": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGlQMriAAA=",
+   "origine": "david"
+  },
+  "r-e093": {
+   "item_id": "mail:AQMkADAwATMwMAExLWJiADIzLTE4MmItMDACLTAwCgBGAAADqWSHJ89mKUuZ4KVQu3DScAcADAe_BM_B3kC26pFzMy9lMwAAAgEMAAAADAe_BM_B3kC26pFzMy9lMwAAAgVqAAAA",
+   "origine": "claire"
+  },
+  "r-e094": {
+   "item_id": "file:70B601702CF3F38E!sec952c9c36554ce0a84cb26daee592ea",
+   "origine": "claire"
+  },
+  "r-e095": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGjYaEqAAA=",
+   "origine": "david"
+  },
+  "r-e096": {
+   "item_id": "mail:AQMkADAwATMwMAExLWJiADIzLTE4MmItMDACLTAwCgBGAAADqWSHJ89mKUuZ4KVQu3DScAcADAe_BM_B3kC26pFzMy9lMwAAAgEMAAAADAe_BM_B3kC26pFzMy9lMwAAAgV0AAAA",
+   "origine": "claire"
+  },
+  "r-e097": {
+   "item_id": "calendar:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAENAABT6-uZh-7_3Elo6M4h5X2-AAGIGZlhAAA=",
+   "origine": "david"
+  },
+  "r-e098": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGc2NDVAAA=",
+   "origine": "david"
+  },
+  "r-e099": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGclho5AAA=",
+   "origine": "david"
+  },
+  "r-e100": {
+   "item_id": "task:AQMkADAwATMwMAExLWJiADIzLTE4MmItMDACLTAwCgBGAAADqWSHJ89mKUuZ4KVQu3DScAcADAe_BM_B3kC26pFzMy9lMwAAAgESAAAADAe_BM_B3kC26pFzMy9lMwAAAvrMAAAA",
+   "origine": "claire"
+  },
+  "r-e101": {
+   "item_id": "mail:AQMkADAwATMwMAExLWJiADIzLTE4MmItMDACLTAwCgBGAAADqWSHJ89mKUuZ4KVQu3DScAcADAe_BM_B3kC26pFzMy9lMwAAAgEMAAAADAe_BM_B3kC26pFzMy9lMwAAAgVlAAAA",
+   "origine": "claire"
+  },
+  "r-e102": {
+   "item_id": "mail:AQMkADAwATMwMAExLWJiADIzLTE4MmItMDACLTAwCgBGAAADqWSHJ89mKUuZ4KVQu3DScAcADAe_BM_B3kC26pFzMy9lMwAAAgEMAAAADAe_BM_B3kC26pFzMy9lMwAAAgVwAAAA",
+   "origine": "claire"
+  },
+  "r-e103": {
+   "item_id": "mail:AQMkADAwATMwMAExLWJiADIzLTE4MmItMDACLTAwCgBGAAADqWSHJ89mKUuZ4KVQu3DScAcADAe_BM_B3kC26pFzMy9lMwAAAgEMAAAADAe_BM_B3kC26pFzMy9lMwAAAgVkAAAA",
+   "origine": "claire"
+  },
+  "r-e104": {
+   "item_id": "mail:AAMkADPoNc1-4eAKOkM5B-oaygstwJrLlk6SnDvu72Lz_O2-yh19DcBGAAAAAAQGN28S9dP68gzn9z3ZliBEBwBT6-uZh-7_3Elo6M4h5X2-AAAAAAEMAABT6-uZh-7_3Elo6M4h5X2-AAGaZPaIAAA=",
+   "origine": "david"
+  }
+ },
+ "echantillon_theo": {
+  "r-x001": "r-e047",
+  "r-x002": "r-e001",
+  "r-x003": "r-e069",
+  "r-x004": "r-e050",
+  "r-x005": "r-e023",
+  "r-x006": "r-e059",
+  "r-x007": "r-e074",
+  "r-x008": "r-e056",
+  "r-x009": "r-e091",
+  "r-x010": "r-e084",
+  "r-x011": "r-e026",
+  "r-x012": "r-e052",
+  "r-x013": "r-e101",
+  "r-x014": "r-e087",
+  "r-x015": "r-e061",
+  "r-x016": "r-e077",
+  "r-x017": "r-e097",
+  "r-x018": "r-e017",
+  "r-x019": "r-e007",
+  "r-x020": "r-e089",
+  "r-x021": "r-e068",
+  "r-x022": "r-e002",
+  "r-x023": "r-e029",
+  "r-x024": "r-e054",
+  "r-x025": "r-e058",
+  "r-x026": "r-e028",
+  "r-x027": "r-e048",
+  "r-x028": "r-e040",
+  "r-x029": "r-e063",
+  "r-x030": "r-e049"
+ }
+}
