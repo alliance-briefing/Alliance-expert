@@ -527,7 +527,7 @@ M8.** Limites : N manque une des deux alertes de T-gen que la référence trouva
 alertes seulement, écart non significatif, mais l'alerte est la cible qui coûte le plus quand
 elle manque : à surveiller dans M8) ; l'alerte de T-démo reste manquée par les deux modèles ;
 sur T-démo, 0,270 reste loin du simulateur (décalage de domaine, déjà diagnostiqué). Les
-fichiers des mails restent faibles (T-gen : mail 0,528, fichier 0,435).
+mails et les fichiers restent faibles (T-gen : mail 0,528, fichier 0,435).
 
 ```bash
 uv run python -m packages.analyse.scoring.ml.comprendre --levier-texte  # H, N, A, N+A comparées
