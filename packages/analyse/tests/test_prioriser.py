@@ -4,18 +4,25 @@ from __future__ import annotations
 
 import json
 
+import numpy as np
 import pytest
 
-from packages.analyse.scoring.ml import annoter, jeux_m5, prioriser
+from packages.analyse.rag.embeddings import HashEmbedder
+from packages.analyse.scoring.ml import annoter, comprendre, jeux_m5, prioriser
+from packages.analyse.scoring.ml.intents import VectorCache
 from packages.collect.trainset import build
 from packages.collect.trainset.world import all_personas
 
 
 @pytest.fixture(scope="module")
 def corpus(tmp_path_factory):
-    """Deux personas « train » et une persona réservée, écrites par gabarits."""
+    """Trois personas « train » de trois métiers, et une persona réservée, par gabarits."""
     root = tmp_path_factory.mktemp("corpus")
-    train = [p for p in all_personas() if p.split == "train"][:2]
+    by_metier = {}
+    for p in all_personas():
+        if p.split == "train":
+            by_metier.setdefault(comprendre.metier(p.key), p)
+    train = list(by_metier.values())[:3]
     tgen = [p for p in all_personas() if p.split == "tgen"][:1]
     personas = {}
     for p in (*train, *tgen):
@@ -85,3 +92,71 @@ def test_les_reponses_suivent_les_cotes_montres(corpus, series):
     with pytest.raises(ValueError):
         prioriser.record(1, {shown[0][:2]: "C"}, folder)
     assert "[A]" in prioriser.show(shown[0][2])
+
+
+def _answer_all(n, folder):
+    """Des réponses variées : A, B, puis équivalent, à tour de rôle."""
+    shown = prioriser.presentations(n, folder)
+    prioriser.record(n, {(t, r): "AB="[k % 3] for k, (t, r, _) in enumerate(shown)}, folder)
+
+
+def test_la_fiche_de_priorite_a_ses_noms():
+    task = {
+        "source": "task",
+        "title": "Valider le budget",
+        "when": "créée hier",
+        "fields": [["Échéance", "aujourd'hui à 23:59"], ["Statut", "à faire"]],
+        "text": "",
+    }
+    signals = prioriser.card_signals(task)
+    assert len(signals) == len(comprendre.FEATURE_NAMES) + 1 and signals[-1] == 1.0
+    assert len(prioriser.PRIORITY_NAMES) == len(signals) + 9
+
+
+def test_bradley_terry_valide_par_metier_puis_choisit_les_paires_incertaines(corpus, series):
+    root, train = corpus
+    folder, _ = series
+    prioriser.draw_round(1, root, folder, size=24)
+    _answer_all(1, folder)
+    fit = comprendre.fit_softmax
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(comprendre, "fit_softmax", lambda X, y, k, c: fit(X, y, k, c, steps=30))
+        understanding = prioriser.Understanding(
+            {"gabarits": root, "llm": root}, HashEmbedder(), VectorCache(None), n_folds=3
+        )
+    assert set(understanding.by_metier) == {comprendre.metier(k) for k in train}
+    pairs = prioriser.round_pairs(1, root, folder)
+    assert len(pairs) == 24 and {p.label for p in pairs} == {"A", "B", "="}
+    assert all(p.cards[0]["item_id"] == p.items[0].item_id for p in pairs)
+    diffs = prioriser.pair_features(pairs, understanding)
+    assert diffs.shape == (24, len(prioriser.PRIORITY_NAMES))
+    out = folder / "v.json"
+    report = prioriser.valider(understanding, root, folder, out)
+    assert report["paires"] == 24 and report["paires_decidees"] == 16
+    assert report["l2_retenu"] in prioriser.L2_GRID and len(report["essais"]) == 3
+    assert 0 <= report["accord_regles"] <= 1 and set(report["poids"]) == set(
+        prioriser.PRIORITY_NAMES
+    )
+    assert json.loads(out.read_text("utf-8")) == report
+    # le tour 2 : les paires du réservoir où le modèle hésite le plus
+    info = prioriser.draw_uncertain_round(2, understanding, root, folder, size=6, pool=20)
+    assert len(info["paires"]) == 6 and "incertaines" in info["selection"]
+    first = {
+        frozenset(p)
+        for p in json.loads((folder / "m8-paires-t1.tirage.json").read_text("utf-8"))[
+            "paires"
+        ].values()
+    }
+    assert not first & {frozenset(p) for p in info["paires"].values()}
+
+
+def test_le_choix_incertain_garde_les_plus_petits_ecarts():
+    class Fixed:
+        def features(self, cards, metiers):
+            return np.array([[c["x"]] for c in cards], dtype=float)
+
+    candidates = [
+        {"a": {"x": a}, "b": {"x": b}, "persona": "hotel-1"}
+        for a, b in ((5, 0), (1, 1), (2, 0), (0, 3))
+    ]
+    assert prioriser.uncertain(Fixed(), np.array([1.0]), 2)(candidates) == [1, 2]
