@@ -8,6 +8,8 @@ identifiants et des compteurs : aucun contenu de message n'est exposé ici.
 `GET /admin/chain?user=…&date=…` : collecte, génération et consultations d'un brief
 (voir `chain.py`). L'administrateur ne lit pas le texte du brief (`brief:read_any`).
 
+`GET /admin/metrics?days=7` : taux d'erreur et durées de génération (voir `metrics.py`).
+
 `GET /admin` : la même chose en page HTML (formulaire de filtres, sans JavaScript, ADR 0001).
 """
 
@@ -15,6 +17,7 @@ from __future__ import annotations
 
 import logging
 from datetime import date as Date
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Literal
 from zoneinfo import ZoneInfo
@@ -36,11 +39,14 @@ from alliance_api.auth import (
 )
 from alliance_api.chain import BriefChain, brief_chain
 from alliance_api.errors import ApiError
+from alliance_api.metrics import Metrics, compute
 from contracts.models import AuditEvent
 
 PARIS = ZoneInfo("Europe/Paris")
 LIMIT_MAX = 1000
 PAGE_LIMIT = 200
+METRICS_DAYS = 7  # période par défaut des métriques
+METRICS_MAX_DAYS = 90
 ACTIONS = ("collect", "generate", "view")
 STATUSES = ("ok", "error")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
@@ -121,6 +127,7 @@ def admin_page(
             request, "admin.html", {**context, "error": exc.message}, 422
         )
     context.update(total=len(events), events=events[:PAGE_LIMIT])
+    context["metrics"] = metrics_for(request.app.state, METRICS_DAYS)
     if user and brief_day:
         try:
             context["chain"] = chain_for(request.app.state, user, brief_day)
@@ -135,6 +142,19 @@ def _page_day(value: str, name: str) -> Date | None:
         return Date.fromisoformat(value) if value else None
     except ValueError:
         raise ApiError(422, "invalid_request", f"paramètres invalides : {name}") from None
+
+
+@router.get("/metrics", response_model=Metrics, dependencies=[requires("audit:read")])
+def metrics(
+    request: Request, days: Annotated[int, Query(ge=1, le=METRICS_MAX_DAYS)] = METRICS_DAYS
+) -> Metrics:
+    return metrics_for(request.app.state, days)
+
+
+def metrics_for(state: State, days: int) -> Metrics:
+    """Métriques des `days` derniers jours (heure de Paris), aujourd'hui compris."""
+    today = datetime.now(PARIS).date()
+    return compute([*state.audit.read(), *state.collect_audit.read()], state.metrics, today, days)
 
 
 def filtered_events(

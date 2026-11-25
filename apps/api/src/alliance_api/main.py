@@ -14,6 +14,7 @@ from alliance_api.audit import COLLECT_FILE, AuditSink, AuditSource, JsonlAuditL
 from alliance_api.auth import CurrentUser, install_csrf
 from alliance_api.briefs import BriefGenerator, BriefStore, MemoryBriefStore
 from alliance_api.feedback import FeedbackStore, JsonlFeedbackStore, MemoryFeedbackStore
+from alliance_api.metrics import MetricsRecorder
 from alliance_api.permissions import DEFAULT_ROLES_FILE, Policy, load_policy
 from alliance_api.resume import PendingStore
 from alliance_api.sessions import MemorySessionStore, SessionStore
@@ -29,6 +30,7 @@ def create_app(
     generator: BriefGenerator | None = None,
     audit: AuditSink | None = None,
     collect_audit: AuditSource | None = None,
+    metrics: MetricsRecorder | None = None,
     feedback_store: FeedbackStore | None = None,
     session_store: SessionStore | None = None,
     pending_store: PendingStore | None = None,
@@ -42,6 +44,7 @@ def create_app(
     app.state.generator = generator or _default_generator()
     app.state.audit = audit or _default_audit()
     app.state.collect_audit = collect_audit or _default_collect_audit()  # lot 1, lecture seule
+    app.state.metrics = metrics or MetricsRecorder()  # durées de génération du processus
     app.state.feedback = feedback_store or _default_feedback_store()
     app.state.sessions = session_store or _default_session_store()
     app.state.pending = pending_store or PendingStore()  # reprise après expiration
