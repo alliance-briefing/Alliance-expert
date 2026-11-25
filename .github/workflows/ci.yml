@@ -66,6 +66,17 @@ jobs:
           docker compose -f infra/docker-compose.yml up -d --wait
           curl -fsS http://localhost:8000/briefs/2026-10-07 -H "X-Demo-User: u_demo_001" -o relu.json
           cmp brief.json relu.json
+      # sauvegarde → briefs effacés → restauration : le brief revient à l'identique
+      - name: sauvegarde et restauration
+        env:
+          AUTH: "X-Demo-User: u_demo_001"
+        run: |
+          infra/sauvegarde.sh sauvegarde.tgz
+          docker compose -f infra/docker-compose.yml exec -T api rm -rf /data/briefs
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/briefs/2026-10-07 -H "$AUTH")" = 404
+          infra/restauration.sh sauvegarde.tgz -y
+          curl -fsS http://localhost:8000/briefs/2026-10-07 -H "$AUTH" -o restaure.json
+          cmp brief.json restaure.json
       - if: failure()
         run: docker compose -f infra/docker-compose.yml logs
       - if: always()

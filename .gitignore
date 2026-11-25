@@ -18,3 +18,5 @@ eval/hidden/
 token_key
 # Comptes autorisés de la connexion OpenID Connect (USERS_FILE)
 users.toml
+# Sauvegardes du volume (infra/sauvegarde.sh) : jamais versionnées
+sauvegardes/

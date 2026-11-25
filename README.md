@@ -25,6 +25,7 @@ pre-commit install                # ruff + gitleaks à chaque commit
 uv run pytest                     # tests
 
 docker compose -f infra/docker-compose.yml up --build   # sans .env : démo hors ligne
+# exploitation (variables, volume, sauvegarde, restauration) : docs/exploitation.md
 # http://localhost:8000/health  → {"status":"ok"}
 # http://localhost:8000/docs    → documentation OpenAPI
 ```
