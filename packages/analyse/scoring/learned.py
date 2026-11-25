@@ -22,8 +22,8 @@ de la persona (`persona_for`) : configurée pour les jeux de démo, sinon dédui
 manager, domaine interne), sans hiérarchie ni clients.
 
 Choix du score (A/B, réunion du 14/10) : variable d'environnement `ALLIANCE_SCORE`,
-`appris` (défaut, règle du 24/11 : pas d'écart significativement négatif aux règles) ou
-`regles`. Si un modèle manque ou échoue, le brief garde le score par règles et l'annonce dans
+`regles` (défaut depuis la mesure de M9 du 25/11 : l'acceptation n'est pas atteinte sur le
+jeu de développement du lot 3) ou `appris`. Si un modèle manque ou échoue, le brief garde le score par règles et l'annonce dans
 un warning : il ne casse jamais.
 """
 
@@ -50,6 +50,9 @@ if TYPE_CHECKING:
     from packages.analyse.scoring.ml.persona import Persona
 
 SCORE_ENV = "ALLIANCE_SCORE"
+# Mode par défaut : règle de M9 (plan, §11), le score appris n'est le défaut que s'il bat le
+# brief par règles sur le jeu de développement du lot 3 ; mesure du 25/11 : non atteint.
+DEFAULT_MODE = "regles"
 CACHE_ENV = "FASTEMBED_CACHE_PATH"  # dossier du modèle (rempli à la construction de l'image)
 RECENT = timedelta(days=3)
 MAX_REASONS = 3
@@ -276,7 +279,7 @@ def learned_case_scores(
     l'est mais que la journée n'a aucun élément à noter : le brief appris reste alors vide
     plutôt que de retomber sur les règles (M9)."""
     if scorer == "auto":
-        if os.environ.get(SCORE_ENV, "appris") == "regles":
+        if os.environ.get(SCORE_ENV, DEFAULT_MODE) == "regles":
             return None, None
         try:
             scorer = _default_scorer()
