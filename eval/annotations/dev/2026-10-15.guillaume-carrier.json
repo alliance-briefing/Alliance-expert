@@ -1,0 +1,133 @@
+{
+  "schema": "annotation/1.1",
+  "user_id": "u_demo_001",
+  "date": "2026-10-15",
+  "annotator": "guillaume-carrier",
+  "annotated_at": "2026-10-21",
+  "must_include": [
+    {
+      "rank": 1,
+      "section": "actions",
+      "item_ids": [
+        "mail:dm1-msg-000230"
+      ],
+      "why": "Le client du dossier 2026-7121 menace de saisir un avocat ; rappel demandé par Anaïs Lefèvre-Dubœuf, sans réponse depuis le 08/10."
+    },
+    {
+      "rank": 2,
+      "section": "actions",
+      "item_ids": [
+        "mail:dm1-msg-000044",
+        "mail:dm1-msg-000042"
+      ],
+      "why": "Devis 2026-2384 de 7 300 € au-dessus du seuil, à valider avant le 09/10 12h (dépassé) ; Assur'Alpes a relancé (mail important)."
+    },
+    {
+      "rank": 3,
+      "section": "actions",
+      "item_ids": [
+        "mail:dm1-msg-000055"
+      ],
+      "why": "Devis 2026-9859 de 6 800 € au-dessus du seuil, à valider avant le 14/10 12h (dépassé) ; Mutuelle Horizon Sud attend."
+    },
+    {
+      "rank": 4,
+      "section": "actions",
+      "item_ids": [
+        "mail:dm1-msg-000066"
+      ],
+      "why": "Kevin Barbier (dossier 2026-5006) sans nouvelles depuis plus d'une semaine, demande à être rappelé."
+    },
+    {
+      "rank": 5,
+      "section": "actions",
+      "item_ids": [
+        "task:dm1-tsk-000060",
+        "mail:dm1-msg-000071"
+      ],
+      "why": "Appeler Hugo Lacroix avant 17h : VEI dossier 2026-7455 (réparations 14 100 € > valeur 7 200 €), il n'est pas encore au courant."
+    },
+    {
+      "rank": 6,
+      "section": "actions",
+      "item_ids": [
+        "task:dm1-tsk-000061",
+        "mail:dm1-msg-000073"
+      ],
+      "why": "Affecter un expert au dossier 2026-1201 (BMW Série 3) avant 12h ; l'assureur attend la date de passage."
+    },
+    {
+      "rank": 7,
+      "section": "actions",
+      "item_ids": [
+        "mail:dm1-msg-000067"
+      ],
+      "why": "Reporting d'octobre à transmettre à Bernard Mercier avant le 16/10 midi pour le comité de direction."
+    }
+  ],
+  "must_exclude": [
+    "mail:dm1-msg-002181",
+    "mail:dm1-msg-002210",
+    "mail:dm1-msg-002183",
+    "mail:dm1-msg-002238",
+    "mail:dm1-msg-002223",
+    "mail:dm1-msg-002201",
+    "mail:dm1-msg-002220",
+    "mail:dm1-msg-002211",
+    "mail:dm1-msg-002182",
+    "mail:dm1-msg-002273",
+    "mail:dm1-msg-002257",
+    "mail:dm1-msg-002261",
+    "mail:dm1-msg-002265",
+    "mail:dm1-msg-002221",
+    "mail:dm1-msg-002236",
+    "mail:dm1-msg-002212",
+    "mail:dm1-msg-002162",
+    "mail:dm1-msg-002206",
+    "mail:dm1-msg-002247",
+    "mail:dm1-msg-002252",
+    "mail:dm1-msg-002171",
+    "mail:dm1-msg-002198",
+    "mail:dm1-msg-002253",
+    "mail:dm1-msg-002216",
+    "mail:dm1-msg-002174",
+    "mail:dm1-msg-002178",
+    "mail:dm1-msg-002234",
+    "mail:dm1-msg-002260",
+    "mail:dm1-msg-002163",
+    "mail:dm1-msg-002275",
+    "mail:dm1-msg-002193",
+    "mail:dm1-msg-002270",
+    "mail:dm1-msg-002224",
+    "mail:dm1-msg-002264",
+    "mail:dm1-msg-002240",
+    "mail:dm1-msg-002195",
+    "mail:dm1-msg-002266",
+    "mail:dm1-msg-002267",
+    "mail:dm1-msg-002170",
+    "mail:dm1-msg-002214",
+    "mail:dm1-msg-002196",
+    "mail:dm1-msg-002197",
+    "mail:dm1-msg-002227",
+    "mail:dm1-msg-002186",
+    "mail:dm1-msg-002177",
+    "mail:dm1-msg-000194",
+    "mail:dm1-msg-000195",
+    "mail:dm1-msg-000207"
+  ],
+  "cases": [
+    [
+      "task:dm1-tsk-000046",
+      "mail:dm1-msg-000057"
+    ],
+    [
+      "task:dm1-tsk-000060",
+      "mail:dm1-msg-000071"
+    ],
+    [
+      "task:dm1-tsk-000061",
+      "mail:dm1-msg-000073"
+    ]
+  ],
+  "notes": "Règles discutées en amont entre annotateurs (avant annotation séparée)."
+}
