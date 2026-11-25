@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from alliance_api import briefs, errors, feedback, items, oidc, ui
 from alliance_api.audit import AuditSink, LogAuditSink
 from alliance_api.auth import CurrentUser, install_csrf
-from alliance_api.briefs import BriefGenerator, BriefStore, MemoryBriefStore
+from alliance_api.briefs import BriefGenerator, BriefStore, FileBriefStore, MemoryBriefStore
 from alliance_api.feedback import FeedbackStore, JsonlFeedbackStore, MemoryFeedbackStore
 from alliance_api.permissions import DEFAULT_ROLES_FILE, Policy, load_policy
 from alliance_api.resume import PendingStore
@@ -36,7 +36,7 @@ def create_app(
 ) -> FastAPI:
     app = FastAPI(title="Alliance Briefing API")
     app.state.items = item_store or _default_item_store()
-    app.state.briefs = brief_store or MemoryBriefStore()
+    app.state.briefs = brief_store or _default_brief_store()
     app.state.generator = generator or _default_generator()
     app.state.audit = audit or LogAuditSink()
     app.state.feedback = feedback_store or _default_feedback_store()
@@ -86,6 +86,13 @@ def _default_item_store() -> ItemStore:
     lot 1) ; sans DATA_DIR, les journées de démonstration de contracts/fixtures/demo."""
     data_dir = os.getenv("DATA_DIR")
     return DemoItemStore(Path(data_dir)) if data_dir else DemoItemStore()
+
+
+def _default_brief_store() -> BriefStore:
+    """Briefs dans BRIEFS_DIR (<user>/<AAAA-MM-JJ>.json) ; sans BRIEFS_DIR, en mémoire
+    (perdus au redémarrage)."""
+    briefs_dir = os.getenv("BRIEFS_DIR")
+    return FileBriefStore(Path(briefs_dir)) if briefs_dir else MemoryBriefStore()
 
 
 def _default_feedback_store() -> FeedbackStore:
