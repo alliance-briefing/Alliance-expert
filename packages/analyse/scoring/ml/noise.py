@@ -1,7 +1,8 @@
 """Filtre du bruit certain, avant le score appris (pipeline A : règles → ML).
 
-Une seule règle : un marqueur d'envoi en masse (lien de désabonnement) dans l'objet ou le
-corps. Un envoi en masse doit proposer le désabonnement ; l'adresse de l'expéditeur
+Une seule règle : un marqueur d'envoi en masse (lien de désabonnement, ou pied de liste
+de diffusion : « ne plus recevoir », « gérer mes abonnements », ajoutés le 25/11 pour M9) dans
+l'objet ou le corps. Un envoi en masse doit proposer le désabonnement ; l'adresse de l'expéditeur
 (« noreply ») ne dit rien de l'importance : un rappel RH « noreply » demande une action.
 Le mot « newsletter » n'est pas un marqueur : un collègue peut parler de la newsletter interne.
 Tout le reste (portail RH, tickets, banque, sécurité, catalogues…) est noté par le modèle.
@@ -33,7 +34,17 @@ class NoiseConfig:
     """Marqueurs d'envoi en masse ; casse et accents ignorés."""
 
     bulk_markers: frozenset[str] = frozenset(
-        {"unsubscribe", "désabonner", "désabonnement", "désinscrire", "désinscription"}
+        {
+            "unsubscribe",
+            "désabonner",
+            "désabonnement",
+            "désinscrire",
+            "désinscription",
+            # pieds d'envoi en masse usuels (ajout du 25/11, M9)
+            "ne plus recevoir",
+            "gérer mes abonnements",
+            "inscrit à notre liste",
+        }
     )
 
 

@@ -13,8 +13,9 @@ des paires d'entraînement (`prioriser_echelle.json`). 70 veut dire « passe ava
 
 Éléments notés, comme au brief des paires d'entraînement (`jeux_m5.on_brief`) : mails et
 fichiers non lus ou des 3 derniers jours, réunions des 48 h à venir, tâches en retard ou dues
-dans les 24 h, jamais un élément postérieur à `now`. Une affaire sans élément à noter garde le
-score par règles.
+dans les 24 h, jamais un élément postérieur à `now`, ni une tentative d'injection
+(`guard/injection.py`, M9), ni un envoi en masse (`ml/noise.py`, comme l'ancien score des
+mails). Une affaire sans élément à noter garde le score par règles.
 
 Ce que le contrat A ne donne pas : la relation de chaque correspondant au manager. Elle vient
 de la persona (`persona_for`) : configurée pour les jeux de démo, sinon déduite (adresse du
@@ -39,6 +40,8 @@ from typing import TYPE_CHECKING, Literal
 
 from contracts.models import Item
 from packages.analyse.aggregate.cases import Case
+from packages.analyse.guard.injection import is_injection
+from packages.analyse.scoring.ml.noise import noise_reason
 
 if TYPE_CHECKING:
     from packages.analyse.rag.embeddings import Embedder
@@ -99,6 +102,8 @@ class CaseScore:
     reasons: list[str]
     best_item_id: str
     model: str  # modèle d'embeddings (generator.llm_version du brief)
+    action: str = "rien"  # action que N prévoit pour l'élément qui porte le score (M9)
+    alert: bool = False  # un élément de l'affaire est une alerte pour N (probabilité ≥ 0,5)
 
 
 class LearnedScorer:
@@ -140,7 +145,14 @@ class LearnedScorer:
         known = [item for item in mine if item.created_at <= now]
         vp = viewpoint_for(persona_for(user, mine), mine, now)
         to_score = {
-            case.case_id: [i for i in case.items if i.owner_user_id == user and on_brief(i, now)]
+            case.case_id: [
+                i
+                for i in case.items
+                if i.owner_user_id == user
+                and on_brief(i, now)
+                and not is_injection(i)
+                and noise_reason(i) is None
+            ]
             for case in cases
         }
         elements = sorted(
@@ -156,6 +168,9 @@ class LearnedScorer:
         F = np.hstack([signals, prioriser.n_columns(u.models, X)])
         raw = prioriser.model_score(self.priority, F)
         on_100 = prioriser.to_100(raw, self.scale)
+        actions = comprendre.TARGETS["action"]
+        predicted = u.models["action"].proba(X).argmax(axis=1)
+        alerts = u.models["alerte"].proba(X)[:, comprendre.TARGETS["alerte"].index("oui")] >= 0.5
         row = {item.item_id: n for n, item in enumerate(elements)}
 
         out = {}
@@ -170,6 +185,8 @@ class LearnedScorer:
                 self.reasons(F[n]),
                 best.item_id,
                 self.embedder.name,
+                actions[int(predicted[n])],
+                any(bool(alerts[row[i.item_id]]) for i in to_score[case.case_id]),
             )
         return out
 
@@ -252,22 +269,25 @@ def learned_case_scores(
     user: str,
     now: datetime,
     scorer: LearnedScorer | Literal["auto"] | None = "auto",
-) -> tuple[dict[str, CaseScore], str | None]:
+) -> tuple[dict[str, CaseScore] | None, str | None]:
     """(scores appris, warning éventuel). `scorer` : "auto" (selon `ALLIANCE_SCORE`),
-    None (score par règles seul) ou un scorer donné (tests)."""
+    None (score par règles seul) ou un scorer donné (tests). Les scores valent None quand le
+    score appris n'est pas utilisé (règles demandées, ou repli sur erreur) et {} quand il
+    l'est mais que la journée n'a aucun élément à noter : le brief appris reste alors vide
+    plutôt que de retomber sur les règles (M9)."""
     if scorer == "auto":
         if os.environ.get(SCORE_ENV, "appris") == "regles":
-            return {}, None
+            return None, None
         try:
             scorer = _default_scorer()
         except Exception as error:  # noqa: BLE001 — le brief ne casse jamais : repli annoncé
-            return {}, UNAVAILABLE.format(type(error).__name__)
+            return None, UNAVAILABLE.format(type(error).__name__)
     if scorer is None:
-        return {}, None
+        return None, None
     try:
         return scorer.score_cases(cases, items, user, now), None
     except Exception as error:  # noqa: BLE001 — modèle absent, téléchargement impossible…
-        return {}, UNAVAILABLE.format(type(error).__name__)
+        return None, UNAVAILABLE.format(type(error).__name__)
 
 
 def download_model() -> None:
