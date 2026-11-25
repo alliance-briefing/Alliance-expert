@@ -13,7 +13,8 @@ uv run python -m eval --set hidden       # jeu caché : eval/hidden/ (hors dép�
 ```
 
 Pour comparer au score par règles : `$env:ALLIANCE_SCORE="regles"` avant la commande
-(PowerShell), ou `ALLIANCE_SCORE=regles uv run python -m eval` (bash).
+(PowerShell), ou `ALLIANCE_SCORE=regles uv run python -m eval` (bash) ; le rapport se
+nomme alors `…_dev_regles.md`.
 
 Le rapport est daté par le commit du code et nommé d'après lui : régénéré sur la même
 version, il est identique au caractère près (graine du bootstrap : `--seed`, 0 par défaut).

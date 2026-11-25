@@ -10,11 +10,12 @@ Code de sortie 0 même si une cible n'est pas atteinte : c'est un rapport, pas u
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
 from contracts.demo_data import DEMO_DIR
-from eval.report import code_version, evaluate, latency_summary, render
+from eval.report import SCORE_ENV, code_version, evaluate, latency_summary, render
 from packages.analyse import generate_brief
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -43,7 +44,9 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.write(report)
     else:
         args.out.mkdir(parents=True, exist_ok=True)
-        path = args.out / f"{version[1]}_{version[0]}_{args.set}.md"
+        score = os.environ.get(SCORE_ENV)  # ex. ALLIANCE_SCORE=regles → …_dev_regles.md
+        suffix = f"_{score}" if score else ""
+        path = args.out / f"{version[1]}_{version[0]}_{args.set}{suffix}.md"
         path.write_text(report, encoding="utf-8", newline="\n")  # identique sous Windows et Linux
         print(f"rapport écrit : {path}")
     print(latency_summary(evaluation), file=sys.stderr)
