@@ -1,27 +1,29 @@
+# `docker compose -f infra/docker-compose.yml up --build` suffit : aucun fichier .env n'est
+# exigé. infra/.env (modèle : infra/.env.example) est lu s'il existe, pour changer un réglage.
 services:
   api:
     build:
       context: ..
       dockerfile: infra/Dockerfile.api
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Démonstration par défaut ; AUTH_MODE=oidc dans infra/.env pour la vraie connexion.
+      AUTH_MODE: ${AUTH_MODE:-demo}
+      # Données de l'application dans le volume briefing-data (survivent au redémarrage).
+      FEEDBACK_DIR: /data/feedback
+      AUDIT_DIR: /data/audit
+    volumes:
+      - briefing-data:/data
     ports:
       - "8000:8000"
-    depends_on:
-      db:
-        condition: service_healthy
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 5s
       timeout: 3s
       retries: 10
-  db:
-    image: postgres:16
-    environment:
-      POSTGRES_USER: briefing
-      POSTGRES_PASSWORD: changeme
-      POSTGRES_DB: briefing
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U briefing"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+
+volumes:
+  briefing-data:

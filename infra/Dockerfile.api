@@ -9,5 +9,8 @@ COPY . .
 RUN uv sync --frozen --no-dev
 # Modèle téléchargé à la construction (0,22 Go) : le premier brief n'attend pas le réseau.
 RUN uv run --no-sync python -c "from packages.analyse.scoring.learned import download_model; download_model()"
+# Hors ligne ensuite : le modèle est lu dans l'image, jamais retéléchargé au démarrage.
+ENV HF_HUB_OFFLINE=1
+VOLUME /data
 EXPOSE 8000
 CMD ["uv", "run", "--no-sync", "uvicorn", "alliance_api.main:app", "--host", "0.0.0.0", "--port", "8000"]
