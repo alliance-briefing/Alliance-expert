@@ -233,3 +233,11 @@ def test_le_choix_incertain_garde_les_plus_petits_ecarts():
         for a, b in ((5, 0), (1, 1), (2, 0), (0, 3))
     ]
     assert prioriser.uncertain(Fixed(), np.array([1.0]), 2)(candidates) == [1, 2]
+
+
+def test_l_echelle_du_brief_est_le_rang_centile():
+    centiles = list(np.linspace(-3.0, 7.0, 101))  # une échelle régulière, 0,1 par centile
+    on_100 = prioriser.to_100(np.array([-10.0, -3.0, 2.0, 2.05, 7.0, 20.0]), centiles)
+    assert on_100[0] == 0 and on_100[-1] == 100
+    assert abs(on_100[2] - 50) <= 0.5 and on_100[3] >= on_100[2]
+    assert np.all(np.diff(on_100) >= 0)

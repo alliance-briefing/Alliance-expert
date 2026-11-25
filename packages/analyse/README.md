@@ -575,6 +575,20 @@ G2 ; l'écart n'étant pas significativement négatif, la règle fait du **score
 affaires du brief**. Limite : les deux sont faibles sur les affaires (à peine au-dessus du
 hasard, 45 paires seulement) ; juger une affaire entière demande plus que son meilleur élément.
 
+**Dans le brief** (`scoring/learned.py`, défaut `ALLIANCE_SCORE=appris`) : le score de M8
+remplace le score appris des mails d'octobre, sur les quatre sources. Chaque élément présent au
+brief (mails et fichiers non lus ou des 3 derniers jours, réunions des 48 h, tâches en retard ou
+dues dans les 24 h) est mis en carte, lu par N figé, puis noté par Bradley-Terry ; l'affaire
+prend le score de son meilleur élément ; les raisons sont les plus fortes contributions
+positives de la fiche (« décision ou validation attendue », « tâche en retard »…). Échelle
+0-100 : rang centile du score brut parmi les 600 cartes d'entraînement
+(`prioriser --echelle` → `prioriser_echelle.json`), car le score brut sépare trop pour être lu ;
+50, l'élément médian, reste le seuil de la section « actions ». Repli inchangé : règles si
+`ALLIANCE_SCORE=regles` ou si un modèle manque, avec un warning. Démo du 07/10 : 2,2 s par brief
+après chargement (5 s au premier). Relations des correspondants : configurées pour la démo,
+sinon déduites (adresse, domaine interne) ; sur les 30 journées de démo, une persona déduite
+garde 94 % des 7 premières affaires (écart moyen 0,1 point).
+
 ```bash
 uv run python -m packages.analyse.scoring.ml.comprendre --levier-texte  # H, N, A, N+A comparées
 uv run python -m packages.analyse.scoring.ml.comprendre --levier-fiche  # R, H, F comparées

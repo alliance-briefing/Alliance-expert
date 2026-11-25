@@ -807,6 +807,50 @@ def mesurer(
     return entry
 
 
+# --- échelle 0-100 du brief ----------------------------------------------------------------------
+
+SCALE_PATH = Path(__file__).with_name("prioriser_echelle.json")
+
+
+def echelle(
+    corpus: Path = jeux_m5.CORPUS,
+    series: Path = SERIES,
+    embedder: Embedder | None = None,
+    cache: VectorCache | None = None,
+    model_path: Path = MODEL_PATH,
+    candidate_path: Path = comprendre.CANDIDATE_PATH,
+    out: Path = SCALE_PATH,
+) -> dict:
+    """L'échelle 0-100 du brief : les centiles du score brut sur les cartes des paires
+    d'entraînement, fiches du N figé (comme au brief). Un score de 70 veut dire « passe avant
+    70 % des éléments d'entraînement » ; 50 est l'élément médian. Le score brut, lui, sépare
+    trop pour être lu tel quel (σ du score : 3 % au 10e centile, 100 % au 90e)."""
+    reference = comprendre.Reference.load(candidate_path)
+    embedder = embedder or FastEmbedder(reference.embedder_name)
+    cache = cache or VectorCache(cache_path(embedder))
+    cards = [c for p in labeled_pairs(corpus, series) for c in p.cards]
+    X = comprendre.design(cards, embedder, reference.fiche, cache, reference.texte)
+    signals = np.array([card_signals(c) for c in cards])
+    F = np.hstack([signals, n_columns(reference.models, X)])
+    model = json.loads(model_path.read_text(encoding="utf-8"))
+    raw = model_score(model, F)
+    scale = {
+        "cartes": len(cards),
+        "modele_sha256": comprendre._sha(model_path),
+        "centiles": [round(float(v), 6) for v in np.percentile(raw, np.arange(101))],
+    }
+    out.write_text(json.dumps(scale, indent=1) + "\n", encoding="utf-8", newline="\n")
+    return scale
+
+
+def to_100(raw: np.ndarray, centiles: Sequence[float]) -> np.ndarray:
+    """Le score brut placé sur l'échelle : son rang centile parmi les cartes d'entraînement."""
+    values = np.asarray(centiles)
+    lows = np.searchsorted(values, raw, side="left")
+    highs = np.searchsorted(values, raw, side="right")
+    return np.clip((lows + highs) / 2 - 0.5, 0, 100)  # à égalité, le milieu du palier
+
+
 # --- score d'affaire ---------------------------------------------------------------------------
 
 
@@ -959,6 +1003,10 @@ def main(argv: list[str]) -> int:
         print(json.dumps(entry, ensure_ascii=False, indent=1))
         print(f"→ {comprendre.JOURNAL.name}")
         return 0
+    if argv == ["--echelle"]:
+        scale = echelle()
+        print(f"{scale['cartes']} cartes ; médiane {scale['centiles'][50]} → {SCALE_PATH.name}")
+        return 0
     if argv == ["--mesurer-affaires"]:
         entry = mesurer_affaires(log=lambda line: print(line, flush=True))
         print(json.dumps(entry, ensure_ascii=False, indent=1))
@@ -970,7 +1018,7 @@ def main(argv: list[str]) -> int:
         return 0
     print(
         "usage : prioriser --tirer <tour> | --tirer-incertain <tour> | --montrer <tour> "
-        "[début fin] | --reste | --valider | --figer | --mesurer | --mesurer-affaires"
+        "[début fin] | --reste | --valider | --figer | --mesurer | --mesurer-affaires | --echelle"
     )
     return 2
 
