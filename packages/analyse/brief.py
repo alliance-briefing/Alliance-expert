@@ -19,7 +19,7 @@ from datetime import datetime
 from typing import Literal
 
 from contracts.models import Brief, Claim, Entry, Generator, Item, Section, Stats
-from contracts.models.brief import SectionKind
+from contracts.models.brief import SECTION_ORDER, SectionKind
 from packages.analyse.aggregate.cases import Case, group_into_cases
 from packages.analyse.aggregate.rules import meetings_of_day, overdue_tasks, unread_mails
 from packages.analyse.clock import PARIS, is_all_day, to_paris
@@ -37,6 +37,21 @@ from packages.analyse.scoring.score import STANDARD, score_case
 ACTIONS_THRESHOLD = 50
 # Nombre maximal d'affaires dans la section « à traiter ».
 ACTIONS_LIMIT = 7
+# Sélection du brief appris (M9, plan §11) : seuil T et nombre maximal K d'entrées, réglés
+# sur des journées simulées ; au moins SELECT_MIN entrées quand il y a de quoi.
+SELECT_THRESHOLD = 50
+SELECT_LIMIT = 7
+SELECT_MIN = 3
+# Action recommandée (M9) : verbe selon l'action que N prévoit, suivi du seul titre.
+ACTION_VERBS = {
+    "decider": "Décider ou valider",
+    "faire": "Traiter",
+    "repondre": "Répondre",
+    "preparer": "Préparer",
+    "relire": "Relire",
+}
+ALERT_ACTION = "Vérifier en priorité"
+ALERT_REASON = "alerte (sécurité, incident)"
 # Score fixe pour les réunions : triées par heure, leur score ne porte pas l'ordre.
 MEETINGS_SCORE = 50
 # Claims détaillés par entrée ; au-delà, les éléments restants forment un seul claim.
@@ -61,11 +76,13 @@ def generate_brief(
     *,
     now: datetime | None = None,
     scorer: LearnedScorer | Literal["auto"] | None = "auto",
+    select: tuple[int, int] = (SELECT_THRESHOLD, SELECT_LIMIT),
 ) -> Brief:
     """Brief du jour `date` pour `user`, construit par règles à partir de `items`.
 
     `now` fixe `generated_at` (utile aux tests) ; par défaut, l'heure courante.
     `scorer` : score appris des affaires ("auto" : selon `ALLIANCE_SCORE`, None : règles).
+    `select` : seuil et nombre maximal d'entrées du brief appris (réglage de M9).
     Le résultat ne dépend que des entrées, sauf `generated_at` et `stats.latency_ms`.
     """
     started = time.perf_counter()
@@ -91,8 +108,11 @@ def generate_brief(
     # Score appris (M8) pour les affaires qui ont un élément à noter ; les autres
     # gardent le score par règles. Repli annoncé si le modèle manque.
     learned: dict[str, CaseScore] = {}
+    learned_mode = False  # score appris actif (même sans élément à noter ce jour-là)
     if _now:
-        learned, unavailable = learned_case_scores(cases, mine, user, _now, scorer)
+        scored, unavailable = learned_case_scores(cases, mine, user, _now, scorer)
+        learned_mode = scored is not None
+        learned = scored or {}
         if unavailable:
             warnings.append(unavailable)
     case_scores.update({case_id: (s.score, s.reasons) for case_id, s in learned.items()})
@@ -120,6 +140,144 @@ def generate_brief(
     for t in overdue:  # overdue_tasks renvoie déjà (due_at, item_id) croissant
         overdue_by_case.setdefault(case_of[t.item_id].case_id, []).append(t)
 
+    if learned_mode:
+        sections = _learned_sections(
+            learned, case_of, case_scores, overdue_ids, overdue_by_case, unread_by_case,
+            today_events, _now, select,
+        )  # fmt: skip
+    else:
+        sections = _rule_sections(
+            cases, day, mine, case_of, case_scores, overdue_ids, overdue_by_case,
+            unread_by_case, unread_case_ids, meeting_case_ids, overdue_case_ids, today_events, _now,
+        )  # fmt: skip
+    if not any(section.entries for section in sections):
+        warnings.append(NOTHING_TO_REPORT)
+
+    cited = {item_id for s in sections for e in s.entries for item_id in e.source_item_ids}
+    brief = Brief(
+        brief_id=f"b_{day.isoformat()}_{user}",
+        owner_user_id=user,
+        date=day,
+        generated_at=to_paris(now or datetime.now(PARIS)),
+        # « rules » quand le score appris n'est pas utilisé (repli, ALLIANCE_SCORE).
+        generator=(
+            Generator(
+                llm=GENERATOR,
+                llm_version=next(iter(learned.values())).model if learned else None,
+            )
+            if learned_mode
+            else Generator(llm="rules")
+        ),
+        sections=sections,
+        stats=Stats(
+            items_in=len(items),
+            items_out=len(cited),
+            tokens_in=0,
+            tokens_out=0,
+            latency_ms=round((time.perf_counter() - started) * 1000),
+            cost_eur=0.0,
+        ),
+        warnings=warnings,
+    )
+    # Porte dure (L2.4) : aucun claim livré sans source vérifiée dans les items de l'utilisateur.
+    return guard_brief(brief, mine)
+
+
+def _learned_sections(
+    learned: dict[str, CaseScore],
+    case_of: dict[str, Case],
+    case_scores: dict[str, tuple[int, list[str]]],
+    overdue_ids: set[str],
+    overdue_by_case: dict[str, list[Item]],
+    unread_by_case: dict[str, list[Item]],
+    today_events: set[str],
+    now: datetime | None,
+    select: tuple[int, int] = (SELECT_THRESHOLD, SELECT_LIMIT),
+) -> list[Section]:
+    """Le brief appris (M9) : les affaires notées par M8, alertes en tête puis par score ; une
+    affaire entre si son score atteint SELECT_THRESHOLD, avec au moins SELECT_MIN et au plus
+    SELECT_LIMIT entrées. La section suit l'élément qui porte le score."""
+    ranked = sorted(learned.items(), key=lambda kv: (not kv[1].alert, -kv[1].score, kv[0]))
+    chosen = [
+        case_id
+        for n, (case_id, s) in enumerate(ranked)
+        if s.alert or s.score >= select[0] or n < SELECT_MIN
+    ][: select[1]]
+    by_id = {item.item_id: item for case in case_of.values() for item in case.items}
+    # Une alerte tenue en tête prend la priorité maximale : le contrat B veut des scores qui
+    # décroissent avec le rang, et c'est bien la priorité qu'on lui donne.
+    case_scores = dict(case_scores)
+    for case_id in chosen:
+        if learned[case_id].alert:
+            reasons = case_scores[case_id][1]
+            case_scores[case_id] = (100, [ALERT_REASON, *[r for r in reasons if r != ALERT_REASON]])
+    groups: dict[SectionKind, list[list[Item]]] = {k: [] for k in SECTION_ORDER}
+    recommended: dict[str, str | None] = {}
+    for case_id in chosen:
+        best = by_id[learned[case_id].best_item_id]
+        if best.source == "calendar" and best.item_id in today_events:
+            kind, group = "meetings", [best]
+        elif best.item_id in overdue_ids:
+            kind, group = "overdue", overdue_by_case[case_id]
+        elif best.source == "file":
+            kind, group = "files", [best]
+        else:
+            kind, group = "actions", unread_by_case.get(case_id) or [best]
+        groups[kind].append(group)
+        recommended[case_id] = _recommended(learned[case_id], best)
+    wordings: dict[SectionKind, Wording] = {
+        "actions": _mails_wording,
+        "meetings": lambda group: (
+            _meeting_wording(group[0], to_paris(group[0].start_at).date())
+            if group[0].start_at
+            else _mails_wording(group)
+        ),
+        "overdue": _tasks_wording,
+        "files": _mails_wording,
+    }
+    return [
+        _section(
+            kind,
+            groups[kind],
+            wordings[kind],
+            case_of,
+            case_scores,
+            overdue_ids,
+            today_events,
+            now,
+            recommended=recommended,
+        )
+        for kind in SECTION_ORDER
+    ]
+
+
+def _recommended(score: CaseScore, item: Item) -> str | None:
+    """L'action recommandée, par gabarit : un verbe selon l'action prévue par N et le seul
+    titre de l'élément (jamais son contenu : rien à injecter)."""
+    if score.alert:
+        return f"{ALERT_ACTION} : {_title(item)}"
+    verb = ACTION_VERBS.get(score.action)
+    return f"{verb} : {_title(item)}" if verb else None
+
+
+def _rule_sections(
+    cases: list[Case],
+    day: Date,
+    mine: list[Item],
+    case_of: dict[str, Case],
+    case_scores: dict[str, tuple[int, list[str]]],
+    overdue_ids: set[str],
+    overdue_by_case: dict[str, list[Item]],
+    unread_by_case: dict[str, list[Item]],
+    unread_case_ids: set[str],
+    meeting_case_ids: set[str],
+    overdue_case_ids: set[str],
+    today_events: set[str],
+    _now: datetime | None,
+) -> list[Section]:
+    """Le brief par règles d'avant M9 (L2.0, L2.1), gardé tel quel : c'est la référence de la
+    comparaison de M9 et le repli quand le score appris manque."""
+    learned: dict[str, CaseScore] = {}
     # --- Partition des affaires : meetings > overdue > actions ---
     # Réunions : une entrée par événement (une par heure), pas une par affaire.
     meeting_events = meetings_of_day(mine, day)  # déjà triés par heure
@@ -147,7 +305,7 @@ def generate_brief(
         unread_by_case.get(c.case_id) or [_best_item(c, learned)] for c in actions_cases
     ]
 
-    sections = [
+    return [
         _section(
             "actions",
             actions_groups,
@@ -180,34 +338,6 @@ def generate_brief(
             _now,
         ),
     ]
-    if not any(section.entries for section in sections):
-        warnings.append(NOTHING_TO_REPORT)
-
-    cited = {item_id for s in sections for e in s.entries for item_id in e.source_item_ids}
-    brief = Brief(
-        brief_id=f"b_{day.isoformat()}_{user}",
-        owner_user_id=user,
-        date=day,
-        generated_at=to_paris(now or datetime.now(PARIS)),
-        # « rules » tant que le score appris n'a noté aucune affaire (repli, ALLIANCE_SCORE).
-        generator=(
-            Generator(llm=GENERATOR, llm_version=next(iter(learned.values())).model)
-            if learned
-            else Generator(llm="rules")
-        ),
-        sections=sections,
-        stats=Stats(
-            items_in=len(items),
-            items_out=len(cited),
-            tokens_in=0,
-            tokens_out=0,
-            latency_ms=round((time.perf_counter() - started) * 1000),
-            cost_eur=0.0,
-        ),
-        warnings=warnings,
-    )
-    # Porte dure (L2.4) : aucun claim livré sans source vérifiée dans les items de l'utilisateur.
-    return guard_brief(brief, mine)
 
 
 def _section(
@@ -221,6 +351,7 @@ def _section(
     now: datetime | None,
     *,
     fixed_score: int | None = None,
+    recommended: dict[str, str | None] | None = None,
 ) -> Section:
     entries = []
     for rank, group in enumerate(groups, start=1):
@@ -258,6 +389,7 @@ def _section(
                 priority_reasons=reasons,
                 text=text,
                 claims=_claims(group, now),
+                recommended_action=(recommended or {}).get(case.case_id),
                 source_item_ids=all_items,
             )
         )
