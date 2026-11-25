@@ -44,7 +44,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         args.out.mkdir(parents=True, exist_ok=True)
         path = args.out / f"{version[1]}_{version[0]}_{args.set}.md"
-        path.write_text(report, encoding="utf-8")
+        path.write_text(report, encoding="utf-8", newline="\n")  # identique sous Windows et Linux
         print(f"rapport écrit : {path}")
     print(latency_summary(evaluation), file=sys.stderr)
     return 0
