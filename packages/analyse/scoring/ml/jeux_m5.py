@@ -89,11 +89,14 @@ def _working_days(rows: Iterable[dict]) -> list[date]:
     return sorted(d for d in days if d.weekday() < 5)
 
 
-def briefs(corpus: Path = CORPUS) -> list[tuple[str, date, Viewpoint, list[Item], list[Item]]]:
-    """Les briefs de T-gen : (persona, jour, point de vue, éléments du brief, éléments connus).
-    Les connus (déjà visibles) servent à la ligne « Cité dans » des fichiers."""
+def briefs(
+    corpus: Path = CORPUS, split: str = "tgen"
+) -> list[tuple[str, date, Viewpoint, list[Item], list[Item]]]:
+    """Les briefs d'un split (T-gen par défaut ; « train » pour les paires d'entraînement de
+    M8) : (persona, jour, point de vue, éléments du brief, éléments connus). Les connus (déjà
+    visibles) servent à la ligne « Cité dans » des fichiers."""
     out = []
-    for key in load.personas("tgen", data=corpus):
+    for key in load.personas(split, data=corpus):
         items = load.load_items(key, corpus)
         rows = {r["item_id"]: r for r in load.load_scenario(key, corpus)}
         days = _working_days(rows.values())

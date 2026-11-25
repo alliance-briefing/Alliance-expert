@@ -529,6 +529,66 @@ elle manque : à surveiller dans M8) ; l'alerte de T-démo reste manquée par le
 sur T-démo, 0,270 reste loin du simulateur (décalage de domaine, déjà diagnostiqué). Les
 mails et les fichiers restent faibles (T-gen : mail 0,528, fichier 0,435).
 
+### M8, priorité des éléments (`scoring/ml/prioriser.py`)
+
+Personne n'a eu le temps d'annoter : Claude a jugé 300 paires d'entraînement (décision du
+21/11), avec des critères écrits avant dans le guide (section 4), sur les personas « train ».
+Tour 1 au hasard, tours 2 et 3 sur les paires où le modèle hésitait (120 équivalentes au
+total). Fiche de priorité d'un élément : fiche de M6, échéance du jour, probabilités de N (hors
+pli par métier à l'entraînement, N figé sur les jeux gelés). Règles écrites au plan, §11, avant
+chaque calcul.
+
+```bash
+uv run python -m packages.analyse.scoring.ml.prioriser --tirer 1             # tour 1, au hasard
+uv run python -m packages.analyse.scoring.ml.prioriser --tirer-incertain 2   # tours 2 et 3
+uv run python -m packages.analyse.scoring.ml.prioriser --valider             # mesure intermédiaire
+uv run python -m packages.analyse.scoring.ml.prioriser --figer               # boosting comparé, modèle
+uv run python -m packages.analyse.scoring.ml.prioriser --mesurer             # une fois par modèle
+```
+
+Validation hors pli par métier (300 paires, 180 départagées) : Bradley-Terry 0,928, boosting
+de souches 0,756 (écart −0,172, significatif) : **Bradley-Terry retenu** ; règles 0,722.
+
+Mesure unique du 24/11 (journal, commit 0fa1ed7), accord sur les paires départagées par Théo :
+
+| | Bradley-Terry | règles | écart |
+|---|---|---|---|
+| T-gen (139 paires) | **0,806** [0,734 ; 0,871] | 0,745 | +0,061 [−0,014 ; 0,130] |
+| T-démo (37 paires) | **0,703** [0,568 ; 0,838] | 0,459 | **+0,243** [0,108 ; 0,378] |
+
+**Acceptation de M8 non atteinte** : l'accord de T-gen passe le seuil de 0,80, mais l'écart aux
+règles (+0,061) n'atteint pas 0,15 et n'est pas significatif. Résultat publié tel quel (G6),
+aucun réglage après lecture. Lecture : sur la démo (vrais mails, autre domaine), le modèle bat
+nettement les règles ; sur T-gen, il perd sur les paires mail / tâche (0,756 contre 0,854 pour
+les règles, 41 paires), où les règles (retard, échéance) suivent mieux le jugement de Théo que
+les étiquettes de Claude ; il gagne sur mail / mail, mail / réunion et mail / fichier. Limites :
+le modèle apprend le jugement de Claude, mesuré sur celui de Théo ; l2 = 0,1 au bord de la
+grille. Le modèle reste utilisable : à accord égal ou meilleur que les règles partout sauf
+mail / tâche, et nettement meilleur sur le vrai domaine.
+
+**Score d'affaire** (`--mesurer-affaires`, règle écrite le 24/11 avant la lecture) : une affaire
+prend le plus haut score de ses éléments visibles (2,2 en moyenne), le même modèle figé, sans
+réapprentissage ; les règles notent l'affaire entière (`score_case`). Mesure unique sur les 50
+paires d'affaires de T-gen (45 départagées par Théo, journal, commit a91d73f) : **0,600**
+[0,467 ; 0,733] contre 0,533 pour les règles, écart +0,067 [−0,100 ; 0,222]. Égalité au sens de
+G2 ; l'écart n'étant pas significativement négatif, la règle fait du **score appris le défaut des
+affaires du brief**. Limite : les deux sont faibles sur les affaires (à peine au-dessus du
+hasard, 45 paires seulement) ; juger une affaire entière demande plus que son meilleur élément.
+
+**Dans le brief** (`scoring/learned.py`, défaut `ALLIANCE_SCORE=appris`) : le score de M8
+remplace le score appris des mails d'octobre, sur les quatre sources. Chaque élément présent au
+brief (mails et fichiers non lus ou des 3 derniers jours, réunions des 48 h, tâches en retard ou
+dues dans les 24 h) est mis en carte, lu par N figé, puis noté par Bradley-Terry ; l'affaire
+prend le score de son meilleur élément ; les raisons sont les plus fortes contributions
+positives de la fiche (« décision ou validation attendue », « tâche en retard »…). Échelle
+0-100 : rang centile du score brut parmi les 600 cartes d'entraînement
+(`prioriser --echelle` → `prioriser_echelle.json`), car le score brut sépare trop pour être lu ;
+50, l'élément médian, reste le seuil de la section « actions ». Repli inchangé : règles si
+`ALLIANCE_SCORE=regles` ou si un modèle manque, avec un warning. Démo du 07/10 : 2,2 s par brief
+après chargement (5 s au premier). Relations des correspondants : configurées pour la démo,
+sinon déduites (adresse, domaine interne) ; sur les 30 journées de démo, une persona déduite
+garde 94 % des 7 premières affaires (écart moyen 0,1 point).
+
 ```bash
 uv run python -m packages.analyse.scoring.ml.comprendre --levier-texte  # H, N, A, N+A comparées
 uv run python -m packages.analyse.scoring.ml.comprendre --levier-fiche  # R, H, F comparées

@@ -1,0 +1,447 @@
+{
+ "tour": 3,
+ "graine": 0,
+ "selection": "les 100 plus incertaines parmi 1000 au hasard",
+ "annotateur": "claude",
+ "personas": [
+  "agence-1",
+  "agence-2",
+  "agence-3",
+  "chantier-1",
+  "chantier-2",
+  "chantier-3",
+  "collectivite-1",
+  "collectivite-2",
+  "collectivite-3",
+  "commercial-1",
+  "commercial-2",
+  "commercial-3",
+  "daf-1",
+  "daf-2",
+  "daf-3",
+  "drh-1",
+  "drh-2",
+  "drh-3",
+  "ecole-1",
+  "ecole-2",
+  "ecole-3",
+  "logistique-1",
+  "logistique-2",
+  "logistique-3",
+  "operations-1",
+  "operations-2",
+  "operations-3",
+  "projet_si-1",
+  "projet_si-2",
+  "projet_si-3",
+  "qualite-1",
+  "qualite-2",
+  "qualite-3",
+  "sante-1",
+  "sante-2",
+  "sante-3"
+ ],
+ "exclus_geles": 578,
+ "paires": {
+  "m8t3-p001": [
+   "mail:qualite-1-00474",
+   "mail:qualite-1-00445"
+  ],
+  "m8t3-p002": [
+   "mail:collectivite-3-00028",
+   "mail:collectivite-3-00027"
+  ],
+  "m8t3-p003": [
+   "task:commercial-2-00004",
+   "task:commercial-2-00030"
+  ],
+  "m8t3-p004": [
+   "mail:drh-3-00420",
+   "mail:drh-3-00426"
+  ],
+  "m8t3-p005": [
+   "calendar:chantier-2-00207",
+   "calendar:chantier-2-00081"
+  ],
+  "m8t3-p006": [
+   "task:sante-1-00073",
+   "task:sante-1-00122"
+  ],
+  "m8t3-p007": [
+   "task:collectivite-3-00084",
+   "task:collectivite-3-00347"
+  ],
+  "m8t3-p008": [
+   "task:logistique-3-00047",
+   "task:logistique-3-00138"
+  ],
+  "m8t3-p009": [
+   "task:qualite-2-00221",
+   "task:qualite-2-00380"
+  ],
+  "m8t3-p010": [
+   "mail:daf-2-00236",
+   "mail:daf-2-00234"
+  ],
+  "m8t3-p011": [
+   "file:daf-2-00099",
+   "mail:daf-2-00112"
+  ],
+  "m8t3-p012": [
+   "mail:ecole-1-00122",
+   "mail:ecole-1-00064"
+  ],
+  "m8t3-p013": [
+   "mail:sante-2-00108",
+   "mail:sante-2-00087"
+  ],
+  "m8t3-p014": [
+   "mail:agence-3-00222",
+   "mail:agence-3-00218"
+  ],
+  "m8t3-p015": [
+   "task:collectivite-3-00016",
+   "task:collectivite-3-00082"
+  ],
+  "m8t3-p016": [
+   "mail:daf-3-00354",
+   "mail:daf-3-00313"
+  ],
+  "m8t3-p017": [
+   "mail:qualite-2-00162",
+   "mail:qualite-2-00052"
+  ],
+  "m8t3-p018": [
+   "task:qualite-2-00009",
+   "task:qualite-2-00279"
+  ],
+  "m8t3-p019": [
+   "mail:agence-1-00028",
+   "mail:agence-1-00036"
+  ],
+  "m8t3-p020": [
+   "calendar:commercial-3-00066",
+   "mail:commercial-3-00034"
+  ],
+  "m8t3-p021": [
+   "mail:collectivite-1-00350",
+   "mail:collectivite-1-00404"
+  ],
+  "m8t3-p022": [
+   "task:projet_si-2-00253",
+   "task:projet_si-2-00006"
+  ],
+  "m8t3-p023": [
+   "task:commercial-3-00149",
+   "task:commercial-3-00251"
+  ],
+  "m8t3-p024": [
+   "task:daf-3-00170",
+   "task:daf-3-00041"
+  ],
+  "m8t3-p025": [
+   "mail:collectivite-3-00213",
+   "mail:collectivite-3-00203"
+  ],
+  "m8t3-p026": [
+   "mail:ecole-1-00091",
+   "mail:ecole-1-00146"
+  ],
+  "m8t3-p027": [
+   "mail:operations-1-00384",
+   "mail:operations-1-00339"
+  ],
+  "m8t3-p028": [
+   "task:logistique-1-00025",
+   "task:logistique-1-00094"
+  ],
+  "m8t3-p029": [
+   "mail:projet_si-1-00009",
+   "file:projet_si-1-00081"
+  ],
+  "m8t3-p030": [
+   "calendar:collectivite-2-00072",
+   "file:collectivite-2-00045"
+  ],
+  "m8t3-p031": [
+   "mail:operations-2-00065",
+   "mail:operations-2-00061"
+  ],
+  "m8t3-p032": [
+   "mail:drh-1-00310",
+   "mail:drh-1-00285"
+  ],
+  "m8t3-p033": [
+   "mail:commercial-3-00059",
+   "mail:commercial-3-00095"
+  ],
+  "m8t3-p034": [
+   "mail:agence-1-00063",
+   "mail:agence-1-00066"
+  ],
+  "m8t3-p035": [
+   "task:agence-3-00060",
+   "task:agence-3-00011"
+  ],
+  "m8t3-p036": [
+   "mail:agence-2-00084",
+   "mail:agence-2-00087"
+  ],
+  "m8t3-p037": [
+   "mail:collectivite-1-00399",
+   "mail:collectivite-1-00402"
+  ],
+  "m8t3-p038": [
+   "mail:commercial-3-00178",
+   "mail:commercial-3-00199"
+  ],
+  "m8t3-p039": [
+   "mail:projet_si-2-00332",
+   "mail:projet_si-2-00329"
+  ],
+  "m8t3-p040": [
+   "mail:qualite-2-00268",
+   "file:qualite-2-00348"
+  ],
+  "m8t3-p041": [
+   "file:chantier-3-00385",
+   "file:chantier-3-00365"
+  ],
+  "m8t3-p042": [
+   "mail:ecole-3-00104",
+   "mail:ecole-3-00091"
+  ],
+  "m8t3-p043": [
+   "mail:drh-3-00094",
+   "mail:drh-3-00105"
+  ],
+  "m8t3-p044": [
+   "mail:projet_si-3-00298",
+   "mail:projet_si-3-00284"
+  ],
+  "m8t3-p045": [
+   "task:drh-3-00109",
+   "task:drh-3-00014"
+  ],
+  "m8t3-p046": [
+   "task:operations-3-00169",
+   "task:operations-3-00275"
+  ],
+  "m8t3-p047": [
+   "mail:qualite-1-00008",
+   "mail:qualite-1-00078"
+  ],
+  "m8t3-p048": [
+   "mail:logistique-1-00063",
+   "calendar:logistique-1-00012"
+  ],
+  "m8t3-p049": [
+   "calendar:chantier-1-00437",
+   "calendar:chantier-1-00328"
+  ],
+  "m8t3-p050": [
+   "file:agence-3-00197",
+   "file:agence-3-00209"
+  ],
+  "m8t3-p051": [
+   "mail:operations-3-00065",
+   "mail:operations-3-00063"
+  ],
+  "m8t3-p052": [
+   "mail:operations-3-00032",
+   "mail:operations-3-00029"
+  ],
+  "m8t3-p053": [
+   "mail:logistique-1-00201",
+   "mail:logistique-1-00196"
+  ],
+  "m8t3-p054": [
+   "mail:drh-2-00273",
+   "mail:drh-2-00278"
+  ],
+  "m8t3-p055": [
+   "task:collectivite-1-00008",
+   "task:collectivite-1-00139"
+  ],
+  "m8t3-p056": [
+   "mail:logistique-3-00288",
+   "file:logistique-3-00291"
+  ],
+  "m8t3-p057": [
+   "mail:commercial-2-00007",
+   "mail:commercial-2-00108"
+  ],
+  "m8t3-p058": [
+   "mail:daf-1-00039",
+   "file:daf-1-00023"
+  ],
+  "m8t3-p059": [
+   "mail:logistique-3-00190",
+   "mail:logistique-3-00191"
+  ],
+  "m8t3-p060": [
+   "task:operations-1-00066",
+   "task:operations-1-00142"
+  ],
+  "m8t3-p061": [
+   "mail:logistique-2-00055",
+   "mail:logistique-2-00060"
+  ],
+  "m8t3-p062": [
+   "task:chantier-1-00148",
+   "task:chantier-1-00228"
+  ],
+  "m8t3-p063": [
+   "mail:commercial-3-00113",
+   "mail:commercial-3-00162"
+  ],
+  "m8t3-p064": [
+   "mail:sante-2-00180",
+   "mail:sante-2-00179"
+  ],
+  "m8t3-p065": [
+   "calendar:qualite-3-00120",
+   "mail:qualite-3-00191"
+  ],
+  "m8t3-p066": [
+   "mail:daf-3-00163",
+   "calendar:daf-3-00167"
+  ],
+  "m8t3-p067": [
+   "mail:qualite-1-00065",
+   "mail:qualite-1-00028"
+  ],
+  "m8t3-p068": [
+   "mail:collectivite-2-00025",
+   "mail:collectivite-2-00023"
+  ],
+  "m8t3-p069": [
+   "mail:logistique-3-00028",
+   "mail:logistique-3-00011"
+  ],
+  "m8t3-p070": [
+   "task:operations-2-00205",
+   "task:operations-2-00009"
+  ],
+  "m8t3-p071": [
+   "mail:chantier-2-00040",
+   "mail:chantier-2-00039"
+  ],
+  "m8t3-p072": [
+   "mail:ecole-3-00268",
+   "file:ecole-3-00271"
+  ],
+  "m8t3-p073": [
+   "file:logistique-2-00082",
+   "mail:logistique-2-00142"
+  ],
+  "m8t3-p074": [
+   "task:collectivite-1-00139",
+   "task:collectivite-1-00050"
+  ],
+  "m8t3-p075": [
+   "mail:ecole-2-00409",
+   "mail:ecole-2-00414"
+  ],
+  "m8t3-p076": [
+   "task:drh-3-00253",
+   "task:drh-3-00332"
+  ],
+  "m8t3-p077": [
+   "mail:qualite-2-00168",
+   "mail:qualite-2-00174"
+  ],
+  "m8t3-p078": [
+   "mail:drh-3-00430",
+   "mail:drh-3-00433"
+  ],
+  "m8t3-p079": [
+   "calendar:projet_si-1-00134",
+   "mail:projet_si-1-00211"
+  ],
+  "m8t3-p080": [
+   "mail:logistique-3-00053",
+   "mail:logistique-3-00042"
+  ],
+  "m8t3-p081": [
+   "mail:collectivite-3-00220",
+   "mail:collectivite-3-00211"
+  ],
+  "m8t3-p082": [
+   "mail:projet_si-3-00285",
+   "mail:projet_si-3-00281"
+  ],
+  "m8t3-p083": [
+   "calendar:operations-1-00048",
+   "task:operations-1-00070"
+  ],
+  "m8t3-p084": [
+   "file:qualite-1-00298",
+   "mail:qualite-1-00291"
+  ],
+  "m8t3-p085": [
+   "mail:chantier-2-00054",
+   "file:chantier-2-00078"
+  ],
+  "m8t3-p086": [
+   "mail:logistique-3-00401",
+   "mail:logistique-3-00408"
+  ],
+  "m8t3-p087": [
+   "file:chantier-1-00071",
+   "mail:chantier-1-00064"
+  ],
+  "m8t3-p088": [
+   "task:collectivite-3-00043",
+   "task:collectivite-3-00098"
+  ],
+  "m8t3-p089": [
+   "mail:logistique-2-00275",
+   "mail:logistique-2-00271"
+  ],
+  "m8t3-p090": [
+   "file:daf-2-00033",
+   "mail:daf-2-00029"
+  ],
+  "m8t3-p091": [
+   "task:qualite-2-00020",
+   "task:qualite-2-00216"
+  ],
+  "m8t3-p092": [
+   "mail:collectivite-2-00034",
+   "mail:collectivite-2-00028"
+  ],
+  "m8t3-p093": [
+   "mail:ecole-1-00201",
+   "calendar:ecole-1-00193"
+  ],
+  "m8t3-p094": [
+   "mail:collectivite-1-00221",
+   "mail:collectivite-1-00214"
+  ],
+  "m8t3-p095": [
+   "mail:operations-2-00145",
+   "mail:operations-2-00143"
+  ],
+  "m8t3-p096": [
+   "mail:agence-1-00184",
+   "mail:agence-1-00187"
+  ],
+  "m8t3-p097": [
+   "mail:daf-1-00093",
+   "mail:daf-1-00095"
+  ],
+  "m8t3-p098": [
+   "mail:agence-1-00107",
+   "mail:agence-1-00115"
+  ],
+  "m8t3-p099": [
+   "file:daf-2-00040",
+   "mail:daf-2-00094"
+  ],
+  "m8t3-p100": [
+   "task:agence-3-00142",
+   "task:agence-3-00063"
+  ]
+ }
+}
