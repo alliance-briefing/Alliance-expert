@@ -19,6 +19,8 @@ la comparaison entre réglages compte.
 
     uv run python -m packages.analyse.scoring.ml.selection --valider
     uv run python -m packages.analyse.scoring.ml.selection --mesurer-lot3 <annotations>
+    uv run python -m packages.analyse.scoring.ml.selection --latence   # M10, ≤ 3 s par brief
+    uv run python -m packages.analyse.scoring.ml.selection --demo 2026-10-07
 """
 
 from __future__ import annotations
@@ -324,6 +326,74 @@ def _valid(brief: Brief) -> bool:
     return True
 
 
+# --- latence (M10) -------------------------------------------------------------------------------
+
+LATENCY_PATH = Path(__file__).with_name("brief_latence.json")
+LATENCY_LIMIT_S = 3.0  # acceptation de M10 : ≤ 3 s par brief sur processeur
+
+
+def latence(
+    days: Sequence[str] | None = None,
+    out: Path | None = LATENCY_PATH,
+    log: Callable[[str], None] = lambda _: None,
+) -> dict:
+    """Temps de génération d'un brief sur les journées de démo, dans les deux modes : premier
+    brief (chargement des modèles compris), puis médiane et 95e centile des suivants."""
+    import platform
+    import time
+
+    from contracts import demo_data
+
+    days = list(days or demo_data.available_days())
+    loaded = [(day, demo_data.load_items(day)) for day in days]
+    report: dict = {
+        "journees": len(days),
+        "processeur": platform.processor() or platform.machine(),
+        "seuil_s": LATENCY_LIMIT_S,
+    }
+    for mode in ("regles", "appris"):
+        times = []
+        scorer = None
+        for day, items in loaded:
+            started = time.perf_counter()
+            if mode == "appris" and scorer is None:
+                scorer = LearnedScorer()  # chargement compté dans le premier brief
+            generate_brief(items, demo_data.DEFAULT_USER, day, scorer=scorer)
+            times.append(time.perf_counter() - started)
+            log(f"{mode} {day} : {times[-1]:.2f} s")
+        rest = np.array(times[1:])
+        report[mode] = {
+            "premier_s": round(times[0], 2),
+            "mediane_s": round(float(np.median(rest)), 2),
+            "p95_s": round(float(np.percentile(rest, 95)), 2),
+            "max_s": round(float(rest.max()), 2),
+            "dans_le_seuil": bool(np.percentile(rest, 95) <= LATENCY_LIMIT_S),
+        }
+    if out:
+        out.write_text(
+            json.dumps(report, ensure_ascii=False, indent=1) + "\n", encoding="utf-8", newline="\n"
+        )
+    return report
+
+
+def demo(day: str) -> str:
+    """Le brief d'une journée de démo dans les deux modes, entrée par entrée (M10)."""
+    from contracts import demo_data
+
+    items = demo_data.load_items(day)
+    lines = []
+    for mode, scorer in (("règles", None), ("appris", LearnedScorer())):
+        brief = generate_brief(items, demo_data.DEFAULT_USER, day, scorer=scorer)
+        lines.append(f"=== brief {mode} du {day} ({brief.generator.llm})")
+        for section in brief.sections:
+            for e in section.entries:
+                lines.append(f"[{section.kind} {e.rank}] {e.priority_score:>3}  {e.text}")
+                lines.append(f"      raisons : {' ; '.join(e.priority_reasons)}")
+                if e.recommended_action:
+                    lines.append(f"      action : {e.recommended_action}")
+    return "\n".join(lines)
+
+
 def main(argv: list[str]) -> int:
     sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
     if argv == ["--valider"]:
@@ -331,12 +401,21 @@ def main(argv: list[str]) -> int:
         print(json.dumps(report, ensure_ascii=False, indent=1))
         print(f"→ {REPORT_PATH.name}")
         return 0
+    if len(argv) == 2 and argv[0] == "--demo":
+        print(demo(argv[1]))
+        return 0
+    if argv == ["--latence"]:
+        print(json.dumps(latence(log=lambda line: print(line, flush=True)), indent=1))
+        print(f"→ {LATENCY_PATH.name}")
+        return 0
     if len(argv) == 2 and argv[0] == "--mesurer-lot3":
         paths = sorted(Path(argv[1]).glob("*.json"))
         entry = mesurer_lot3(paths, log=lambda line: print(line, flush=True))
         print(json.dumps({k: v for k, v in entry.items() if k != "par_annotation"}, indent=1))
         return 0
-    print("usage : selection --valider | --mesurer-lot3 <dossier des annotations>")
+    print(
+        "usage : selection --valider | --latence | --demo <jour> | --mesurer-lot3 <dossier des annotations>"
+    )
     return 2
 
 
