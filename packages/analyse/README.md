@@ -589,6 +589,30 @@ après chargement (5 s au premier). Relations des correspondants : configurées 
 sinon déduites (adresse, domaine interne) ; sur les 30 journées de démo, une persona déduite
 garde 94 % des 7 premières affaires (écart moyen 0,1 point).
 
+### M9, sélection du brief (`brief.py`, `scoring/ml/selection.py`)
+
+Avec le score appris, le brief n'est plus fait de listes par règles : les affaires notées par
+M8 sont classées, alertes en tête (priorité 100), et une affaire entre si son score atteint le
+seuil T, avec au moins 3 et au plus K entrées. La section suit l'élément qui porte le score
+(réunion du jour, tâche en retard, fichier, sinon actions) ; la section « fichiers » est
+remplie. Chaque entrée a une **action recommandée** par gabarit : un verbe selon l'action que
+N prévoit (« Décider ou valider », « Traiter », « Répondre », « Préparer », « Relire »,
+« Vérifier en priorité » pour une alerte), puis le seul titre de l'élément. Jamais noté ni
+cité : une tentative d'injection (`guard/injection.py` : consigne adressée à l'assistant pour
+contourner ses règles) et un envoi en masse (`ml/noise.py`). Le brief par règles d'avant M9
+reste tel quel avec `ALLIANCE_SCORE=regles` : c'est la référence de la comparaison.
+
+```bash
+uv run python -m packages.analyse.scoring.ml.selection --valider   # réglage de T et K
+```
+
+Réglage (règle écrite le 25/11 avant tout calcul, plan §11) sur 60 journées simulées des
+personas « train », vérité lue sur les étiquettes du simulateur, NDCG@7 dans l'ordre de
+lecture : de 0,311 à 0,347 selon le réglage, meilleur T = 60, K = 7 sans écart significatif
+avec T = 50, K = 7, **retenus** (G3) ; aucun élément à exclure dans les 3 premières entrées.
+Reste la mesure unique sur le jeu de développement du lot 3 (acceptation de M9, et choix du
+mode par défaut).
+
 ```bash
 uv run python -m packages.analyse.scoring.ml.comprendre --levier-texte  # H, N, A, N+A comparées
 uv run python -m packages.analyse.scoring.ml.comprendre --levier-fiche  # R, H, F comparées
