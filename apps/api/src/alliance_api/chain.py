@@ -1,8 +1,9 @@
 """Chaîne d'un brief pour l'administration (L3.7, étape B) : collecte → génération → consultation.
 
 Sans changer le contrat C, les trois journaux sont rapprochés par les identifiants d'items :
-- collecte : les événements du lot 1 qui ont apporté au moins un item cité par le brief,
-  plus ceux du jour du brief (heure de Paris), échecs et collectes vides compris ;
+- collecte : les événements du lot 1 jusqu'au jour du brief qui ont apporté au moins un item
+  cité, plus ceux du jour du brief (heure de Paris), échecs et collectes vides compris ; un
+  mail non lu est recollecté les jours suivants, ces collectes-là sont exclues ;
 - génération : modèle, prompt et compteurs lus dans le brief lui-même (contrat B), et les
   générations réussies de l'API dont les items sont exactement ceux du brief ;
 - consultation : les lectures de l'API qui couvrent les items du brief (« brief » si ce sont
@@ -97,9 +98,14 @@ def _collection(brief: Brief, cited: set[str], events: Iterable[AuditEvent]) -> 
         for event in events
         if event.action == "collect"
         and event.user_id == brief.owner_user_id
-        and (cited.intersection(event.item_ids) or event.ts.astimezone(PARIS).date() == brief.date)
+        and _day(event) <= brief.date  # une collecte postérieure n'a pas pu servir au brief
+        and (cited.intersection(event.item_ids) or _day(event) == brief.date)
     ]
     return sorted(steps, key=lambda step: step.ts)
+
+
+def _day(event: AuditEvent) -> Date:
+    return event.ts.astimezone(PARIS).date()
 
 
 def _generation(brief: Brief, cited: set[str], events: list[AuditEvent]) -> Generation:

@@ -80,6 +80,8 @@ def api(data_root: Path, audit: LogAuditSink) -> TestClient:
     collect.write(_collect(USER_A, f"{DAY}T06:31:00+02:00", [], error="GraphTimeout"))
     collect.write(_collect(USER_A, f"{VEILLE}T06:30:00+02:00", [f"mail:{USER_A}-3"]))
     collect.write(_collect(USER_B, f"{DAY}T06:30:00+02:00", [f"mail:{USER_B}-1"]))
+    # Le lendemain, le même mail non lu est recollecté : sans rapport avec le brief du jour.
+    collect.write(_collect(USER_A, "2026-10-01T06:30:00+02:00", [f"mail:{USER_A}-1"]))
     app = create_app(
         item_store=DemoItemStore(data_root),
         generator=_generator,
@@ -112,7 +114,7 @@ def test_collecte_du_jour_et_items_cites(api: TestClient) -> None:
         (s["connector"], s["count"], s["cited"], s["status"]) for s in _chain(api)["collection"]
     ]
     # Le jour du brief : la collecte réussie (1 item cité sur 2) et l'échec ; ni la veille
-    # (aucun item cité), ni l'utilisateur B.
+    # (aucun item cité), ni le lendemain (postérieur au brief), ni l'utilisateur B.
     assert steps == [("mail-graph", 2, 1, "ok"), ("mail-graph", 0, 0, "error")]
 
 
