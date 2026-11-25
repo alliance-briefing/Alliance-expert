@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from contracts.demo_data import DEMO_DIR
+from contracts.models import Brief
 from eval.report import evaluate, render
 from eval.tests.test_metrics import _annotation, _brief
 
@@ -59,6 +60,30 @@ def test_generateur_en_echec_note_sans_arreter(annotations: Path) -> None:
     evaluation = evaluate(annotations, DEMO_DIR, broken, "dev")
     assert evaluation.days[0].error.startswith("RuntimeError")
     assert "le brief n'a pas été produit" in render(evaluation, VERSION)
+
+
+def _with_claim(text: str, item_id: str = "mail:dm1-msg-000052") -> Brief:
+    data = _brief({"actions": [[item_id]]}).model_dump()
+    data["sections"][0]["entries"][0]["claims"] = [{"text": text, "source_item_ids": [item_id]}]
+    return Brief.model_validate(data)
+
+
+def test_claim_faux_compte_et_montre_sur_le_jeu_de_dev(annotations: Path) -> None:
+    brief = _with_claim("Mail « Mon dossier 2026-2405 – où en est-on ? », reçu le 01/10")
+    evaluation = evaluate(annotations, DEMO_DIR, lambda *a, **k: brief, "dev")
+    report = render(evaluation, VERSION)
+    assert "| Claims soutenus par leur source | 0,00 (0/1) |" in report
+    assert "| Briefs avec au moins un claim non soutenu | 1,00 (1/1) |" in report
+    assert "reçu le 01/10" in report and "introuvable dans les sources" in report
+    hidden = render(evaluate(annotations, DEMO_DIR, lambda *a, **k: brief, "hidden"), VERSION)
+    assert "Mon dossier" not in hidden and "entrée 1 (claim)" in hidden
+
+
+def test_claim_vrai(annotations: Path) -> None:
+    brief = _with_claim("Mail « Mon dossier 2026-2405 – où en est-on ? », reçu le 12/10 à 17:17")
+    report = render(evaluate(annotations, DEMO_DIR, lambda *a, **k: brief, "dev"), VERSION)
+    assert "| Claims soutenus par leur source | 1,00 (1/1) |" in report
+    assert "Aucun : chaque claim" in report
 
 
 def test_annotations_du_depot_lisibles() -> None:

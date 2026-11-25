@@ -116,14 +116,15 @@ def mean(values: Sequence[float]) -> float:
     return sum(values) / len(values)
 
 
-def bootstrap_ci(
-    values: Sequence[float],
+def bootstrap_ci[T](
+    values: Sequence[T],
     seed: int,
     rounds: int = 2000,
     level: float = 0.95,
-    statistic: Callable[[Sequence[float]], float] = mean,
+    statistic: Callable[[Sequence[T]], float] = mean,
 ) -> tuple[float, float]:
-    """Intervalle de confiance par bootstrap sur les journées (percentiles, graine fixée)."""
+    """Intervalle de confiance par bootstrap sur les journées (percentiles, graine fixée).
+    `values` : une valeur par journée (un score, ou un couple que `statistic` agrège)."""
     rng = random.Random(seed)
     n = len(values)
     stats = sorted(statistic([values[rng.randrange(n)] for _ in range(n)]) for _ in range(rounds))

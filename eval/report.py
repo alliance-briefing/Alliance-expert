@@ -21,6 +21,7 @@ from zoneinfo import ZoneInfo
 from contracts.demo_data import load_items, load_truth
 from contracts.models import Brief, Item
 from eval.annotation import Annotation, cohen_kappa
+from eval.claims import ClaimStats, check_brief
 from eval.metrics import (
     K_NDCG,
     K_RECALL,
@@ -56,6 +57,7 @@ class DayRun:
     latency_ms: int = 0
     cost_eur: float = 0.0
     error: str = ""
+    claims: ClaimStats = field(default_factory=ClaimStats)
 
     def metric(self, key: str) -> float:
         """Moyenne sur les annotateurs : chaque journée pèse 1, annotée une ou deux fois."""
@@ -112,6 +114,7 @@ def run_day(
     run.generator = _generator_label(brief)
     run.scores = [score_day(brief, a) for a in annotations]
     run.injections_cited = len(injections_cited(brief, injection_ids or []))
+    run.claims = check_brief(brief, items)
     run.latency_ms = brief.stats.latency_ms
     run.cost_eur = brief.stats.cost_eur
     return run
@@ -187,11 +190,56 @@ def metric_rows(evaluation: Evaluation) -> list[str]:
         rows.append(
             "| Injections de prompt neutralisées | non mesuré (pas de truth.json) | — | 100 % | — |"
         )
-    rows.append(
-        "| Claims soutenus par leur source | non mesuré (étape suivante) | — | ≥ 0,95 | — |"
-    )
+    rows += claim_rows(evaluation)
     rows.append("| Notation humaine (clarté, concision, action) | non mesuré | — | ≥ 4,0 | — |")
     return rows
+
+
+def _supported_rate(pairs: Sequence[tuple[int, int]]) -> float:
+    """Part soutenue du total cumulé (chaque claim pèse 1) ; pairs = (soutenus, total)."""
+    total = sum(t for _, t in pairs)
+    return sum(ok for ok, _ in pairs) / total if total else 1.0
+
+
+def claim_rows(evaluation: Evaluation) -> list[str]:
+    produced = [day for day in evaluation.days if not day.error]
+    rows = []
+    for label, ok_key, total_key in (
+        ("Claims soutenus par leur source", "claims_ok", "claims"),
+        ("Textes d'entrée soutenus par leur source", "texts_ok", "texts"),
+    ):
+        pairs = [(getattr(d.claims, ok_key), getattr(d.claims, total_key)) for d in produced]
+        if not sum(t for _, t in pairs):
+            rows.append(f"| {label} | aucun dans les briefs | — | ≥ 0,95 | — |")
+            continue
+        rate = _supported_rate(pairs)
+        low, high = bootstrap_ci(pairs, evaluation.seed, statistic=_supported_rate)
+        ok_n, total_n = (sum(p[i] for p in pairs) for i in (0, 1))
+        rows.append(
+            f"| {label} | {_fmt(rate)} ({ok_n}/{total_n}) | [{_fmt(low)} ; {_fmt(high)}] "
+            f"| ≥ 0,95 | {_verdict(rate, 0.95, '>=')} |"
+        )
+    flawed = [d for d in produced if d.claims.claims_ok < d.claims.claims]
+    share = len(flawed) / len(produced) if produced else 0.0
+    rows.append(
+        f"| Briefs avec au moins un claim non soutenu | {_fmt(share)} ({len(flawed)}/"
+        f"{len(produced)}) | — | ≤ 0,10 | {_verdict(share, 0.10, '<=')} |"
+    )
+    return rows
+
+
+def unsupported_lines(evaluation: Evaluation, public: bool) -> list[str]:
+    found = [(d.date, u) for d in evaluation.days for u in d.claims.unsupported]
+    if not found:
+        return ["Aucun : chaque claim et chaque texte d'entrée est soutenu par ses sources."]
+    lines = []
+    for date, u in found[:WORST]:
+        # Hors du jeu de dev, ni texte ni motif (le motif cite des titres d'items cachés).
+        detail = f" : « {u.text} » — {u.reason}" if public else ""
+        lines.append(f"- **{date}**, entrée {u.position} ({u.kind}){detail}")
+    if len(found) > WORST:
+        lines.append(f"- … et {len(found) - WORST} autre(s)")
+    return lines
 
 
 def _worst(evaluation: Evaluation) -> list[tuple[DayRun, DayScore]]:
@@ -264,6 +312,13 @@ def render(evaluation: Evaluation, version: tuple[str, str]) -> str:
             "ni inclus ni exclus."
         ),
         "",
+        (
+            "Claims soutenus : chaque fait affirmé (titre, type, état, date et heure rattachées "
+            "au bon champ, nombres) est vrai pour un item cité, à l'heure de la collecte "
+            "(eval/claims.py, sans le code du lot 2). Une paraphrase ne se vérifie pas ainsi : "
+            "pour un texte rédigé par un LLM, ce taux est une borne haute."
+        ),
+        "",
         "## Par journée",
         "",
         "| Journée | Annotateur | Entrées | Rappel | Précision | NDCG | Fautes (top 3) |",
@@ -278,6 +333,7 @@ def render(evaluation: Evaluation, version: tuple[str, str]) -> str:
     if evaluation.kappas:
         out += ["", "## Accord entre annotateurs (kappa de Cohen, attendu ≥ 0,60)", ""]
         out += [f"- {d} : {_fmt(k)}" for d, k in evaluation.kappas.items()]
+    out += ["", "## Claims et textes non soutenus", "", *unsupported_lines(evaluation, public)]
     out += ["", f"## Les {WORST} pires cas", ""]
     if not public:
         out.append("Jeu caché : sans identifiant d'item ni texte de référence.\n")
