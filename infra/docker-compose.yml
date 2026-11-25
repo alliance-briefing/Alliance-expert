@@ -11,6 +11,8 @@ services:
     environment:
       # Démonstration par défaut ; AUTH_MODE=oidc dans infra/.env pour la vraie connexion.
       AUTH_MODE: ${AUTH_MODE:-demo}
+      # Score de priorité : « regles » (défaut du lot 2, ADR-0005) ou « appris » (MiniLM, hors ligne).
+      ALLIANCE_SCORE: ${ALLIANCE_SCORE:-regles}
       # Données de l'application dans le volume briefing-data (survivent au redémarrage).
       # Items et journal de collecte, amorcés au premier démarrage (connecteur demo du lot 1).
       DATA_DIR: /data/items
