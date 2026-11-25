@@ -39,6 +39,9 @@ jobs:
 
   docker:
     runs-on: ubuntu-latest
+    env:
+      # score appris : seul chemin qui charge le modèle, pour prouver le mode hors ligne
+      ALLIANCE_SCORE: appris
     steps:
       - uses: actions/checkout@v4
       # 5. build de l'API + docker compose + test de santé, sans infra/.env (L3.8)
@@ -57,7 +60,8 @@ jobs:
           curl -fsS -X POST http://localhost:8000/briefs -H "$AUTH" -H "Content-Type: application/json" -d '{"date": "2026-10-07"}'
           curl -fsS http://localhost:8000/briefs/2026-10-07 -H "$AUTH" -o brief.json
           python3 -c "import json; assert json.load(open('brief.json'))['brief_id'] == 'b_2026-10-07_u_demo_001'"
-          # hors ligne (HF_HUB_OFFLINE=1) : le score appris se charge depuis l'image, sans repli
+          # hors ligne (HF_HUB_OFFLINE=1) : le brief est noté par le modèle de l'image, sans repli
+          python3 -c "import json; b = json.load(open('brief.json')); assert b['generator']['llm'].startswith('MiniLM'), b['generator']"
           ! grep -q "score appris indisponible" brief.json
       # briefs dans le volume (BRIEFS_DIR) : relus après un redémarrage, sans regénération
       - name: brief conservé au redémarrage
@@ -66,6 +70,17 @@ jobs:
           docker compose -f infra/docker-compose.yml up -d --wait
           curl -fsS http://localhost:8000/briefs/2026-10-07 -H "X-Demo-User: u_demo_001" -o relu.json
           cmp brief.json relu.json
+      # sauvegarde → briefs effacés → restauration : le brief revient à l'identique
+      - name: sauvegarde et restauration
+        env:
+          AUTH: "X-Demo-User: u_demo_001"
+        run: |
+          infra/sauvegarde.sh sauvegarde.tgz
+          docker compose -f infra/docker-compose.yml exec -T api rm -rf /data/briefs
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/briefs/2026-10-07 -H "$AUTH")" = 404
+          infra/restauration.sh sauvegarde.tgz -y
+          curl -fsS http://localhost:8000/briefs/2026-10-07 -H "$AUTH" -o restaure.json
+          cmp brief.json restaure.json
       - if: failure()
         run: docker compose -f infra/docker-compose.yml logs
       - if: always()
