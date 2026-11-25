@@ -57,6 +57,13 @@ jobs:
           python3 -c "import json; assert json.load(open('brief.json'))['brief_id'] == 'b_2026-10-07_u_demo_001'"
           # hors ligne (HF_HUB_OFFLINE=1) : le score appris se charge depuis l'image, sans repli
           ! grep -q "score appris indisponible" brief.json
+      # briefs dans le volume (BRIEFS_DIR) : relus après un redémarrage, sans regénération
+      - name: brief conservé au redémarrage
+        run: |
+          docker compose -f infra/docker-compose.yml restart api
+          docker compose -f infra/docker-compose.yml up -d --wait
+          curl -fsS http://localhost:8000/briefs/2026-10-07 -H "X-Demo-User: u_demo_001" -o relu.json
+          cmp brief.json relu.json
       - if: failure()
         run: docker compose -f infra/docker-compose.yml logs
       - if: always()

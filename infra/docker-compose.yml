@@ -12,6 +12,7 @@ services:
       # Démonstration par défaut ; AUTH_MODE=oidc dans infra/.env pour la vraie connexion.
       AUTH_MODE: ${AUTH_MODE:-demo}
       # Données de l'application dans le volume briefing-data (survivent au redémarrage).
+      BRIEFS_DIR: /data/briefs
       FEEDBACK_DIR: /data/feedback
       AUDIT_DIR: /data/audit
     volumes:

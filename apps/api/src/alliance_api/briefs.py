@@ -8,18 +8,21 @@ ni `generator.llm`, ni le nombre de sections. Le passage au LLM (v0.2.0) ne chan
 from __future__ import annotations
 
 import logging
+import os
+import tempfile
 from collections.abc import Sequence
 from datetime import date as Date
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Annotated, Literal, Protocol
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Query, Request, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from starlette.datastructures import State
 
 from alliance_api.audit import api_event
-from alliance_api.auth import CurrentUser, requires
+from alliance_api.auth import CurrentUser, requires, valid_user_id
 from alliance_api.errors import ApiError
 from contracts.models import Brief, Item
 
@@ -42,7 +45,7 @@ class BriefStore(Protocol):
 
 class MemoryBriefStore:
     """Cache du brief par (utilisateur, jour), dans le processus : perdu au redémarrage,
-    propre à chaque worker. Suffisant pour le squelette ; Postgres ensuite (ADR)."""
+    propre à chaque worker. Pour les tests et sans BRIEFS_DIR."""
 
     def __init__(self) -> None:
         self._briefs: dict[tuple[str, Date], Brief] = {}
@@ -52,6 +55,39 @@ class MemoryBriefStore:
 
     def put(self, brief: Brief) -> None:
         self._briefs[(brief.owner_user_id, brief.date)] = brief
+
+
+class FileBriefStore:
+    """Un fichier `<dossier>/<user>/<AAAA-MM-JJ>.json` par brief (ADR-0006) : les briefs
+    survivent au redémarrage. Régénérer remplace le fichier ; l'écriture passe par un
+    fichier temporaire, jamais de brief à moitié écrit. Un fichier illisible vaut « brief
+    non généré » : l'utilisateur le régénère."""
+
+    def __init__(self, root: Path) -> None:
+        self.root = Path(root)
+
+    def _file(self, user: str, day: Date) -> Path:
+        if not valid_user_id(user):
+            raise ValueError("identifiant d'utilisateur invalide")
+        return self.root / user / f"{day.isoformat()}.json"
+
+    def get(self, user: str, day: Date) -> Brief | None:
+        path = self._file(user, day)
+        if not path.is_file():
+            return None
+        try:
+            return Brief.model_validate_json(path.read_text(encoding="utf-8"))
+        except ValidationError:
+            logger.warning("brief illisible ignoré : %s/%s", user, path.name)
+            return None
+
+    def put(self, brief: Brief) -> None:
+        path = self._file(brief.owner_user_id, brief.date)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+        with os.fdopen(fd, "w", encoding="utf-8") as out:
+            out.write(brief.model_dump_json())
+        os.replace(tmp, path)
 
 
 class BriefRequest(BaseModel):
