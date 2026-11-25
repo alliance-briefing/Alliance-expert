@@ -9,8 +9,8 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from alliance_api import briefs, errors, feedback, items, oidc, ui
-from alliance_api.audit import AuditSink, LogAuditSink
+from alliance_api import admin, briefs, errors, feedback, items, oidc, ui
+from alliance_api.audit import COLLECT_FILE, AuditSink, AuditSource, JsonlAuditLog, LogAuditSink
 from alliance_api.auth import CurrentUser, install_csrf
 from alliance_api.briefs import BriefGenerator, BriefStore, MemoryBriefStore
 from alliance_api.feedback import FeedbackStore, JsonlFeedbackStore, MemoryFeedbackStore
@@ -18,6 +18,7 @@ from alliance_api.permissions import DEFAULT_ROLES_FILE, Policy, load_policy
 from alliance_api.resume import PendingStore
 from alliance_api.sessions import MemorySessionStore, SessionStore
 from alliance_api.stores import DemoItemStore, ItemStore
+from contracts.demo_data import DEMO_DIR
 from packages.analyse import generate_brief
 
 
@@ -27,6 +28,7 @@ def create_app(
     brief_store: BriefStore | None = None,
     generator: BriefGenerator | None = None,
     audit: AuditSink | None = None,
+    collect_audit: AuditSource | None = None,
     feedback_store: FeedbackStore | None = None,
     session_store: SessionStore | None = None,
     pending_store: PendingStore | None = None,
@@ -38,7 +40,8 @@ def create_app(
     app.state.items = item_store or _default_item_store()
     app.state.briefs = brief_store or MemoryBriefStore()
     app.state.generator = generator or _default_generator()
-    app.state.audit = audit or LogAuditSink()
+    app.state.audit = audit or _default_audit()
+    app.state.collect_audit = collect_audit or _default_collect_audit()  # lot 1, lecture seule
     app.state.feedback = feedback_store or _default_feedback_store()
     app.state.sessions = session_store or _default_session_store()
     app.state.pending = pending_store or PendingStore()  # reprise après expiration
@@ -55,6 +58,7 @@ def create_app(
     app.include_router(briefs.router)
     app.include_router(items.router)
     app.include_router(feedback.router)
+    app.include_router(admin.router)
     app.include_router(oidc.router)
     app.include_router(ui.router)
     app.mount("/static", StaticFiles(directory=ui.STATIC_DIR), name="static")
@@ -86,6 +90,18 @@ def _default_item_store() -> ItemStore:
     lot 1) ; sans DATA_DIR, les journées de démonstration de contracts/fixtures/demo."""
     data_dir = os.getenv("DATA_DIR")
     return DemoItemStore(Path(data_dir)) if data_dir else DemoItemStore()
+
+
+def _default_audit() -> AuditSink:
+    """Journal de l'API dans AUDIT_DIR (<user>/api-audit.jsonl) ; sans AUDIT_DIR, en
+    mémoire et sur le logger (perdu au redémarrage)."""
+    audit_dir = os.getenv("AUDIT_DIR")
+    return JsonlAuditLog(Path(audit_dir)) if audit_dir else LogAuditSink()
+
+
+def _default_collect_audit() -> AuditSource:
+    """Journal de collecte du lot 1 (DATA_DIR/<user>/audit.jsonl), jamais écrit par l'API."""
+    return JsonlAuditLog(Path(os.getenv("DATA_DIR") or DEMO_DIR), COLLECT_FILE)
 
 
 def _default_feedback_store() -> FeedbackStore:
