@@ -1,0 +1,76 @@
+{
+  "schema": "annotation/1.1",
+  "user_id": "u_demo_001",
+  "date": "2026-10-13",
+  "annotator": "davy-junior",
+  "annotated_at": "2026-11-08",
+  "must_include": [
+    {
+      "rank": 1,
+      "section": "actions",
+      "item_ids": ["mail:dm1-msg-000230"],
+      "why": "Une collègue demande de rappeler le client du dossier 2026-7121, qui menace de saisir un avocat faute de réponse."
+    },
+    {
+      "rank": 2,
+      "section": "actions",
+      "item_ids": ["mail:dm1-msg-000065", "task:dm1-tsk-000054"],
+      "why": "Le coût de réparation de 12 500 € dépasse la valeur de remplacement de 6 900 € ; Kevin Barbier doit être prévenu aujourd'hui avant 17 h."
+    },
+    {
+      "rank": 3,
+      "section": "actions",
+      "item_ids": [
+        "mail:dm1-msg-000041",
+        "mail:dm1-msg-000042",
+        "mail:dm1-msg-000044",
+        "file:dm1-fil-000013"
+      ],
+      "why": "Assur'Alpes relance pour une date d'expertise et attend la validation du devis de 7 300 €, dont l'échéance du 9 octobre est dépassée."
+    },
+    {
+      "rank": 4,
+      "section": "overdue",
+      "item_ids": ["task:dm1-tsk-000029", "file:dm1-fil-000011"],
+      "why": "La validation du devis de 8 300 € pour le dossier 2026-3025 est en retard depuis le 9 octobre ; le rapport est disponible."
+    },
+    {
+      "rank": 5,
+      "section": "overdue",
+      "item_ids": ["task:dm1-tsk-000012"],
+      "why": "Le rapport du dossier 2026-4823 reste à relire et signer depuis son échéance du 9 octobre à 17 h."
+    },
+    {
+      "rank": 6,
+      "section": "overdue",
+      "item_ids": ["task:dm1-tsk-000026"],
+      "why": "Le rapport du dossier 2026-4900 reste à relire et signer depuis son échéance du 9 octobre à 17 h."
+    },
+    {
+      "rank": 7,
+      "section": "overdue",
+      "item_ids": ["task:dm1-tsk-000032"],
+      "why": "La préparation du reporting mensuel, couvrant délais, volumes, contestations et dossiers sensibles, est en retard depuis le 8 octobre."
+    }
+  ],
+  "must_exclude": [
+    "mail:dm1-msg-001968", "mail:dm1-msg-001940", "mail:dm1-msg-001928", "mail:dm1-msg-001881",
+    "mail:dm1-msg-002010", "mail:dm1-msg-001923", "mail:dm1-msg-001951", "mail:dm1-msg-001897",
+    "mail:dm1-msg-001986", "mail:dm1-msg-001996", "mail:dm1-msg-001885", "mail:dm1-msg-001950",
+    "mail:dm1-msg-001953", "mail:dm1-msg-002012", "mail:dm1-msg-001933", "mail:dm1-msg-001949",
+    "mail:dm1-msg-001978", "mail:dm1-msg-001974", "mail:dm1-msg-001973", "mail:dm1-msg-001924",
+    "mail:dm1-msg-001987", "mail:dm1-msg-001932", "mail:dm1-msg-001890", "mail:dm1-msg-001883",
+    "mail:dm1-msg-001992", "mail:dm1-msg-001964", "mail:dm1-msg-001893", "mail:dm1-msg-001907",
+    "mail:dm1-msg-001935", "mail:dm1-msg-001998", "mail:dm1-msg-001969", "mail:dm1-msg-001900",
+    "mail:dm1-msg-001997", "mail:dm1-msg-001993", "mail:dm1-msg-001955", "mail:dm1-msg-001982",
+    "mail:dm1-msg-001954", "mail:dm1-msg-001957", "mail:dm1-msg-001983", "mail:dm1-msg-001971",
+    "mail:dm1-msg-001914", "mail:dm1-msg-001905", "mail:dm1-msg-001919", "mail:dm1-msg-001930",
+    "mail:dm1-msg-001918", "mail:dm1-msg-002007", "mail:dm1-msg-001931", "mail:dm1-msg-001965",
+    "mail:dm1-msg-001925", "mail:dm1-msg-001906", "mail:dm1-msg-001904", "mail:dm1-msg-001938",
+    "mail:dm1-msg-001961", "mail:dm1-msg-002005", "mail:dm1-msg-001889", "mail:dm1-msg-001977",
+    "mail:dm1-msg-001911", "mail:dm1-msg-001884", "mail:dm1-msg-001984", "mail:dm1-msg-001891",
+    "mail:dm1-msg-001985", "mail:dm1-msg-001937", "mail:dm1-msg-002018", "mail:dm1-msg-000207"
+  ],
+  "cases": null,
+  "notes": ""
+}
