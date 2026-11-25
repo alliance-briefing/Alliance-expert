@@ -18,6 +18,7 @@ Biais noté : N a vu ces personas à l'entraînement ; les valeurs absolues sont
 la comparaison entre réglages compte.
 
     uv run python -m packages.analyse.scoring.ml.selection --valider
+    uv run python -m packages.analyse.scoring.ml.selection --mesurer-lot3 <annotations>
 """
 
 from __future__ import annotations
@@ -193,6 +194,136 @@ def _paired_ci(
     return float(low), float(high)
 
 
+# --- mesure finale sur le jeu de développement du lot 3 ------------------------------------------
+
+TASK = "M9, sélection du brief"
+LOT3_BRANCH = "origin/l3/feat/annotations-dev"  # annotations du lot 3 (guide L3.5 v0.3)
+
+
+def brief_metrics(brief: Brief, annotation) -> dict:
+    """NDCG@7 (gain n − rang + 1 pour l'élément attendu de rang `rang`, chacun compté une
+    fois, à sa première entrée), rappel des « doit figurer » sur tout le brief, et « ne doit
+    pas figurer » cités par les 3 premières entrées, dans l'ordre de lecture."""
+    expected = sorted(annotation.must_include, key=lambda e: e.rank)
+    n = len(expected)
+    gain = {e.rank: n - e.rank + 1 for e in expected}
+    order = reading_order(brief)
+    credited: set[int] = set()
+    gains = []
+    for k, ids in enumerate(order):
+        found = {e.rank for e in expected if e.rank not in credited and set(e.item_ids) & set(ids)}
+        if k < TOP:
+            gains.append(max((gain[r] for r in found), default=0))
+        credited |= found
+    dcg = sum((2**g - 1) / math.log2(k + 2) for k, g in enumerate(gains))
+    ideal = sorted(gain.values(), reverse=True)[:TOP]
+    idcg = sum((2**g - 1) / math.log2(k + 2) for k, g in enumerate(ideal))
+    excluded = set(annotation.must_exclude)
+    return {
+        "ndcg7": dcg / idcg,
+        "rappel": len(credited) / n,
+        "exclus_top3": sorted({i for ids in order[:3] for i in ids} & excluded),
+        "entrees": len(order),
+    }
+
+
+def mesurer_lot3(
+    annotations: Sequence[Path],
+    scorer: LearnedScorer | None = None,
+    load_items: Callable[[str, str], list[Item]] | None = None,
+    journal: Path = Path(__file__).parent.parent / "annotations" / "journal-geles.jsonl",
+    commit: Callable[[], str] | None = None,
+    log: Callable[[str], None] = lambda _: None,
+) -> dict:
+    """La mesure unique de M9 (règle du 25/11) : brief appris (score de M8, sélection T = 50,
+    K = 7) contre brief par règles, sur chaque annotation du lot 3 ; au journal des jeux gelés,
+    une seule fois par (modèle, tâche). Décide le mode par défaut du brief."""
+    from eval.annotation import Annotation
+    from packages.analyse.scoring.ml import comprendre, prioriser
+
+    model_sha = comprendre._sha(prioriser.MODEL_PATH)
+    prioriser._refuse_reading(journal, model_sha, TASK)
+    revision = (
+        commit
+        or (
+            lambda: comprendre.git_commit(
+                (prioriser.MODEL_PATH, Path(__file__), Path(__file__).parents[2] / "brief.py")
+            )
+        )
+    )()
+    if load_items is None:
+        from contracts import demo_data
+
+        def load_items(day: str, user: str) -> list[Item]:
+            return demo_data.load_items(day, user)
+
+    scorer = scorer or LearnedScorer()
+    rows, sources = [], {}
+    for path in sorted(annotations):
+        sources[path.name] = comprendre._sha(path)
+        annotation = Annotation.model_validate_json(path.read_text(encoding="utf-8"))
+        day = annotation.date.isoformat()
+        log(f"{path.name}…")
+        items = load_items(day, annotation.user_id)
+        learned = generate_brief(items, annotation.user_id, day, scorer=scorer)
+        rules = generate_brief(items, annotation.user_id, day, scorer=None)
+        rows.append(
+            {"annotation": path.name}
+            | {f"appris_{k}": v for k, v in brief_metrics(learned, annotation).items()}
+            | {f"regles_{k}": v for k, v in brief_metrics(rules, annotation).items()}
+            | {"contrat_valide": _valid(learned) and _valid(rules)}
+        )
+
+    def mean(key: str) -> float:
+        return round(float(np.mean([r[key] for r in rows])), 4)
+
+    gaps = {
+        m: _paired_ci(
+            np.array([r[f"appris_{m}"] for r in rows]), np.array([r[f"regles_{m}"] for r in rows])
+        )
+        for m in ("ndcg7", "rappel")
+    }
+    summary = {
+        "annotations": len(rows),
+        "appris": {"ndcg7": mean("appris_ndcg7"), "rappel": mean("appris_rappel")},
+        "regles": {"ndcg7": mean("regles_ndcg7"), "rappel": mean("regles_rappel")},
+        "ecarts_ic95": {m: [round(lo, 4), round(hi, 4)] for m, (lo, hi) in gaps.items()},
+        "appris_exclus_top3": sum(bool(r["appris_exclus_top3"]) for r in rows),
+        "regles_exclus_top3": sum(bool(r["regles_exclus_top3"]) for r in rows),
+        "contrat_valide": all(r["contrat_valide"] for r in rows),
+    }
+    accepted = (
+        summary["appris"]["ndcg7"] > summary["regles"]["ndcg7"]
+        and summary["appris"]["rappel"] > summary["regles"]["rappel"]
+        and summary["appris_exclus_top3"] == 0
+        and summary["contrat_valide"]
+    )
+    entry = {
+        "date": datetime.now().astimezone().isoformat(timespec="seconds"),
+        "tache": TASK,
+        "commit": revision,
+        "modele": prioriser.MODEL_PATH.name,
+        "modele_sha256": model_sha,
+        "selection": {"seuil": SELECT_THRESHOLD, "max": SELECT_LIMIT},
+        "annotations_sha256": sources,
+        "resume": summary,
+        "par_annotation": rows,
+        "acceptation_atteinte": accepted,
+        "mode_par_defaut": "appris" if accepted else "regles",
+    }
+    with journal.open("a", encoding="utf-8", newline="\n") as file:
+        file.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    return entry
+
+
+def _valid(brief: Brief) -> bool:
+    try:
+        Brief.model_validate(brief.model_dump())
+    except ValueError:
+        return False
+    return True
+
+
 def main(argv: list[str]) -> int:
     sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
     if argv == ["--valider"]:
@@ -200,7 +331,12 @@ def main(argv: list[str]) -> int:
         print(json.dumps(report, ensure_ascii=False, indent=1))
         print(f"→ {REPORT_PATH.name}")
         return 0
-    print("usage : selection --valider")
+    if len(argv) == 2 and argv[0] == "--mesurer-lot3":
+        paths = sorted(Path(argv[1]).glob("*.json"))
+        entry = mesurer_lot3(paths, log=lambda line: print(line, flush=True))
+        print(json.dumps({k: v for k, v in entry.items() if k != "par_annotation"}, indent=1))
+        return 0
+    print("usage : selection --valider | --mesurer-lot3 <dossier des annotations>")
     return 2
 
 

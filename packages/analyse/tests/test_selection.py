@@ -165,3 +165,55 @@ def test_un_jour_sans_element_a_noter_donne_un_brief_appris_vide():
     brief = generate_brief([newsletter], USER, DAY, now=NOW, scorer=FixedScorer({}))
     assert not any(s.entries for s in brief.sections)
     assert brief.generator.llm != "rules" and brief.generator.llm_version is None
+
+
+def _annotation(tmp_path):
+    import json as _json
+
+    data = {
+        "schema": "annotation/1.1",
+        "user_id": USER,
+        "date": DAY.isoformat(),
+        "annotator": "test",
+        "annotated_at": DAY.isoformat(),
+        "must_include": [
+            {
+                "rank": 1,
+                "section": "actions",
+                "item_ids": ["mail:m3"],
+                "why": "alerte de connexion",
+            },
+            {"rank": 2, "section": "actions", "item_ids": ["mail:m1"], "why": "devis à valider"},
+            {"rank": 3, "section": "overdue", "item_ids": ["task:t1"], "why": "bon en retard"},
+        ],
+        "must_exclude": ["mail:m2"],
+    }
+    path = tmp_path / f"{DAY.isoformat()}.test.json"
+    path.write_text(_json.dumps(data), encoding="utf-8")
+    return path
+
+
+def test_les_mesures_du_brief_contre_une_annotation(tmp_path):
+    from eval.annotation import Annotation
+
+    annotation = Annotation.model_validate_json(_annotation(tmp_path).read_text("utf-8"))
+    brief = generate_brief(_items(), USER, DAY, now=NOW, scorer=FixedScorer(SCORES))
+    m = selection.brief_metrics(brief, annotation)
+    assert m["rappel"] == 1.0 and m["exclus_top3"] == [] and 0 < m["ndcg7"] <= 1
+
+
+def test_la_mesure_du_lot3_compare_au_brief_par_regles_et_s_inscrit_une_fois(tmp_path):
+    path = _annotation(tmp_path)
+    journal = tmp_path / "journal.jsonl"
+
+    def measure():
+        return selection.mesurer_lot3(
+            [path], FixedScorer(SCORES), lambda day, user: _items(), journal, lambda: "abc1234"
+        )
+
+    entry = measure()
+    assert entry["resume"]["annotations"] == 1 and entry["resume"]["contrat_valide"]
+    assert entry["mode_par_defaut"] in ("appris", "regles")
+    assert set(entry["par_annotation"][0]) >= {"appris_ndcg7", "regles_ndcg7", "appris_rappel"}
+    with pytest.raises(ValueError, match="déjà été mesuré"):
+        measure()
