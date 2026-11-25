@@ -439,7 +439,158 @@ appris sur le style du simulateur. C'est la cible des leviers suivants (augmenta
 encodeur réajusté), à mesurer contre H. R est ici réentraînée sur tout l'entraînement : 0,220 sur
 le jeu réel, contre 0,229 pour la référence commitée (autre réglage, sans la validation).
 
+**Levier 2, augmentation du texte** (`--levier-texte`, règles écrites le 23/11 avant la mesure,
+plan §11). Toutes les variantes ont la fiche ; grille réduite à l2 ∈ {1e-2, 1e-3, 1e-4} pour
+toutes, H comprise (d'où 0,596 au lieu de 0,620 pour H en LLM → gabarits). N : l'encodeur lit
+l'objet et le texte nettoyé (sans date, champs, bloc Teams, désabonnement ni signature ;
+chiffres, dates, liens et adresses masqués). A : une copie perturbée de chaque carte à
+l'entraînement. Un groupe doit gagner avec chacune de ses 3 graines : une graine 0 perdante
+arrête son groupe (même décision, moins de calcul).
+
+| F1 macro de l'action | H | **N, normalisé** | A0, copies | N+A0 |
+|---|---|---|---|---|
+| métiers | 0,804 | **0,851** | 0,810 | 0,857 |
+| gabarits tenus à l'écart | 0,683 | **0,716** | 0,681 | 0,726 |
+| gabarits → LLM / LLM → gabarits | 0,571 / 0,596 | **0,634 / 0,679** | 0,575 / 0,605 | 0,630 / 0,684 |
+| jeu réel | 0,382 | **0,445** | 0,445 | 0,440 |
+| précision des alertes au rappel 0,95 | 0,911 | **0,998** | 0,870 | 0,995 |
+
+**Décision de la règle : N est retenue.** N − H est significatif sur les découpages 2 et 3
+(+0,033 à +0,084) et sur le découpage 1 (+0,048) ; sur le jeu réel, +0,062 [−0,022 ; 0,147],
+dans le bruit. A0 (gabarits et réel meilleurs que H) ne bat pas N : A − N est significatif à la
+baisse sur la validation dure, nul sur le jeu réel. N+A0 − N n'est significatif que sur le
+découpage 1 (+0,006), pas sur une mesure décisive : N reste (G3). A et N+A sont arrêtés à la
+graine 0. Limites : 30 % des copies perturbées sont identiques à l'original (une seule phrase,
+perturbation sans effet) ; la fiche seule (0,495 au levier 1, autre grille) n'a pas été remesurée
+contre N. Le candidat devient N : MiniLM gelé sur le texte normalisé, fiche, régression.
+
+**Levier 3, encodeur réajusté** (`scoring/ml/encodeur.py`, règle écrite le 23/11 avant la mesure,
+plan §11). E : MiniLM réajusté de bout en bout sur le PC GPU, même entrée que N (texte normalisé
+et fiche), trois têtes, recette fixée d'avance (3 époques, AdamW 2e-5 / 1e-3, lots de 32, 256
+jetons). La validation dure est la même (l'apprenant remplace la régression, mêmes plis) ; N est
+refait dans la même commande. E doit battre N avec chacune de ses 3 graines, puis tenir ≤ 300 Mo
+et ≤ 30 ms par élément en ONNX int8 sur le portable. Dépendances : groupe uv `gpu` (torch CUDA
+13.0, transformers, onnx), en conflit avec `nli` (torch processeur) ; ni la CI ni l'image Docker
+ne l'installent, et les tests de l'encodeur (petit BERT créé sur place) sont alors sautés.
+
+Sur le PC GPU (pilote NVIDIA compatible CUDA 13, branche `l2/feat/m6-encodeur`) :
+
 ```bash
+uv sync --all-packages --group gpu
+uv run python -c "import torch; print(torch.cuda.is_available())"     # doit afficher True
+uv run python -m packages.collect.trainset                             # corpus des gabarits (2 s)
+uv run python -m packages.collect.trainset --verifier
+uv run python -m packages.collect.trainset.llm_corpus --assembler       # textes du LLM
+uv run python -m packages.analyse.scoring.ml.encodeur --sonde           # temps estimé
+uv run python -m packages.analyse.scoring.ml.encodeur --levier          # N contre E
+uv run python -m packages.analyse.scoring.ml.encodeur --exporter        # ONNX int8 de E0
+```
+
+Puis, sur le portable : `uv run python -m packages.analyse.scoring.ml.encodeur --latence <dossier
+onnx copié>` (taille, latence par élément, écart int8 − float32 sur le jeu réel).
+
+Mesure du 23/11 (RTX 4060, 27 minutes par graine) :
+
+| F1 macro de l'action | **N, retenue** | E0 | E1 |
+|---|---|---|---|
+| métiers | **0,851** | 0,945 | 0,946 |
+| gabarits tenus à l'écart | **0,716** | 0,772 | 0,731 |
+| gabarits → LLM / LLM → gabarits | **0,634 / 0,679** | 0,567 / 0,663 | 0,544 / 0,685 |
+| jeu réel | **0,445** | 0,299 | 0,341 |
+| précision des alertes au rappel 0,95 | **0,998** | 1,000 | 1,000 |
+
+**Décision de la règle : N reste.** E0 passe la règle (gabarits +0,056 [0,034 ; 0,080]), E1 non
+(+0,015 [−0,007 ; 0,038], rien de significatif ailleurs) : arrêt après 2 graines, ni export ni
+latence à mesurer. Lecture : le réajustement apprend la formulation du simulateur (+0,09 sur les
+métiers, alertes parfaites) et transfère moins bien : gabarits → LLM −0,067 et −0,090, jeu réel
+−0,146 [−0,225 ; −0,042] pour E0 et −0,104 [−0,196 ; 0,003] pour E1. Limite de la règle : elle
+ne mettait pas de veto sur une perte significative du jeu réel, si bien qu'E0 a « gagné » malgré
+elle ; la décision n'en dépend pas ici, mais la règle des prochains leviers doit l'ajouter.
+
+**Mesure finale de N** (règle écrite le 24/11 avant la lecture, plan §11). `--figer-candidat`
+apprend N sur tout l'entraînement avec les réglages et le seuil du découpage 1 lus dans le
+rapport du levier 2 (`comprendre_candidat.npz`), et refuse d'écrire le modèle s'il ne redonne
+pas 0,445 sur le jeu réel. `--mesurer-candidat` lit T-gen et T-démo une seule fois (journal
+`journal-geles.jsonl`) et recalcule la référence, déjà mesurée, sur les mêmes cartes pour
+l'écart apparié. Lecture du 24/11 (commit 59833f7) :
+
+| F1 macro de l'action | référence | **N** | écart apparié N − référence |
+|---|---|---|---|
+| T-gen (150 éléments) | 0,625 | **0,769** [0,675 ; 0,845] | **+0,145** [0,072 ; 0,223] |
+| T-démo (60 éléments) | 0,164 | **0,270** [0,189 ; 0,364] | **+0,106** [0,008 ; 0,223] |
+| alertes de T-gen détectées | 2/2 | 1/2 | alerte −0,152 [−0,503 ; 0,000] |
+| alerte de T-démo détectée | 0/1 | 0/1 | 0 |
+
+N est meilleure que la référence sur les deux jeux gelés, de façon significative : la
+validation et le test vont dans le même sens. **N devient le modèle de la compréhension pour
+M8.** Limites : N manque une des deux alertes de T-gen que la référence trouvait (deux
+alertes seulement, écart non significatif, mais l'alerte est la cible qui coûte le plus quand
+elle manque : à surveiller dans M8) ; l'alerte de T-démo reste manquée par les deux modèles ;
+sur T-démo, 0,270 reste loin du simulateur (décalage de domaine, déjà diagnostiqué). Les
+mails et les fichiers restent faibles (T-gen : mail 0,528, fichier 0,435).
+
+### M8, priorité des éléments (`scoring/ml/prioriser.py`)
+
+Personne n'a eu le temps d'annoter : Claude a jugé 300 paires d'entraînement (décision du
+21/11), avec des critères écrits avant dans le guide (section 4), sur les personas « train ».
+Tour 1 au hasard, tours 2 et 3 sur les paires où le modèle hésitait (120 équivalentes au
+total). Fiche de priorité d'un élément : fiche de M6, échéance du jour, probabilités de N (hors
+pli par métier à l'entraînement, N figé sur les jeux gelés). Règles écrites au plan, §11, avant
+chaque calcul.
+
+```bash
+uv run python -m packages.analyse.scoring.ml.prioriser --tirer 1             # tour 1, au hasard
+uv run python -m packages.analyse.scoring.ml.prioriser --tirer-incertain 2   # tours 2 et 3
+uv run python -m packages.analyse.scoring.ml.prioriser --valider             # mesure intermédiaire
+uv run python -m packages.analyse.scoring.ml.prioriser --figer               # boosting comparé, modèle
+uv run python -m packages.analyse.scoring.ml.prioriser --mesurer             # une fois par modèle
+```
+
+Validation hors pli par métier (300 paires, 180 départagées) : Bradley-Terry 0,928, boosting
+de souches 0,756 (écart −0,172, significatif) : **Bradley-Terry retenu** ; règles 0,722.
+
+Mesure unique du 24/11 (journal, commit 0fa1ed7), accord sur les paires départagées par Théo :
+
+| | Bradley-Terry | règles | écart |
+|---|---|---|---|
+| T-gen (139 paires) | **0,806** [0,734 ; 0,871] | 0,745 | +0,061 [−0,014 ; 0,130] |
+| T-démo (37 paires) | **0,703** [0,568 ; 0,838] | 0,459 | **+0,243** [0,108 ; 0,378] |
+
+**Acceptation de M8 non atteinte** : l'accord de T-gen passe le seuil de 0,80, mais l'écart aux
+règles (+0,061) n'atteint pas 0,15 et n'est pas significatif. Résultat publié tel quel (G6),
+aucun réglage après lecture. Lecture : sur la démo (vrais mails, autre domaine), le modèle bat
+nettement les règles ; sur T-gen, il perd sur les paires mail / tâche (0,756 contre 0,854 pour
+les règles, 41 paires), où les règles (retard, échéance) suivent mieux le jugement de Théo que
+les étiquettes de Claude ; il gagne sur mail / mail, mail / réunion et mail / fichier. Limites :
+le modèle apprend le jugement de Claude, mesuré sur celui de Théo ; l2 = 0,1 au bord de la
+grille. Le modèle reste utilisable : à accord égal ou meilleur que les règles partout sauf
+mail / tâche, et nettement meilleur sur le vrai domaine.
+
+**Score d'affaire** (`--mesurer-affaires`, règle écrite le 24/11 avant la lecture) : une affaire
+prend le plus haut score de ses éléments visibles (2,2 en moyenne), le même modèle figé, sans
+réapprentissage ; les règles notent l'affaire entière (`score_case`). Mesure unique sur les 50
+paires d'affaires de T-gen (45 départagées par Théo, journal, commit a91d73f) : **0,600**
+[0,467 ; 0,733] contre 0,533 pour les règles, écart +0,067 [−0,100 ; 0,222]. Égalité au sens de
+G2 ; l'écart n'étant pas significativement négatif, la règle fait du **score appris le défaut des
+affaires du brief**. Limite : les deux sont faibles sur les affaires (à peine au-dessus du
+hasard, 45 paires seulement) ; juger une affaire entière demande plus que son meilleur élément.
+
+**Dans le brief** (`scoring/learned.py`, défaut `ALLIANCE_SCORE=appris`) : le score de M8
+remplace le score appris des mails d'octobre, sur les quatre sources. Chaque élément présent au
+brief (mails et fichiers non lus ou des 3 derniers jours, réunions des 48 h, tâches en retard ou
+dues dans les 24 h) est mis en carte, lu par N figé, puis noté par Bradley-Terry ; l'affaire
+prend le score de son meilleur élément ; les raisons sont les plus fortes contributions
+positives de la fiche (« décision ou validation attendue », « tâche en retard »…). Échelle
+0-100 : rang centile du score brut parmi les 600 cartes d'entraînement
+(`prioriser --echelle` → `prioriser_echelle.json`), car le score brut sépare trop pour être lu ;
+50, l'élément médian, reste le seuil de la section « actions ». Repli inchangé : règles si
+`ALLIANCE_SCORE=regles` ou si un modèle manque, avec un warning. Démo du 07/10 : 2,2 s par brief
+après chargement (5 s au premier). Relations des correspondants : configurées pour la démo,
+sinon déduites (adresse, domaine interne) ; sur les 30 journées de démo, une persona déduite
+garde 94 % des 7 premières affaires (écart moyen 0,1 point).
+
+```bash
+uv run python -m packages.analyse.scoring.ml.comprendre --levier-texte  # H, N, A, N+A comparées
 uv run python -m packages.analyse.scoring.ml.comprendre --levier-fiche  # R, H, F comparées
 uv run python -m packages.analyse.scoring.ml.jeux_m5 --reste            # réponses manquantes
 uv run python -m packages.analyse.scoring.ml.comprendre --entrainer     # référence + rapport

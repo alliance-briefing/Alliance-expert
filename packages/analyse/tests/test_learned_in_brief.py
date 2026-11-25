@@ -1,6 +1,6 @@
-"""Score appris des affaires dans le brief (scoring/learned.py) : meilleur mail, signaux des
-tâches et réunions, raisons, repli, isolation. Faux modèle d'intentions : pas de
-téléchargement, probabilités choisies par le test."""
+"""Score appris des affaires dans le brief (scoring/learned.py, M8) : meilleur élément, quatre
+sources, raisons, fenêtres du brief, repli, isolation. Fausse compréhension N : pas de
+téléchargement, probabilités lues sur des mots du texte ; vrais poids de priorité."""
 
 from __future__ import annotations
 
@@ -19,9 +19,11 @@ from packages.analyse.scoring.learned import (
     SCORE_ENV,
     LearnedScorer,
     learned_case_scores,
+    on_brief,
     persona_for,
+    viewpoint_for,
 )
-from packages.analyse.scoring.ml.learned_score import LearnedScore
+from packages.analyse.scoring.ml import comprendre
 from packages.analyse.scoring.ml.persona import DEMO_CAMILLE
 from packages.analyse.scoring.score import score_case
 from packages.analyse.tests.factories import (
@@ -39,23 +41,12 @@ NOW = at(COLLECTED_AT)
 N1 = "bernard.mercier@reseau-expertis.test"  # N+1 de Camille (DEMO_CAMILLE)
 COLLEAGUE = "sophie.nguyen@reseau-expertis.test"
 CAMILLE = DEMO_CAMILLE.address
-
-
-class FakeIntents:
-    """Intentions lues sur des mots du texte : « merci de » → action, « ? » → réponse,
-    « panne » → incident (0,4 : compte dans le score, mais pas assez pour une raison)."""
-
-    embedder_name = "faux"
-
-    def predict(self, embeddings: np.ndarray, texts: Sequence[str]) -> dict[str, np.ndarray]:
-        return {
-            "action": np.array([0.9 if "merci de" in t.lower() else 0.1 for t in texts]),
-            "reponse": np.array([0.9 if "?" in t else 0.05 for t in texts]),
-            "incident": np.array([0.4 if "panne" in t.lower() else 0.05 for t in texts]),
-        }
+WORDS = ("merci de", "?", "panne")  # colonnes du faux vecteur
 
 
 class SpyEmbedder:
+    """Un vecteur de 0 et de 1 : le texte contient-il chacun des WORDS ?"""
+
     name = "espion"
 
     def __init__(self, fail: bool = False) -> None:
@@ -66,11 +57,40 @@ class SpyEmbedder:
         if self.fail:
             raise RuntimeError("modèle introuvable")
         self.texts += texts
-        return np.zeros((len(texts), 4))
+        return np.array([[float(w in t.lower()) for w in WORDS] for t in texts])
+
+
+class FakeModel:
+    """Probabilités d'une cible lues sur le faux vecteur (les 3 premières colonnes)."""
+
+    def __init__(self, target: str) -> None:
+        self.classes = comprendre.TARGETS[target]
+        self.target = target
+
+    def proba(self, X: np.ndarray) -> np.ndarray:
+        out = np.full((len(X), len(self.classes)), 0.0)
+        for n, (ask, question, panne) in enumerate(X[:, :3]):
+            if self.target == "action":
+                pick = "decider" if ask else "repondre" if question else "informer"
+                out[n, self.classes.index(pick)] = 0.9
+                out[n, self.classes.index("rien")] = 0.1
+            elif self.target == "urgence":
+                out[n, self.classes.index("normal")] = 1.0
+            else:  # alerte : 0,4 pour une panne, assez pour compter, pas pour une raison
+                p = 0.4 if panne else 0.01
+                out[n] = (1 - p, p)
+        return out
+
+
+class FakeUnderstanding:
+    fiche, texte, embedder_name = "hybride", "normalise", "faux"
+
+    def __init__(self) -> None:
+        self.models = {t: FakeModel(t) for t in comprendre.TARGETS}
 
 
 def scorer(embedder: SpyEmbedder | None = None) -> LearnedScorer:
-    return LearnedScorer(embedder or SpyEmbedder(), FakeIntents(), LearnedScore.load())
+    return LearnedScorer(embedder or SpyEmbedder(), FakeUnderstanding())  # type: ignore[arg-type]
 
 
 def mail(native_id: str, title: str, sender: str = COLLEAGUE, **fields):
@@ -91,7 +111,7 @@ def scores(items, **kwargs):
 # --- score d'une affaire -----------------------------------------------------------------------
 
 
-def test_case_takes_the_score_of_its_best_mail() -> None:
+def test_case_takes_the_score_of_its_best_element() -> None:
     ask = mail("m1", "Dossier 2026-1111 : merci de valider le rapport", sender=N1)
     info = mail(
         "m2", "Dossier 2026-1111 : pour information", created_at="2026-10-06T16:00:00+02:00"
@@ -100,48 +120,48 @@ def test_case_takes_the_score_of_its_best_mail() -> None:
 
     (case,) = scores([ask, info]).values()
 
-    assert case.best_mail_id == ask.item_id
+    assert case.best_item_id == ask.item_id
     assert case.score == max(s.score for s in alone.values()) > alone[info.item_id].score
-    assert "demande une action" in case.reasons
+    assert "décision ou validation attendue" in case.reasons
 
 
-def test_reasons_are_readable_and_skip_improbable_intents() -> None:
+def test_reasons_are_readable_and_skip_improbable_predictions() -> None:
     (case,) = scores([mail("m1", "Panne du serveur, pouvez-vous regarder ?", sender=N1)]).values()
 
     assert case.reasons and set(case.reasons) <= set(REASONS.values())
-    assert "attend une réponse" in case.reasons
-    assert "signale un incident ou un blocage" not in case.reasons  # probabilité 0,4
+    assert "réponse attendue" in case.reasons
+    assert "alerte (sécurité, incident, injection)" not in case.reasons  # probabilité 0,4
 
 
-def test_overdue_task_of_the_case_adds_the_rule_points() -> None:
-    ask = mail("m1", "Dossier 2026-2222 : merci de relancer le garage")
-    task = make_task("t1", "2026-10-05T12:00:00+02:00", title="Relancer dossier 2026-2222")
-    (alone,) = scores([ask]).values()
+def test_tasks_and_meetings_are_scored_too() -> None:
+    late = make_task("t1", "2026-10-05T12:00:00+02:00", title="Valider le devis 2026-2222")
+    meeting = make_item(
+        "calendar",
+        "c1",
+        title="Point budget",
+        start_at="2026-10-07T14:00:00+02:00",
+        end_at="2026-10-07T15:00:00+02:00",
+    )
 
-    (case,) = scores([ask, task]).values()
+    (task_case,) = scores([late]).values()
+    (meeting_case,) = scores([meeting]).values()
 
-    assert case.score == min(100, alone.score + 25)
-    assert case.reasons[0] == "tâche en retard"
+    assert "tâche en retard" in task_case.reasons and task_case.best_item_id == late.item_id
+    assert meeting_case.best_item_id == meeting.item_id
 
 
 @pytest.mark.parametrize(
     "item",
     [
         make_task("t1", "2026-10-09T12:00:00+02:00"),
+        make_task("t2", "2026-10-05T12:00:00+02:00", completed=True),
         mail("m1", "Ancien échange", is_read=True, created_at="2026-09-20T10:00:00+02:00"),
-        mail("m2", "Lettre du mois", snippet="Pour vous désabonner, cliquez ici"),
-        mail(
-            "m3",
-            "Ma réponse",
-            participants=[
-                {"name": "Camille Laurent", "email": CAMILLE, "role": "from"},
-                {"name": "Sophie", "email": COLLEAGUE, "role": "to"},
-            ],
-        ),
+        mail("m2", "Après le brief", created_at="2026-10-07T10:00:00+02:00"),
     ],
-    ids=["tâche seule", "mail lu ancien", "envoi en masse", "mail envoyé"],
+    ids=["tâche dans 2 jours", "tâche terminée", "mail lu ancien", "mail futur"],
 )
-def test_case_without_a_mail_to_score_keeps_the_rule_score(item) -> None:
+def test_case_without_an_element_on_the_brief_keeps_the_rule_score(item) -> None:
+    assert not on_brief(item, NOW)
     assert scores([item]) == {}
 
 
@@ -159,7 +179,7 @@ def test_items_of_another_user_are_never_read() -> None:
     other = mail("x1", "Secret de l'autre utilisateur", owner_user_id=OTHER_USER)
     mine = mail("m1", "Merci de valider")
 
-    scorer(spy).score_cases(group_into_cases([mine]), [mine, other], USER, NOW)
+    scorer(spy).score_cases(group_into_cases([mine, other]), [mine, other], USER, NOW)
 
     assert spy.texts and not any("Secret" in text for text in spy.texts)
 
@@ -180,6 +200,14 @@ def test_persona_is_configured_for_demo_and_deduced_otherwise() -> None:
         frozenset(),
     )
     assert persona_for("u_inconnu", []).address == ""
+
+
+def test_the_cards_name_the_relation_of_each_correspondent() -> None:
+    vp = viewpoint_for(DEMO_CAMILLE, [mail("m1", "A", sender=N1), mail("m2", "B")], NOW)
+
+    assert vp.people[N1] == "votre N+1" and vp.people[COLLEAGUE] == "collègue"
+    assert CAMILLE not in vp.people and vp.moment == NOW
+    assert comprendre.relation(f"Bernard Mercier, {vp.people[N1]}") == "hierarchie"
 
 
 # --- repli -------------------------------------------------------------------------------------
@@ -207,7 +235,7 @@ def test_rules_only_when_asked(monkeypatch: pytest.MonkeyPatch) -> None:
 # --- dans le brief -----------------------------------------------------------------------------
 
 
-def test_brief_uses_the_learned_score_for_mail_cases() -> None:
+def test_brief_uses_the_learned_score() -> None:
     ask = mail("m1", "Merci de valider le planning ?", sender=N1)
     (expected,) = scores([ask]).values()
 

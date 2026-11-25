@@ -131,6 +131,45 @@ fraude, incident bloquant (panne, production arrêtée, accident, plainte grave 
 | À : son adjoint ; Copie : lui. « Tu peux déposer la commande sur le portail ? Aucune urgence. » | Rien | S | non | demande faite à un autre, sans mention de suivi (23/11) |
 | À : son adjoint ; Copie : lui. « Tu peux déposer la commande ? Je mets Claire en copie pour qu'elle suive. » | S'informer | N | non | en copie pour suivre, c'est écrit (23/11) |
 
+## 4. Paires : « Ce matin, lequel traitez-vous en premier ? »
+
+Ajout du 24/11/2026, écrit **avant** d'annoter les paires d'entraînement de M8 (Claude,
+décision du 21/11 ; Théo n'a pas le temps de les annoter). Les paires de T-gen et de T-démo
+ont été jugées par Théo avant ces critères : elles restent la mesure humaine.
+
+On compare deux éléments du **même brief**, toutes sources confondues, du point de vue du
+manager à 8 h 30. La question est l'ordre de traitement de la matinée, pas l'intérêt du
+sujet. On juge d'abord chaque carte avec les sections 1 à 3, puis on applique dans l'ordre
+le premier critère qui départage :
+
+1. **Alerte** (section 3) : une alerte passe avant tout le reste.
+2. **Quelque chose à faire ou l'autre rien** : un élément qui attend un acte (Décider, Faire,
+   Répondre, Préparer, Relire) passe avant un élément S'informer ou Rien. S'informer passe
+   avant Rien.
+3. **Le temps** : entre deux éléments qui attendent un acte, celui dont l'heure est la plus
+   proche passe d'abord : échéance dépassée ou du jour, réunion dans la journée à préparer
+   ou à laquelle répondre, demande « avant midi ». Une échéance dépassée passe avant une
+   échéance du jour. Une échéance ou une réunion **demain ou plus tard** ne départage pas
+   (précision notée pendant le tour 1, conforme aux réponses déjà données).
+4. **Le ton** (section 2) : urgent passe avant normal, normal avant sans urgence.
+5. **Qui attend** : une demande du N+1, de la direction ou d'un client passe avant celle
+   d'un collègue, d'un partenaire ou d'un automate.
+6. **L'engagement de l'acte** : dans l'ordre de la section 1 (Décider > Faire > Répondre >
+   Préparer > Relire), parce qu'un acte engageant bloque souvent quelqu'un d'autre.
+
+**Équivalent** (`=`) quand aucun critère ne départage, et toujours entre deux éléments Rien
+ou entre deux éléments S'informer sans heure ni ton. On ne force pas un choix au hasard :
+l'équivalence est une réponse, pas une abstention.
+
+| A | B | Réponse | Critère |
+|---|---|---|---|
+| « Connexion inhabituelle à votre compte » | Devis à valider avant ce soir | A | 1, alerte |
+| Compte rendu de la réunion d'hier | Tâche « Envoyer le planning », sans échéance | B | 2, un acte contre rien |
+| Invitation à une réunion lundi prochain, sans réponse | Réunion qu'il anime à 11 h | B | 3, l'heure la plus proche |
+| « Tu peux relire quand tu as un moment ? Rien d'urgent. » | « Peux-tu me renvoyer le contrat ? » | B | 4, le ton |
+| Demande d'un collègue, même jour, même ton | Demande de son N+1 | B | 5, qui attend |
+| Lettre d'information | Promotion d'un fournisseur | = | deux Rien |
+
 ## Déroulement du calibrage
 1. Chacun annote **seul**, sans en parler avant la fin (environ 15 minutes pour 40 éléments).
 2. On calcule l'accord : kappa de Cohen sur l'action principale (seuil ≥ 0,6), puis sur l'urgence

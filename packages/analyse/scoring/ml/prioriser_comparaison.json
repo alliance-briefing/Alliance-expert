@@ -1,0 +1,175 @@
+{
+ "paires": 300,
+ "paires_decidees": 180,
+ "equivalentes": 120,
+ "plis_metiers": [
+  [
+   "ecole",
+   "logistique",
+   "projet_si"
+  ],
+  [
+   "operations",
+   "qualite",
+   "sante"
+  ],
+  [
+   "chantier",
+   "collectivite",
+   "drh"
+  ],
+  [
+   "agence",
+   "commercial",
+   "daf"
+  ]
+ ],
+ "essais": [
+  {
+   "l2": 10.0,
+   "accord": 0.8278,
+   "ecart_au_meilleur_ic95": [
+    0.05,
+    0.1611
+   ]
+  },
+  {
+   "l2": 1.0,
+   "accord": 0.8778,
+   "ecart_au_meilleur_ic95": [
+    0.0111,
+    0.0944
+   ]
+  },
+  {
+   "l2": 0.1,
+   "accord": 0.9278
+  }
+ ],
+ "l2_retenu": 0.1,
+ "accord_appris": 0.9278,
+ "accord_appris_ic95": [
+  0.8889,
+  0.9611
+ ],
+ "accord_regles": 0.7222,
+ "egalites_des_regles": 56,
+ "ecart_appris_regles": 0.2056,
+ "ecart_appris_regles_ic95": [
+  0.15,
+  0.2639
+ ],
+ "par_sources": {
+  "calendar / calendar": {
+   "paires": 4,
+   "appris": 0.5,
+   "regles": 0.5
+  },
+  "calendar / file": {
+   "paires": 2,
+   "appris": 1.0,
+   "regles": 0.75
+  },
+  "calendar / mail": {
+   "paires": 19,
+   "appris": 0.895,
+   "regles": 0.947
+  },
+  "calendar / task": {
+   "paires": 4,
+   "appris": 0.75,
+   "regles": 0.75
+  },
+  "file / file": {
+   "paires": 2,
+   "appris": 1.0,
+   "regles": 0.5
+  },
+  "file / mail": {
+   "paires": 21,
+   "appris": 0.952,
+   "regles": 0.643
+  },
+  "file / task": {
+   "paires": 6,
+   "appris": 1.0,
+   "regles": 1.0
+  },
+  "mail / mail": {
+   "paires": 69,
+   "appris": 0.928,
+   "regles": 0.63
+  },
+  "mail / task": {
+   "paires": 24,
+   "appris": 1.0,
+   "regles": 0.896
+  },
+  "task / task": {
+   "paires": 29,
+   "appris": 0.931,
+   "regles": 0.69
+  }
+ },
+ "poids": {
+  "N:decider": 4.558,
+  "N:preparer": 3.821,
+  "N:alerte": 3.566,
+  "N:urgent": 3.453,
+  "tache:en_retard": 3.364,
+  "N:repondre": 3.23,
+  "N:faire": 2.911,
+  "tache:echeance_aujourdhui": -2.036,
+  "fichier:modifie_par_vous": -1.974,
+  "N:relire": 1.916,
+  "mail:expediteur=inconnu": 1.614,
+  "tache:verbe=decider": 1.591,
+  "tache:verbe=faire": 1.55,
+  "source=mail": -1.399,
+  "mail:de_vous": -1.379,
+  "reunion:annulee": -1.344,
+  "source=task": 1.328,
+  "tache:echeance": 1.328,
+  "reunion:aujourd_hui": 1.276,
+  "mail:desabonnement": -1.152,
+  "mail:en_copie": -1.092,
+  "mail:destinataire_direct": 1.072,
+  "mail:expediteur=hierarchie": -1.04,
+  "tache:verbe=relire": -0.972,
+  "tache:verbe=preparer": -0.965,
+  "N:informer": 0.953,
+  "N:sans_urgence": 0.903,
+  "mail:expediteur=fournisseur": 0.9,
+  "reunion:demain": -0.818,
+  "mail:expediteur=automate": -0.724,
+  "reunion:pas_repondu": 0.56,
+  "mail:importance_haute": -0.469,
+  "source=calendar": 0.458,
+  "mail:expediteur=interne": -0.422,
+  "source=file": -0.387,
+  "mail:non_lu": -0.31,
+  "mail:expediteur=direction": -0.279,
+  "reunion:acceptee": -0.226,
+  "mail:reponse": -0.214,
+  "reunion:organise": 0.125,
+  "tache:verbe=repondre": 0.123,
+  "fichier:cite": 0.11,
+  "mail:expediteur=client": -0.068,
+  "mail:transfert": 0.0,
+  "reunion:refusee": 0.0,
+  "reunion:hier": 0.0,
+  "tache:terminee": 0.0,
+  "tache:planner": 0.0
+ },
+ "boosting": {
+  "accord_bradley_terry": 0.9278,
+  "accord_boosting": 0.7556,
+  "ecart_boosting_bt": -0.1722,
+  "ecart_boosting_bt_ic95": [
+   -0.2333,
+   -0.1111
+  ],
+  "retenu": "bradley-terry"
+ },
+ "modele": "prioriser_modele.json"
+}

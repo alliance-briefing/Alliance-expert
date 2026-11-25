@@ -1,22 +1,34 @@
-"""Score appris des affaires dans le brief (L2.2, pipeline A ; ADR-0003).
+"""Score appris des affaires dans le brief (L2.2 ; plan du modèle, M8).
 
-Chaque mail reçu de l'affaire reçoit le score appris (`scoring/ml/` : intentions MiniLM,
-fiche lisible, poids Bradley-Terry). L'affaire prend le score de son **meilleur mail** :
-un fil plein de relances sans intérêt ne monte pas, un mail urgent suffit. Les signaux
-que le modèle ne voit pas (tâche en retard ou à échéance, réunion dans les 48 h) sont
-ajoutés par-dessus, avec les points du score par règles. Une affaire sans mail à noter
-garde le score par règles.
+Chaque élément de l'affaire présent au brief (mail, réunion, tâche, fichier) reçoit le score
+de priorité de M8 : sa carte (celle que voit l'annotateur), la compréhension N de M6
+(MiniLM gelé sur le texte normalisé, fiche, régression), puis les poids Bradley-Terry appris
+sur les paires (`scoring/ml/prioriser.py`, `prioriser_modele.json`). L'affaire prend le score
+de son **meilleur élément** (règle du 24/11, mesurée sur les paires d'affaires de T-gen) :
+un fil plein de relances sans intérêt ne monte pas, un élément urgent suffit.
 
-Mails notés : reçus (pas envoyés par le manager), hors envoi en masse, non lus ou reçus
-dans les 3 jours avant `now` (la fenêtre des mails de l'entraînement).
+Score sur 0-100 : le rang centile du score brut (somme pondérée de la fiche) parmi les cartes
+des paires d'entraînement (`prioriser_echelle.json`). 70 veut dire « passe avant 70 % des
+éléments d'entraînement » ; 50, l'élément médian, est le seuil de la section « actions ».
+
+Éléments notés, comme au brief des paires d'entraînement (`jeux_m5.on_brief`) : mails et
+fichiers non lus ou des 3 derniers jours, réunions des 48 h à venir, tâches en retard ou dues
+dans les 24 h, jamais un élément postérieur à `now`. Une affaire sans élément à noter garde le
+score par règles.
+
+Ce que le contrat A ne donne pas : la relation de chaque correspondant au manager. Elle vient
+de la persona (`persona_for`) : configurée pour les jeux de démo, sinon déduite (adresse du
+manager, domaine interne), sans hiérarchie ni clients.
 
 Choix du score (A/B, réunion du 14/10) : variable d'environnement `ALLIANCE_SCORE`,
-`appris` (défaut) ou `regles`. Si le modèle manque ou échoue, le brief garde le score par
-règles et l'annonce dans un warning : il ne casse jamais.
+`appris` (défaut, règle du 24/11 : pas d'écart significativement négatif aux règles) ou
+`regles`. Si un modèle manque ou échoue, le brief garde le score par règles et l'annonce dans
+un warning : il ne casse jamais.
 """
 
 from __future__ import annotations
 
+import json
 import os
 from collections import Counter
 from collections.abc import Sequence
@@ -27,14 +39,11 @@ from typing import TYPE_CHECKING, Literal
 
 from contracts.models import Item
 from packages.analyse.aggregate.cases import Case
-from packages.analyse.scoring.score import task_and_meeting_signals
 
 if TYPE_CHECKING:
     from packages.analyse.rag.embeddings import Embedder
-    from packages.analyse.scoring.ml.features import MailFeatures
-    from packages.analyse.scoring.ml.graph_convert import GraphDataset
-    from packages.analyse.scoring.ml.intents import IntentModel
-    from packages.analyse.scoring.ml.learned_score import LearnedScore
+    from packages.analyse.scoring.ml.annoter import Viewpoint
+    from packages.analyse.scoring.ml.comprendre import Reference
     from packages.analyse.scoring.ml.persona import Persona
 
 SCORE_ENV = "ALLIANCE_SCORE"
@@ -45,132 +54,170 @@ UNAVAILABLE = "score appris indisponible ({}) : score par règles"
 # generator.llm d'un brief noté par le score appris ; l'interface affiche « par le modèle … ».
 GENERATOR = "MiniLM (score de priorité appris)"
 
-# Raisons du modèle (noms des caractéristiques, `features.VECTOR_NAMES`) en clair.
+# Relation d'un correspondant, telle que la carte l'écrit et que la fiche la relit
+# (`comprendre.relation`), d'après le type d'expéditeur de la persona.
+RELATION_LABEL = {
+    "hiérarchie": "votre N+1",
+    "direction": "direction",
+    "collègue": "collègue",
+    "client": "client",
+    "fournisseur": "partenaire",
+    "automate": "envoi automatique",
+}
+
+# Raisons lisibles : les caractéristiques de la fiche de priorité qui poussent le score vers
+# le haut. Une probabilité de N n'est une raison que si elle dépasse 0,5.
 REASONS = {
-    "expéditeur : hiérarchie": "message de la hiérarchie",
-    "expéditeur : direction": "message d'un membre de la direction",
-    "expéditeur : client": "message d'un client",
-    "expéditeur : fournisseur": "message d'un fournisseur",
-    "expéditeur : automate": "message automatique",
-    "demande une action": "demande une action",
-    "attend une réponse": "attend une réponse",
-    "incident": "signale un incident ou un blocage",
-    "alerte": "alerte de sécurité ou bancaire",
-    "échéance : dépassée": "échéance dépassée",
-    "échéance : aujourd'hui ou demain": "échéance aujourd'hui ou demain",
-    "échéance : ≤ 3 jours": "échéance dans 3 jours ou moins",
-    "échéance : plus tard": "échéance à venir",
-    "balle dans son camp": "pas encore répondu",
-    "fil long (≥ 3 messages)": "échange de 3 messages ou plus",
-    "hiérarchie dans le fil": "la hiérarchie participe à l'échange",
-    "reçu depuis moins de 24 h": "reçu depuis moins de 24 h",
-    "réunion dans les 48 h": "réunion liée dans les 48 h",
-    "demande d'action du N+1": "demande d'action de la hiérarchie",
+    "N:alerte": "alerte (sécurité, incident, injection)",
+    "N:decider": "décision ou validation attendue",
+    "N:faire": "action demandée",
+    "N:repondre": "réponse attendue",
+    "N:preparer": "à préparer",
+    "N:relire": "relecture demandée",
+    "N:urgent": "ton urgent",
+    "tache:en_retard": "tâche en retard",
+    "tache:echeance_aujourdhui": "échéance aujourd'hui",
+    "tache:verbe=decider": "tâche de décision",
+    "reunion:aujourd_hui": "réunion aujourd'hui",
+    "reunion:demain": "réunion demain",
+    "reunion:pas_repondu": "invitation sans réponse",
+    "reunion:organise": "réunion que vous organisez",
+    "mail:expediteur=hierarchie": "message de la hiérarchie",
+    "mail:expediteur=direction": "message de la direction",
+    "mail:expediteur=client": "message d'un client",
+    "mail:importance_haute": "importance haute",
+    "mail:non_lu": "non lu",
+    "fichier:cite": "fichier cité dans un échange",
 }
 
 
 @dataclass(frozen=True)
 class CaseScore:
-    """Score d'une affaire, ses raisons, et le mail qui le porte (affiché dans l'entrée)."""
+    """Score d'une affaire, ses raisons, et l'élément qui le porte (affiché dans l'entrée)."""
 
     score: int
     reasons: list[str]
-    best_mail_id: str
-    model: str  # modèle d'embeddings des intentions (generator.llm_version du brief)
+    best_item_id: str
+    model: str  # modèle d'embeddings (generator.llm_version du brief)
 
 
 class LearnedScorer:
-    """Note les affaires avec le score appris. Modèles chargés une fois, au premier appel."""
+    """Note les affaires avec le score de priorité de M8. Modèles chargés une fois."""
 
     def __init__(
         self,
         embedder: Embedder | None = None,
-        intents: IntentModel | None = None,
-        weights: LearnedScore | None = None,
+        understanding: Reference | None = None,
+        priority: dict | None = None,
+        scale: Sequence[float] | None = None,
     ) -> None:
-        from packages.analyse.scoring.ml.intents import IntentModel
-        from packages.analyse.scoring.ml.learned_score import LearnedScore
+        from packages.analyse.scoring.ml import comprendre, prioriser
 
-        self.intents = intents or IntentModel.load()
-        self.weights = weights or LearnedScore.load()
+        self.understanding = understanding or comprendre.Reference.load(comprendre.CANDIDATE_PATH)
+        self.priority = priority or json.loads(prioriser.MODEL_PATH.read_text(encoding="utf-8"))
+        self.scale = (
+            scale or json.loads(prioriser.SCALE_PATH.read_text(encoding="utf-8"))["centiles"]
+        )
         if embedder is None:
             from packages.analyse.rag.embeddings import FastEmbedder
 
-            embedder = FastEmbedder(self.intents.embedder_name, os.environ.get(CACHE_ENV))
+            embedder = FastEmbedder(self.understanding.embedder_name, os.environ.get(CACHE_ENV))
         self.embedder = embedder
 
     def score_cases(
         self, cases: Sequence[Case], items: Sequence[Item], user: str, now: datetime
     ) -> dict[str, CaseScore]:
-        """{case_id: CaseScore} des affaires qui ont au moins un mail à noter.
+        """{case_id: CaseScore} des affaires qui ont au moins un élément à noter.
 
-        `items` : tous les items de l'utilisateur (contexte des fils) ; aucun autre.
+        `items` : tous les items de l'utilisateur (contexte des cartes) ; aucun autre.
         """
-        from packages.analyse.scoring.ml.features import mail_features
-        from packages.analyse.scoring.ml.graph_convert import dataset_from_items
-        from packages.analyse.scoring.ml.intents import LEARNED, intent_text
+        import numpy as np
+
+        from packages.analyse.scoring.ml import comprendre, prioriser
+        from packages.analyse.scoring.ml.annoter import card
 
         mine = [item for item in items if item.owner_user_id == user]
-        persona = persona_for(user, mine)
-        dataset = dataset_from_items(mine, persona.address)
+        known = [item for item in mine if item.created_at <= now]
+        vp = viewpoint_for(persona_for(user, mine), mine, now)
         to_score = {
-            case.case_id: [m for m in case.items if _scorable(m, dataset, now)] for case in cases
+            case.case_id: [i for i in case.items if i.owner_user_id == user and on_brief(i, now)]
+            for case in cases
         }
-        mails = sorted(
-            {m.item_id: m for ms in to_score.values() for m in ms}.values(),
-            key=lambda m: m.item_id,
+        elements = sorted(
+            {i.item_id: i for its in to_score.values() for i in its}.values(),
+            key=lambda i: i.item_id,
         )
-        if not mails:
+        if not elements:
             return {}
-        texts = [intent_text(m.title, m.content_text or m.snippet) for m in mails]
-        predicted = self.intents.predict(self.embedder.embed(texts), texts)
-        probs = {
-            f: {m.item_id: float(p) for m, p in zip(mails, predicted[f], strict=True)}
-            for f in LEARNED
-        }
-        features = {f.item_id: f for f in mail_features(mails, dataset, now, persona, probs)}
-        scored = {item_id: self.weights.score(f) for item_id, f in features.items()}
+        cards = [card(i, vp, known) for i in elements]
+        u = self.understanding
+        X = comprendre.design(cards, self.embedder, u.fiche, None, u.texte)
+        signals = np.array([prioriser.card_signals(c) for c in cards])
+        F = np.hstack([signals, prioriser.n_columns(u.models, X)])
+        raw = prioriser.model_score(self.priority, F)
+        on_100 = prioriser.to_100(raw, self.scale)
+        row = {item.item_id: n for n, item in enumerate(elements)}
 
         out = {}
         for case in cases:
             if not to_score[case.case_id]:
                 continue
-            # Meilleur mail ; à score égal, le plus petit item_id (déterministe).
-            best = min(to_score[case.case_id], key=lambda m: (-scored[m.item_id][0], m.item_id))
-            score, names = scored[best.item_id]
-            signals = sorted(task_and_meeting_signals(case, now), key=lambda s: -s.weight)
-            reasons = [s.reason for s in signals] + [
-                REASONS[n] for n in names if n in REASONS and _shown(n, features[best.item_id])
-            ]
-            total = max(0, min(100, score + sum(s.weight for s in signals)))
+            # Meilleur élément ; à score égal, le plus petit item_id (déterministe).
+            best = min(to_score[case.case_id], key=lambda i: (-raw[row[i.item_id]], i.item_id))
+            n = row[best.item_id]
             out[case.case_id] = CaseScore(
-                total, reasons[:MAX_REASONS], best.item_id, self.embedder.name
+                round(float(on_100[n])),
+                self.reasons(F[n]),
+                best.item_id,
+                self.embedder.name,
             )
         return out
 
+    def reasons(self, fiche: Sequence[float]) -> list[str]:
+        """Les plus fortes contributions positives de la fiche, en clair (Bradley-Terry)."""
+        from packages.analyse.scoring.ml.prioriser import PRIORITY_NAMES
 
-def _shown(name: str, f: MailFeatures) -> bool:
-    """Une intention apprise n'est une raison que si le modèle la juge probable : une
-    probabilité de 0,4 compte dans le score, mais « signale un incident » serait faux."""
-    probability = {
-        "demande une action": f.action,
-        "attend une réponse": f.reponse,
-        "incident": f.incident,
-        "demande d'action du N+1": f.action,
-    }.get(name, 1.0)
-    return probability >= 0.5
+        if self.priority.get("modele") != "bradley-terry":
+            return []
+        contributions = sorted(
+            (
+                (w * v, name)
+                for name, w, v in zip(PRIORITY_NAMES, self.priority["poids"], fiche, strict=True)
+                if name in REASONS and w * v > 0 and (not name.startswith("N:") or v >= 0.5)
+            ),
+            key=lambda x: (-x[0], x[1]),
+        )
+        return [REASONS[name] for _, name in contributions][:MAX_REASONS]
 
 
-def _scorable(item: Item, dataset: GraphDataset, now: datetime) -> bool:
-    from packages.analyse.scoring.ml.noise import noise_reason
+def on_brief(item: Item, now: datetime) -> bool:
+    """L'élément figure-t-il au brief de `now` ? Les fenêtres des paires d'entraînement :
+    mails et fichiers non lus ou récents, réunions des 48 h, tâches en retard ou dues
+    dans les 24 h et non terminées ; jamais un élément pas encore visible."""
+    if item.created_at > now:
+        return False
+    if item.source == "calendar":
+        return item.start_at is not None and now <= item.start_at < now + timedelta(days=2)
+    if item.source == "task":
+        return (
+            item.due_at is not None and item.due_at < now + timedelta(days=1) and not item.completed
+        )
+    stamp = item.updated_at if item.source == "file" else item.created_at
+    return item.is_read is False or now - stamp <= RECENT
 
-    return (
-        item.source == "mail"
-        and not dataset.extras[item.item_id].is_sent
-        and item.created_at <= now
-        and (item.is_read is False or now - item.created_at <= RECENT)
-        and noise_reason(item) is None
-    )
+
+def viewpoint_for(persona: Persona, items: Sequence[Item], now: datetime) -> Viewpoint:
+    """Le point de vue du manager pour les cartes : son adresse, et la relation de chaque
+    correspondant selon la persona (ce qu'un annuaire donnerait)."""
+    from packages.analyse.scoring.ml.annoter import Viewpoint
+
+    people = {
+        p.email: RELATION_LABEL[persona.sender_kind(p.email)]
+        for item in items
+        for p in item.participants
+        if p.email.lower() != persona.address
+    }
+    return Viewpoint(persona.address, now, people, "")
 
 
 def persona_for(user: str, items: Sequence[Item]) -> Persona:

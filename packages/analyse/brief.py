@@ -88,7 +88,7 @@ def generate_brief(
     case_scores: dict[str, tuple[int, list[str]]] = (
         {case.case_id: score_case(case, _now) for case in cases} if _now else {}
     )
-    # Score appris (pipeline A) pour les affaires qui ont un mail à noter ; les autres
+    # Score appris (M8) pour les affaires qui ont un élément à noter ; les autres
     # gardent le score par règles. Repli annoncé si le modèle manque.
     learned: dict[str, CaseScore] = {}
     if _now:
@@ -321,7 +321,7 @@ def _when(value: datetime) -> str:
 
 def _best_item(case: Case, learned: dict[str, CaseScore]) -> Item:
     if case.case_id in learned:
-        best = learned[case.case_id].best_mail_id
+        best = learned[case.case_id].best_item_id
         return next(item for item in case.items if item.item_id == best)
     return case.items[0]
 
