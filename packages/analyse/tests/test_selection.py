@@ -97,9 +97,7 @@ def test_la_selection_tient_les_alertes_en_tete_et_respecte_le_seuil():
     )
     assert any("Devis à valider" in t for t in actions)
     assert not any("Lettre du mois" in t or "planning" in t for t in actions)  # sous le seuil
-    assert [e.recommended_action for e in by_kind["overdue"]] == [
-        "Décider ou valider : Signer le bon de commande"
-    ]
+    assert [e.recommended_action for e in by_kind["overdue"]] == ["Signer le bon de commande"]
     assert [e.recommended_action for e in by_kind["files"]] == ["Relire : Rapport.docx"]
     assert [s.kind for s in brief.sections] == ["actions", "meetings", "overdue", "files"]
 

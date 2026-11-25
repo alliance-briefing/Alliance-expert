@@ -256,6 +256,8 @@ def _recommended(score: CaseScore, item: Item) -> str | None:
     titre de l'élément (jamais son contenu : rien à injecter)."""
     if score.alert:
         return f"{ALERT_ACTION} : {_title(item)}"
+    if item.source == "task" and score.action in ACTION_VERBS:
+        return _title(item)  # l'intitulé d'une tâche est déjà une action (« Appeler… »)
     verb = ACTION_VERBS.get(score.action)
     return f"{verb} : {_title(item)}" if verb else None
 
