@@ -7,3 +7,12 @@ node_modules
 .env
 infra/.env
 *.html
+.coverage
+.claude
+# Jeu de test caché (L3.5) : jamais dans l'image, même construite depuis une copie locale
+eval/hidden
+eval/annotations/fiches
+# Secrets et comptes locaux (lot 1, L3.4)
+*.json.enc
+token_key
+users.toml

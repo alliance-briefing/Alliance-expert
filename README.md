@@ -24,15 +24,14 @@ pre-commit install                # ruff + gitleaks à chaque commit
 
 uv run pytest                     # tests
 
-cp infra/.env.example infra/.env  # valeurs factices, à adapter
-docker compose -f infra/docker-compose.yml up --build
+docker compose -f infra/docker-compose.yml up --build   # sans .env : démo hors ligne
 # http://localhost:8000/health  → {"status":"ok"}
 # http://localhost:8000/docs    → documentation OpenAPI
 ```
 
 ## Voir un brief (démo)
 1. `docker compose -f infra/docker-compose.yml up --build`, puis ouvrir http://localhost:8000.
-2. Se connecter avec `u_demo_001` (connexion de démo, active si `AUTH_MODE=demo` dans `infra/.env`).
+2. Se connecter avec `u_demo_001` (connexion de démo, active par défaut ; `AUTH_MODE` dans `infra/.env` pour la changer).
 3. Choisir un jour entre le 05/10/2026 et le 16/11/2026, puis « Générer le brief ».
 
 Par l'API (en-tête `X-Demo-User`) :

@@ -41,9 +41,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # 5. build de l'API + docker compose + test de santé
-      - run: cp infra/.env.example infra/.env
+      # 5. build de l'API + docker compose + test de santé, sans infra/.env (L3.8)
+      # canari : un jeu caché présent dans la copie locale ne doit jamais entrer dans l'image
+      - run: mkdir -p eval/hidden && echo canari > eval/hidden/canari.txt
       - run: docker compose -f infra/docker-compose.yml up -d --build --wait
+      - run: docker compose -f infra/docker-compose.yml exec -T api test ! -e /app/eval/hidden
       - run: curl -fsS http://localhost:8000/health
       # appel réel : contracts et packages.analyse s'importent dans le conteneur
       - name: brief de démonstration
@@ -53,6 +55,8 @@ jobs:
           curl -fsS -X POST http://localhost:8000/briefs -H "$AUTH" -H "Content-Type: application/json" -d '{"date": "2026-10-07"}'
           curl -fsS http://localhost:8000/briefs/2026-10-07 -H "$AUTH" -o brief.json
           python3 -c "import json; assert json.load(open('brief.json'))['brief_id'] == 'b_2026-10-07_u_demo_001'"
+          # hors ligne (HF_HUB_OFFLINE=1) : le score appris se charge depuis l'image, sans repli
+          ! grep -q "score appris indisponible" brief.json
       - if: failure()
         run: docker compose -f infra/docker-compose.yml logs
       - if: always()
