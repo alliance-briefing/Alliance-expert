@@ -2,6 +2,8 @@
 {% block title %}Administration — Alliance Briefing{% endblock %}
 {% block body_class %}page-admin{% endblock %}
 {% macro when(ts) %}{{ ts.astimezone(paris).strftime("%d/%m/%Y %H:%M:%S") }}{% endmacro %}
+{% macro pct(rate) %}{{ "—" if rate is none else "%.1f %%"|format(rate * 100) }}{% endmacro %}
+{% macro ms(d) %}{% if d.count %}p50 {{ d.p50_ms }} ms, p95 {{ d.p95_ms }} ms, max {{ d.max_ms }} ms ({{ d.count }} mesures){% else %}aucune mesure{% endif %}{% endmacro %}
 {% block body %}
 <main id="contenu" class="admin">
   <h1>Administration</h1>
@@ -75,6 +77,45 @@
   </section>
   {% elif chain_error %}
   <p class="alert alert--warn" role="status">Chaîne indisponible : {{ chain_error }}.</p>
+  {% endif %}
+
+  {% if metrics %}
+  {% set m = metrics %}
+  <section class="card admin-metrics" aria-labelledby="metriques">
+    <h2 id="metriques">Métriques du {{ m.start.strftime("%d/%m") }} au {{ m.end.strftime("%d/%m/%Y") }}</h2>
+    <table>
+      <caption>Taux d'erreur par action (journaux d'audit)</caption>
+      <thead><tr><th scope="col">Action</th><th scope="col">Événements</th><th scope="col">Erreurs</th><th scope="col">Taux d'erreur</th></tr></thead>
+      <tbody>
+      {% for name, r in m.actions.items() %}
+        <tr><th scope="row">{{ name }}</th><td>{{ r.total }}</td><td>{{ r.errors }}</td><td>{{ pct(r.error_rate) }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% if m.connectors %}
+    <table>
+      <caption>Collecte par connecteur</caption>
+      <thead><tr><th scope="col">Connecteur</th><th scope="col">Passages</th><th scope="col">Erreurs</th><th scope="col">Taux d'erreur</th><th scope="col">Éléments</th><th scope="col">Dernier passage</th></tr></thead>
+      <tbody>
+      {% for c in m.connectors %}
+        <tr><th scope="row">{{ c.connector }}</th><td>{{ c.total }}</td><td>{{ c.errors }}</td><td>{{ pct(c.error_rate) }}</td><td>{{ c.items }}</td><td>{{ when(c.last_run) }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+    {% if m.error_codes %}
+    <p>Codes d'erreur : {% for code, n in m.error_codes.items() %}{{ code }} ({{ n }}){% if not loop.last %}, {% endif %}{% endfor %}</p>
+    {% endif %}
+    {% set g = m.generation %}
+    <h3>Génération depuis le {{ when(g.since) }}</h3>
+    <dl>
+      <dt>Générations</dt><dd>{{ g.total }}, dont {{ g.failures }} en échec</dd>
+      <dt>Durée mesurée par l'API</dt><dd>{{ ms(g.measured) }}</dd>
+      <dt>Latence déclarée par le générateur</dt><dd>{{ ms(g.declared) }}</dd>
+      <dt>Tokens</dt><dd>{{ g.tokens_in }} en entrée, {{ g.tokens_out }} en sortie</dd>
+      <dt>Durées de collecte</dt><dd>non mesurées : le journal du lot 1 ne note pas la durée des connecteurs</dd>
+    </dl>
+  </section>
   {% endif %}
 
   {% if events is defined %}

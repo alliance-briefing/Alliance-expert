@@ -8,6 +8,7 @@ ni `generator.llm`, ni le nombre de sections. Le passage au LLM (v0.2.0) ne chan
 from __future__ import annotations
 
 import logging
+import time
 from collections.abc import Sequence
 from datetime import date as Date
 from datetime import datetime, timedelta
@@ -118,13 +119,16 @@ def generate(state: State, user: str, day: Date) -> Brief:
         # Pas de collecte ce jour-là : un brief « rien à signaler » serait faux.
         state.audit.write(api_event(user, "generate", [], 0, "no_items"))
         raise ApiError(404, "no_items", "aucune collecte pour ce jour")
+    started = time.perf_counter()
     try:
         brief = state.generator(items, user, day)
         _check(brief, user, day, items)
     except Exception:
         logger.exception("génération en échec (user=%s, date=%s)", user, day)
+        state.metrics.generation(_elapsed_ms(started), None)
         state.audit.write(api_event(user, "generate", [], 0, "generation_failed"))
         raise ApiError(500, "generation_failed", "la génération du brief a échoué") from None
+    state.metrics.generation(_elapsed_ms(started), brief)
     state.briefs.put(brief)
     cited = sorted(brief.cited_item_ids())
     state.audit.write(api_event(user, "generate", cited, len(cited)))
@@ -166,6 +170,10 @@ def history(state: State, user: str, end: Date, days: int) -> list[HistoryDay]:
         )
     state.audit.write(api_event(user, "view", sorted(cited), len(cited)))
     return found
+
+
+def _elapsed_ms(started: float) -> int:
+    return round((time.perf_counter() - started) * 1000)
 
 
 def _check(brief: Brief, user: str, day: Date, items: Sequence[Item]) -> None:
