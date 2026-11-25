@@ -219,7 +219,7 @@ def test_failing_model_falls_back_to_rules_with_a_warning() -> None:
 
     learned, warning = learned_case_scores(cases, items, USER, NOW, scorer(SpyEmbedder(fail=True)))
 
-    assert learned == {}
+    assert learned is None
     assert warning and "RuntimeError" in warning
 
 
@@ -228,8 +228,8 @@ def test_rules_only_when_asked(monkeypatch: pytest.MonkeyPatch) -> None:
     cases = group_into_cases(items)
     monkeypatch.setenv(SCORE_ENV, "regles")
 
-    assert learned_case_scores(cases, items, USER, NOW) == ({}, None)
-    assert learned_case_scores(cases, items, USER, NOW, None) == ({}, None)
+    assert learned_case_scores(cases, items, USER, NOW) == (None, None)
+    assert learned_case_scores(cases, items, USER, NOW, None) == (None, None)
 
 
 # --- dans le brief -----------------------------------------------------------------------------

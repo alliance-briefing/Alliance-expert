@@ -51,8 +51,8 @@ def test_automates_actionnables_collegues_et_catalogues_gardes(title, text, send
 
 def test_marqueurs_configurables_et_repli_sur_l_extrait():
     item = _mail("1", "Offre", "Pour ne plus recevoir nos offres, cliquez ici")
-    assert noise_reason(item) is None
-    assert noise_reason(item, NoiseConfig(frozenset({"ne plus recevoir"}))) == REASON
+    assert noise_reason(item) == REASON  # pied de liste de diffusion (ajout du 25/11)
+    assert noise_reason(item, NoiseConfig(frozenset({"autre marqueur"}))) is None
     sans_corps = item.model_copy(update={"content_text": None, "snippet": "unsubscribe here"})
     assert noise_reason(sans_corps) == REASON
 

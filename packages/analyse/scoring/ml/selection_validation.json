@@ -1,0 +1,102 @@
+{
+ "journees": 60,
+ "personas": [
+  "agence-2",
+  "chantier-1",
+  "chantier-2",
+  "chantier-3",
+  "collectivite-1",
+  "commercial-2",
+  "commercial-3",
+  "daf-1",
+  "daf-2",
+  "drh-2",
+  "drh-3",
+  "ecole-1",
+  "ecole-3",
+  "logistique-1",
+  "logistique-2",
+  "logistique-3",
+  "operations-1",
+  "operations-2",
+  "operations-3",
+  "projet_si-1",
+  "projet_si-2",
+  "projet_si-3",
+  "qualite-1",
+  "qualite-3",
+  "sante-1",
+  "sante-2",
+  "sante-3"
+ ],
+ "reglages": [
+  {
+   "seuil": 40,
+   "max": 5,
+   "ndcg7": 0.3225,
+   "entrees_moyennes": 4.63,
+   "journees_avec_exclu_dans_top3": 0
+  },
+  {
+   "seuil": 40,
+   "max": 7,
+   "ndcg7": 0.3465,
+   "entrees_moyennes": 6.42,
+   "journees_avec_exclu_dans_top3": 0
+  },
+  {
+   "seuil": 50,
+   "max": 5,
+   "ndcg7": 0.3225,
+   "entrees_moyennes": 4.63,
+   "journees_avec_exclu_dans_top3": 0
+  },
+  {
+   "seuil": 50,
+   "max": 7,
+   "ndcg7": 0.3465,
+   "entrees_moyennes": 6.42,
+   "journees_avec_exclu_dans_top3": 0
+  },
+  {
+   "seuil": 60,
+   "max": 5,
+   "ndcg7": 0.3225,
+   "entrees_moyennes": 4.63,
+   "journees_avec_exclu_dans_top3": 0
+  },
+  {
+   "seuil": 60,
+   "max": 7,
+   "ndcg7": 0.3467,
+   "entrees_moyennes": 6.38,
+   "journees_avec_exclu_dans_top3": 0
+  },
+  {
+   "seuil": 70,
+   "max": 5,
+   "ndcg7": 0.3116,
+   "entrees_moyennes": 4.47,
+   "journees_avec_exclu_dans_top3": 0
+  },
+  {
+   "seuil": 70,
+   "max": 7,
+   "ndcg7": 0.333,
+   "entrees_moyennes": 5.93,
+   "journees_avec_exclu_dans_top3": 0
+  }
+ ],
+ "meilleur": {
+  "seuil": 60,
+  "max": 7
+ },
+ "ecart_meilleur_reference_ic95": [
+  0.0,
+  0.0007
+ ],
+ "retenu": {
+  "seuil": 50,
+  "max": 7
+ }
+}

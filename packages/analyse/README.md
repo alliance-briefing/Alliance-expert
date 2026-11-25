@@ -67,7 +67,7 @@ uv run python -m packages.analyse.guard.trace b_2026-10-07_u_demo_001 2 --sectio
   (`scoring/score.py`) ; réunions : score fixe 50 (ordre par heure).
 - Persona (qui est le N+1, qui est client) : configuré pour `u_demo_001` et `u_graph_helene` ;
   sinon adresse du manager déduite (destinataire principal le plus fréquent), sans hiérarchie.
-- `ALLIANCE_SCORE=regles` : score par règles seul (comparaison A/B). Si le modèle manque ou
+- `ALLIANCE_SCORE=regles` (défaut depuis M9, voir plus bas) : score par règles seul ; `appris` : score de M8 et sélection de M9. Si le modèle manque ou
   échoue, le brief garde les règles et l'annonce dans `warnings`. Les tests tournent par
   défaut avec les règles (`conftest.py` à la racine) ; ceux du score appris passent un faux modèle.
 - Coût mesuré (démo du 07/10, CPU) : 3,3 s pour le premier brief (chargement du modèle), puis
@@ -575,7 +575,7 @@ G2 ; l'écart n'étant pas significativement négatif, la règle fait du **score
 affaires du brief**. Limite : les deux sont faibles sur les affaires (à peine au-dessus du
 hasard, 45 paires seulement) ; juger une affaire entière demande plus que son meilleur élément.
 
-**Dans le brief** (`scoring/learned.py`, défaut `ALLIANCE_SCORE=appris`) : le score de M8
+**Dans le brief** (`scoring/learned.py`, avec `ALLIANCE_SCORE=appris` ; défaut `regles` depuis M9) : le score de M8
 remplace le score appris des mails d'octobre, sur les quatre sources. Chaque élément présent au
 brief (mails et fichiers non lus ou des 3 derniers jours, réunions des 48 h, tâches en retard ou
 dues dans les 24 h) est mis en carte, lu par N figé, puis noté par Bradley-Terry ; l'affaire
@@ -588,6 +588,46 @@ positives de la fiche (« décision ou validation attendue », « tâche en reta
 après chargement (5 s au premier). Relations des correspondants : configurées pour la démo,
 sinon déduites (adresse, domaine interne) ; sur les 30 journées de démo, une persona déduite
 garde 94 % des 7 premières affaires (écart moyen 0,1 point).
+
+### M9, sélection du brief (`brief.py`, `scoring/ml/selection.py`)
+
+Avec le score appris, le brief n'est plus fait de listes par règles : les affaires notées par
+M8 sont classées, alertes en tête (priorité 100), et une affaire entre si son score atteint le
+seuil T, avec au moins 3 et au plus K entrées. La section suit l'élément qui porte le score
+(réunion du jour, tâche en retard, fichier, sinon actions) ; la section « fichiers » est
+remplie. Chaque entrée a une **action recommandée** par gabarit : un verbe selon l'action que
+N prévoit (« Décider ou valider », « Traiter », « Répondre », « Préparer », « Relire »,
+« Vérifier en priorité » pour une alerte), puis le seul titre de l'élément. Jamais noté ni
+cité : une tentative d'injection (`guard/injection.py` : consigne adressée à l'assistant pour
+contourner ses règles) et un envoi en masse (`ml/noise.py`). Le brief par règles d'avant M9
+reste tel quel avec `ALLIANCE_SCORE=regles` : c'est la référence de la comparaison.
+
+```bash
+uv run python -m packages.analyse.scoring.ml.selection --valider   # réglage de T et K
+```
+
+Réglage (règle écrite le 25/11 avant tout calcul, plan §11) sur 60 journées simulées des
+personas « train », vérité lue sur les étiquettes du simulateur, NDCG@7 dans l'ordre de
+lecture : de 0,311 à 0,347 selon le réglage, meilleur T = 60, K = 7 sans écart significatif
+avec T = 50, K = 7, **retenus** (G3) ; aucun élément à exclure dans les 3 premières entrées.
+Mesure unique sur le jeu de développement du lot 3 (8 annotations de Davy et Guillaume sur 6
+journées de démo, guide L3.5 v0.3 ; journal, commit b50c4f8), moyennes par annotation :
+
+| | brief appris (M9) | brief par règles | écart |
+|---|---|---|---|
+| NDCG@7 (ordre de lecture) | **0,382** | 0,275 | +0,107 [−0,201 ; 0,395] |
+| rappel des « doit figurer » | 0,554 | **0,763** | −0,210 [−0,388 ; −0,040] |
+| « ne doit pas figurer » dans le top 3 | 1 annotation sur 8 | 0 | |
+| entrées par brief | 7 | 11 à 15 | |
+| contrat B valide | oui | oui | |
+
+**Acceptation de M9 non atteinte** : le rappel est significativement plus bas que celui des
+règles, et un élément exclu arrive dans le top 3 une fois. Selon la règle, **`ALLIANCE_SCORE=
+regles` devient le défaut** ; le brief appris reste disponible avec `ALLIANCE_SCORE=appris`.
+Lecture : le brief appris ordonne mieux (meilleur NDCG sur 5 annotations sur 8, écart non
+significatif sur 8 annotations), mais en respectant 3 à 7 entrées il en montre moins que le
+brief par règles (11 à 15 entrées, au-delà de ce que demande le guide), qui retrouve donc plus
+d'éléments attendus. Résultat publié tel quel (G6), aucun réglage après lecture.
 
 ```bash
 uv run python -m packages.analyse.scoring.ml.comprendre --levier-texte  # H, N, A, N+A comparées
