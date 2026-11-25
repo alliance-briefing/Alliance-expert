@@ -21,7 +21,9 @@ from contracts.models.brief import SectionKind
 from packages.analyse.aggregate.cases import Case, group_into_cases
 from packages.analyse.aggregate.rules import meetings_of_day, overdue_tasks, unread_mails
 from packages.analyse.clock import PARIS, is_all_day, to_paris
+from packages.analyse.llm.client import LLMClient
 from packages.analyse.scoring.score import STANDARD, score_case
+from packages.analyse.summarize.summarize import enrich_entry
 
 # Seuil de score à partir duquel une affaire sans mail non lu entre dans « À traiter ».
 # 50 = score neutre : toute affaire avec au moins un signal net positif est incluse.
@@ -45,7 +47,12 @@ Wording = Callable[[list[Item]], tuple[str, str]]
 
 
 def generate_brief(
-    items: Sequence[Item], user: str, date: Date | str, *, now: datetime | None = None
+    items: Sequence[Item],
+    user: str,
+    date: Date | str,
+    *,
+    client: LLMClient | None = None,
+    now: datetime | None = None,
 ) -> Brief:
     """Brief du jour `date` pour `user`, construit par règles à partir de `items`.
 
@@ -122,6 +129,7 @@ def generate_brief(
         unread_by_case.get(c.case_id) or [c.items[0]] for c in actions_cases
     ]
 
+    items_by_id = {item.item_id: item for item in mine}
     sections = [
         _section(
             "actions",
@@ -132,6 +140,9 @@ def generate_brief(
             overdue_ids,
             today_events,
             _now,
+            client=client,
+            items_by_id=items_by_id,
+            warnings=warnings,
         ),
         _section(
             "meetings",
@@ -143,6 +154,9 @@ def generate_brief(
             today_events,
             _now,
             fixed_score=MEETINGS_SCORE,
+            client=client,
+            items_by_id=items_by_id,
+            warnings=warnings,
         ),
         _section(
             "overdue",
@@ -153,6 +167,9 @@ def generate_brief(
             overdue_ids,
             today_events,
             _now,
+            client=client,
+            items_by_id=items_by_id,
+            warnings=warnings,
         ),
     ]
     if not any(section.entries for section in sections):
@@ -189,6 +206,9 @@ def _section(
     now: datetime | None,
     *,
     fixed_score: int | None = None,
+    client: LLMClient | None = None,
+    items_by_id: dict[str, Item] | None = None,
+    warnings: list[str] | None = None,
 ) -> Section:
     entries = []
     for rank, group in enumerate(groups, start=1):
@@ -219,15 +239,21 @@ def _section(
         cancelled = _cancelled_in_case(case, today_events)
         all_items = list(dict.fromkeys(item.item_id for item in group + others + cancelled))
 
-        entries.append(
-            Entry(
-                rank=rank,
-                priority_score=displayed_score,
-                priority_reasons=reasons,
-                text=text,
-                source_item_ids=all_items,
-            )
+        entry = Entry(
+            rank=rank,
+            priority_score=displayed_score,
+            priority_reasons=reasons,
+            text=text,
+            source_item_ids=all_items,
         )
+
+        if client is not None and items_by_id is not None:
+            cited = [items_by_id[iid] for iid in all_items if iid in items_by_id]
+            entry, warning = enrich_entry(entry, cited, client)
+            if warning and warnings is not None:
+                warnings.append(warning)
+
+        entries.append(entry)
     return Section(kind=kind, entries=entries)
 
 
