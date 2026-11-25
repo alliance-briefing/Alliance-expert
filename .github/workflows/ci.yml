@@ -25,6 +25,65 @@ jobs:
       # 3. fixtures de démo validées contre le JSON Schema du contrat A (les fixtures B sont testées par pytest)
       - run: uv run python -m contracts.validate_fixtures
 
+  # 6. Évaluation du brief (L3.6) : métriques de la base contre celles de la PR, calculées avec
+  #    le même évaluateur et les mêmes annotations (eval/ de la PR copié dans la base) ; alerte
+  #    ::warning:: si une métrique perd plus de 3 points. Non bloquant pour l'instant : le guide
+  #    demande de bloquer à partir de v0.9.0, sur décision du référent. Pour bloquer :
+  #    EVAL_BLOQUANT: "true" et retirer continue-on-error.
+  eval-regression:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    env:
+      EVAL_BLOQUANT: "false"
+      FASTEMBED_CACHE_PATH: /home/runner/.cache/fastembed  # modèle du score appris
+      PYTHONIOENCODING: utf-8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v3
+      - run: uv python install 3.12
+      - run: uv sync --all-packages --frozen
+      - uses: actions/cache@v4
+        with:
+          path: /home/runner/.cache/fastembed
+          key: fastembed-${{ hashFiles('packages/analyse/rag/embeddings.py') }}
+          restore-keys: fastembed-
+      - name: base de comparaison
+        id: base
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE=$(git merge-base "origin/${{ github.base_ref }}" HEAD)
+          else
+            BASE="${{ github.event.before }}"
+          fi
+          if ! git cat-file -e "$BASE^{commit}" 2>/dev/null || [ "$BASE" = "$(git rev-parse HEAD)" ]; then
+            echo "::notice title=Évaluation::pas de base de comparaison ($BASE)"
+            BASE=""
+          fi
+          echo "sha=$BASE" >> "$GITHUB_OUTPUT"
+      - name: métriques de la PR
+        run: uv run python -m eval --json "$RUNNER_TEMP/pr.json"
+      - name: métriques de la base
+        id: base_metrics
+        if: steps.base.outputs.sha != ''
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/base" "${{ steps.base.outputs.sha }}"
+          rm -rf "$RUNNER_TEMP/base/eval"
+          cp -r eval "$RUNNER_TEMP/base/eval"
+          cd "$RUNNER_TEMP/base"
+          if uv sync --all-packages --frozen && uv run python -m eval --json "$RUNNER_TEMP/base.json"; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning title=Évaluation non comparable::la base ne s'évalue pas avec l'évaluateur de la PR"
+          fi
+      - name: comparaison
+        if: steps.base_metrics.outputs.ok == 'true'
+        run: |
+          STRICT=""
+          if [ "$EVAL_BLOQUANT" = "true" ]; then STRICT="--strict"; fi
+          uv run python -m eval.compare "$RUNNER_TEMP/base.json" "$RUNNER_TEMP/pr.json" --github $STRICT
+
   gitleaks:
     runs-on: ubuntu-latest
     steps:

@@ -46,8 +46,29 @@ retard, annulée) sont vrais à la collecte ; chaque date est celle du bon champ
 figure dans une source. Une paraphrase ne se vérifie pas ainsi : pour un texte de LLM, le
 taux est une borne haute.
 
-Intervalles de confiance à 95 % par bootstrap sur les journées. Pas encore mesurés :
-notation humaine, alerte de régression en CI.
+Intervalles de confiance à 95 % par bootstrap sur les journées. Pas encore mesurée :
+la notation humaine.
+
+## Alerte de régression en CI (`compare.py`, job `eval-regression`)
+
+Sur chaque PR, la CI évalue la base (le point de départ sur `main`) et la PR, **avec le même
+évaluateur et les mêmes annotations** : le dossier `eval/` de la PR est copié dans la base.
+Un écart vient donc du code évalué ; tout est déterministe, ce n'est jamais du bruit. Une
+métrique qui perd plus de 3 points donne un `::warning::` dans la PR et un tableau dans le
+résumé du job. Un changement de générateur est noté sans masquer l'alerte ; des journées
+différentes rendent la comparaison non valable (signalé, sans alerte).
+
+```powershell
+uv run python -m eval --json base.json      # sur la base
+uv run python -m eval --json pr.json        # sur la PR
+uv run python -m eval.compare base.json pr.json
+```
+
+Le job est **non bloquant** pour l'instant (`continue-on-error`, `EVAL_BLOQUANT: "false"`).
+Le guide demande de bloquer à partir de v0.9.0 : décision du référent, à prendre quand le jeu
+de dev a ses 10 journées (avec 6, une journée qui change fait bouger une métrique de plus de
+3 points). Pour bloquer : `EVAL_BLOQUANT: "true"` et retirer `continue-on-error` dans
+`.github/workflows/ci.yml`.
 
 Sur le jeu caché (`--set hidden`), le rapport ne montre ni identifiant d'item ni texte de
 référence : il peut être partagé avec le lot 2.

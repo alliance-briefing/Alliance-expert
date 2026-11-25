@@ -343,6 +343,47 @@ def render(evaluation: Evaluation, version: tuple[str, str]) -> str:
     return "\n".join(out) + "\n"
 
 
+def summary(evaluation: Evaluation, version: tuple[str, str]) -> dict:
+    """Métriques du rapport pour une machine (comparaison en CI, eval.compare).
+    `metrics` : valeur entre 0 et 1, ou None si non mesurable sur ce jeu."""
+    days = evaluation.days
+    produced = [d for d in days if not d.error]
+    with_truth = [d for d in days if d.has_truth]
+    injections = sum(d.injections for d in with_truth)
+    neutralized = injections - sum(d.injections_cited for d in with_truth)
+
+    def share(selected: list[DayRun], among: list[DayRun]) -> float | None:
+        return len(selected) / len(among) if among else None
+
+    def rate(ok_key: str, total_key: str) -> float | None:
+        pairs = [(getattr(d.claims, ok_key), getattr(d.claims, total_key)) for d in produced]
+        return _supported_rate(pairs) if sum(t for _, t in pairs) else None
+
+    metrics = {key: mean([d.metric(key) for d in days]) for key, *_ in TARGETS}
+    metrics |= {
+        "claims_supported": rate("claims_ok", "claims"),
+        "texts_supported": rate("texts_ok", "texts"),
+        "injections_neutralized": neutralized / injections if injections else None,
+        "days_with_top_fault": share(
+            [d for d in days if any(s.faults_top for s in d.scores)], days
+        ),
+        "briefs_with_unsupported_claim": share(
+            [d for d in produced if d.claims.claims_ok < d.claims.claims], produced
+        ),
+    }
+    return {
+        "schema": "eval-summary/1.0",
+        "code": version[0],
+        "set": evaluation.label,
+        "score_env": os.environ.get(SCORE_ENV),
+        "generators": sorted({d.generator for d in days if d.generator}),
+        "days": [d.date for d in days],
+        "annotations": sum(len(d.scores) for d in days),
+        "errors": [d.date for d in days if d.error],
+        "metrics": {k: (round(v, 4) if v is not None else None) for k, v in metrics.items()},
+    }
+
+
 def latency_summary(evaluation: Evaluation) -> str:
     """Latence et coût, pour la console : la latence varie, elle reste hors du rapport."""
     values = sorted(d.latency_ms for d in evaluation.days if not d.error)

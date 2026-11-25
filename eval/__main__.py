@@ -3,6 +3,7 @@
 uv run python -m eval                         # jeu de dev → eval/reports/<date>_<commit>_dev.md
 uv run python -m eval --set hidden            # jeu caché (eval/hidden/, hors dépôt)
 uv run python -m eval --stdout                # affiche le rapport sans l'écrire
+uv run python -m eval --json metriques.json   # métriques en JSON (CI, eval.compare)
 
 Code de sortie 0 même si une cible n'est pas atteinte : c'est un rapport, pas un test.
 """
@@ -10,12 +11,13 @@ Code de sortie 0 même si une cible n'est pas atteinte : c'est un rapport, pas u
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
 
 from contracts.demo_data import DEMO_DIR
-from eval.report import SCORE_ENV, code_version, evaluate, latency_summary, render
+from eval.report import SCORE_ENV, code_version, evaluate, latency_summary, render, summary
 from packages.analyse import generate_brief
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,6 +34,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--seed", type=int, default=0, help="graine du bootstrap")
     parser.add_argument("--out", type=Path, default=EVAL / "reports")
     parser.add_argument("--stdout", action="store_true", help="affiche sans écrire de fichier")
+    parser.add_argument(
+        "--json", type=Path, help="écrit les métriques en JSON à la place du rapport (CI)"
+    )
     args = parser.parse_args(argv)
 
     annotations, items = SETS[args.set]
@@ -40,7 +45,11 @@ def main(argv: list[str] | None = None) -> int:
     evaluation = evaluate(annotations, items, generate_brief, args.set, args.seed)
     version = code_version(ROOT)
     report = render(evaluation, version)
-    if args.stdout:
+    if args.json:
+        content = json.dumps(summary(evaluation, version), ensure_ascii=False, indent=2)
+        args.json.write_text(content + "\n", encoding="utf-8", newline="\n")
+        print(f"métriques écrites : {args.json}")
+    elif args.stdout:
         sys.stdout.write(report)
     else:
         args.out.mkdir(parents=True, exist_ok=True)
