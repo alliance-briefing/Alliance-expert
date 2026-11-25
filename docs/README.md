@@ -11,6 +11,7 @@ Dans l'ordre du guide d'équipe (L3.9). Pour démarrer vite : [README du dépôt
 | Guide d'exploitation : installation, configuration, ajout d'une source, changement de modèle | [exploitation.md](exploitation.md) |
 | Utilisation | à venir (#80) |
 | Limites connues et pistes pour Alliance Experts | [limites.md](limites.md) |
+| Démonstration finale, partie plateforme (L3.10) | [demo-plateforme.md](demo-plateforme.md) ; script complet : #80 |
 
 Par lot : [collecte](../packages/collect/README.md) (dont [OAuth Microsoft](oauth-microsoft.md)),
 [analyse](../packages/analyse/README.md) (dont la [fiche du modèle](../packages/analyse/docs/fiche-modele.md)),
