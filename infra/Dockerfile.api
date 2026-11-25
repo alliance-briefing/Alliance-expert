@@ -13,4 +13,5 @@ RUN uv run --no-sync python -c "from packages.analyse.scoring.learned import dow
 ENV HF_HUB_OFFLINE=1
 VOLUME /data
 EXPOSE 8000
-CMD ["uv", "run", "--no-sync", "uvicorn", "alliance_api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Amorçage (sans effet si les journées sont déjà là, ou sans DATA_DIR), puis l'API.
+CMD ["sh", "-c", "uv run --no-sync python -m alliance_api.seed && exec uv run --no-sync uvicorn alliance_api.main:app --host 0.0.0.0 --port 8000"]

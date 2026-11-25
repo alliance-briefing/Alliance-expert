@@ -46,6 +46,8 @@ jobs:
       - run: mkdir -p eval/hidden && echo canari > eval/hidden/canari.txt
       - run: docker compose -f infra/docker-compose.yml up -d --build --wait
       - run: docker compose -f infra/docker-compose.yml exec -T api test ! -e /app/eval/hidden
+      # amorçage : les 30 journées de démonstration et le journal de collecte dans le volume
+      - run: docker compose -f infra/docker-compose.yml exec -T api test -s /data/items/u_demo_001/audit.jsonl
       - run: curl -fsS http://localhost:8000/health
       # appel réel : contracts et packages.analyse s'importent dans le conteneur
       - name: brief de démonstration
