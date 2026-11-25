@@ -1,0 +1,19 @@
+{
+ "journees": 30,
+ "processeur": "Intel64 Family 6 Model 170 Stepping 4, GenuineIntel",
+ "seuil_s": 3.0,
+ "regles": {
+  "premier_s": 0.01,
+  "mediane_s": 0.01,
+  "p95_s": 0.02,
+  "max_s": 0.02,
+  "dans_le_seuil": true
+ },
+ "appris": {
+  "premier_s": 2.77,
+  "mediane_s": 2.26,
+  "p95_s": 7.28,
+  "max_s": 10.35,
+  "dans_le_seuil": false
+ }
+}

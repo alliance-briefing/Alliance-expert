@@ -641,6 +641,16 @@ uv run python -m packages.analyse.scoring.ml.comprendre --valider-reel  # jeu de
 uv run python -m packages.analyse.scoring.ml.comprendre --mesurer       # une fois par modèle
 ```
 
+## Rapport du modèle (M10)
+
+- `docs/fiche-modele.md` : données, modèles, résultats du journal, limites et biais ;
+- `docs/rapport-ablations.md` : ablations du plan (§6), avec la commande de chaque chiffre ;
+- `docs/demonstration.md` : le brief du 07/10 commenté, dans les deux modes ;
+- ADR-0005 (`docs/adr/0005-modele-multi-sources.md`) : les décisions et leurs conséquences.
+
+Latence (`selection --latence`, 30 journées de démo) : règles 0,01 s par brief ; appris,
+médiane 2,3 s, 95e centile 7,3 s, au-delà du seuil de 3 s sur les journées chargées.
+
 ## Commandes
 
 ```bash
