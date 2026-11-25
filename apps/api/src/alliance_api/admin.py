@@ -7,26 +7,43 @@ identifiants et des compteurs : aucun contenu de message n'est exposé ici.
 
 `GET /admin/chain?user=…&date=…` : collecte, génération et consultations d'un brief
 (voir `chain.py`). L'administrateur ne lit pas le texte du brief (`brief:read_any`).
+
+`GET /admin` : la même chose en page HTML (formulaire de filtres, sans JavaScript, ADR 0001).
 """
 
 from __future__ import annotations
 
 import logging
 from datetime import date as Date
+from pathlib import Path
 from typing import Annotated, Literal
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Query, Request
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from starlette.datastructures import State
 
-from alliance_api.auth import CurrentUser, requires, valid_user_id
+from alliance_api import resume
+from alliance_api.auth import (
+    CurrentUser,
+    allowed,
+    expired_user,
+    optional_user,
+    requires,
+    valid_user_id,
+)
 from alliance_api.chain import BriefChain, brief_chain
 from alliance_api.errors import ApiError
 from contracts.models import AuditEvent
 
 PARIS = ZoneInfo("Europe/Paris")
 LIMIT_MAX = 1000
+PAGE_LIMIT = 200
+ACTIONS = ("collect", "generate", "view")
+STATUSES = ("ok", "error")
+templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 
 logger = logging.getLogger("alliance_api.admin")
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -63,6 +80,61 @@ def chain(
     found = chain_for(request.app.state, user, day)
     logger.info("chaîne du brief %s %s lue par %s", user, day, admin)
     return found
+
+
+@router.get("", response_class=HTMLResponse, include_in_schema=False)
+def admin_page(
+    request: Request,
+    user: str = "",
+    day: Annotated[str, Query(alias="date")] = "",
+    action: str = "",
+    status: str = "",
+    brief: str = "",
+) -> Response:
+    """Page d'administration ; les champs vides du formulaire valent « pas de filtre »."""
+    admin = optional_user(request)
+    if admin is None:
+        if expired := expired_user(request):  # revenir ici après reconnexion
+            query = f"?{request.url.query}" if request.url.query else ""
+            return resume.defer(request, expired, f"/admin{query}")
+        return RedirectResponse("/login", status_code=303)
+    if not allowed(request, "audit:read"):
+        return templates.TemplateResponse(
+            request, "admin.html", {"forbidden": True}, status_code=403
+        )
+    context: dict[str, object] = {
+        "filters": {"user": user, "date": day, "action": action, "status": status, "brief": brief},
+        "actions": ACTIONS,
+        "statuses": STATUSES,
+        "paris": PARIS,
+        "limit": PAGE_LIMIT,
+    }
+    try:
+        selected, brief_day = _page_day(day, "date"), _page_day(brief, "brief")
+        if action not in ("", *ACTIONS) or status not in ("", *STATUSES):
+            raise ApiError(422, "invalid_request", "paramètres invalides : action ou statut")
+        events = filtered_events(
+            request.app.state, user or None, selected, action or None, status or None
+        )
+    except ApiError as exc:
+        return templates.TemplateResponse(
+            request, "admin.html", {**context, "error": exc.message}, 422
+        )
+    context.update(total=len(events), events=events[:PAGE_LIMIT])
+    if user and brief_day:
+        try:
+            context["chain"] = chain_for(request.app.state, user, brief_day)
+        except ApiError as exc:
+            context["chain_error"] = exc.message
+    logger.info("page d'administration lue par %s (%d événements)", admin, len(events))
+    return templates.TemplateResponse(request, "admin.html", context)
+
+
+def _page_day(value: str, name: str) -> Date | None:
+    try:
+        return Date.fromisoformat(value) if value else None
+    except ValueError:
+        raise ApiError(422, "invalid_request", f"paramètres invalides : {name}") from None
 
 
 def filtered_events(

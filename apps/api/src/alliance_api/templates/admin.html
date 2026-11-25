@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Administration — Alliance Briefing{% endblock %}
+{% block body_class %}page-admin{% endblock %}
+{% macro when(ts) %}{{ ts.astimezone(paris).strftime("%d/%m/%Y %H:%M:%S") }}{% endmacro %}
+{% block body %}
+<main id="contenu" class="admin">
+  <h1>Administration</h1>
+  <p><a href="/">Retour au brief</a></p>
+
+  {% if forbidden %}
+  <p class="alert alert--error" role="alert">Droits insuffisants : cette page demande la permission de lire le journal d'audit.</p>
+  {% else %}
+  <form method="get" action="/admin" class="card admin-filters" aria-labelledby="filtres">
+    <h2 id="filtres">Filtres</h2>
+    <label for="f-user">Utilisateur</label>
+    <input id="f-user" name="user" value="{{ filters.user }}" placeholder="u_demo_001" spellcheck="false">
+    <label for="f-date">Jour des événements</label>
+    <input id="f-date" name="date" type="date" value="{{ filters.date }}">
+    <label for="f-action">Action</label>
+    <select id="f-action" name="action">
+      <option value="">Toutes</option>
+      {% for value in actions %}<option value="{{ value }}"{% if value == filters.action %} selected{% endif %}>{{ value }}</option>{% endfor %}
+    </select>
+    <label for="f-status">Statut</label>
+    <select id="f-status" name="status">
+      <option value="">Tous</option>
+      {% for value in statuses %}<option value="{{ value }}"{% if value == filters.status %} selected{% endif %}>{{ value }}</option>{% endfor %}
+    </select>
+    <label for="f-brief">Brief du</label>
+    <input id="f-brief" name="brief" type="date" value="{{ filters.brief }}" aria-describedby="f-brief-aide">
+    <button type="submit" class="btn btn--primary btn--sm">Filtrer</button>
+    <p class="hint" id="f-brief-aide">Utilisateur et « Brief du » renseignés : la chaîne de ce brief s'affiche (collecte, génération, consultations), quel que soit le jour des événements.</p>
+  </form>
+
+  {% if error %}
+  <p class="alert alert--error" role="alert">{{ error }}</p>
+  {% endif %}
+
+  {% if chain %}
+  <section class="card admin-chain" aria-labelledby="chaine">
+    <h2 id="chaine">Chaîne du brief {{ chain.generation.brief_id }}</h2>
+    <h3>Collecte</h3>
+    {% if chain.collection %}
+    <table>
+      <caption>Collectes du lot 1 liées au brief</caption>
+      <thead><tr><th scope="col">Heure</th><th scope="col">Connecteur</th><th scope="col">Source</th><th scope="col">Éléments</th><th scope="col">Cités</th><th scope="col">Statut</th></tr></thead>
+      <tbody>
+      {% for step in chain.collection %}
+        <tr><td>{{ when(step.ts) }}</td><td>{{ step.connector }}</td><td>{{ step.source or "—" }}</td><td>{{ step.count }}</td><td>{{ step.cited }}</td><td>{{ step.status }}{% if step.error_code %} ({{ step.error_code }}){% endif %}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p>Aucune collecte rattachée à ce brief.</p>
+    {% endif %}
+    <h3>Génération</h3>
+    {% set g = chain.generation %}
+    <dl>
+      <dt>Générée le</dt><dd>{{ when(g.generated_at) }}</dd>
+      <dt>Modèle</dt><dd>{{ g.llm }}{% if g.llm_version %} {{ g.llm_version }}{% endif %}{% if g.prompt_version %}, prompt {{ g.prompt_version }}{% endif %}</dd>
+      <dt>Éléments</dt><dd>{{ g.items_in }} reçus, {{ g.items_out }} retenus, {{ g.cited_items }} cités</dd>
+      <dt>Tokens</dt><dd>{{ g.tokens_in }} en entrée, {{ g.tokens_out }} en sortie</dd>
+      <dt>Durée et coût</dt><dd>{{ g.latency_ms }} ms, {{ g.cost_eur }} €</dd>
+      <dt>Avertissements</dt><dd>{{ g.warnings }}</dd>
+      <dt>Générations journalisées</dt><dd>{% for ts in g.api_calls %}{{ when(ts) }}{% if not loop.last %}, {% endif %}{% else %}aucune{% endfor %}</dd>
+    </dl>
+    <h3>Consultations</h3>
+    {% if chain.consultations %}
+    <ul>
+      {% for c in chain.consultations %}<li>{{ when(c.ts) }} : {{ c.user_id }} ({{ "brief" if c.kind == "brief" else "historique des 30 jours" }})</li>{% endfor %}
+    </ul>
+    {% else %}
+    <p>Aucune consultation.</p>
+    {% endif %}
+  </section>
+  {% elif chain_error %}
+  <p class="alert alert--warn" role="status">Chaîne indisponible : {{ chain_error }}.</p>
+  {% endif %}
+
+  {% if events is defined %}
+  <section class="card admin-journal" aria-labelledby="journal">
+    <h2 id="journal">Journal d'audit</h2>
+    <table>
+      <caption>{{ total }} événement{{ "s" if total != 1 }}{% if total > limit %}, les {{ limit }} plus récents affichés{% endif %}</caption>
+      <thead><tr><th scope="col">Heure (Paris)</th><th scope="col">Utilisateur</th><th scope="col">Action</th><th scope="col">Acteur</th><th scope="col">Source</th><th scope="col">Éléments</th><th scope="col">Statut</th></tr></thead>
+      <tbody>
+      {% for e in events %}
+        <tr><td>{{ when(e.ts) }}</td><td>{{ e.user_id }}</td><td>{{ e.action }}</td><td>{{ e.actor }}</td><td>{{ e.source or "—" }}</td><td>{{ e.count }}</td><td>{{ e.status }}{% if e.error_code %} ({{ e.error_code }}){% endif %}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endif %}
+  {% endif %}
+</main>
+{% endblock %}
